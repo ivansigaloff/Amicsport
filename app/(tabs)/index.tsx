@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
+import { computeIsAdmin } from '../../lib/auth';
 import { useEnv } from '../../hooks/use-env';
 import MatchDetails from '../../components/MatchDetails';
 import MapView from '../../components/MapView';
@@ -525,16 +526,7 @@ export default function MatchesScreen() {
     }
 
     if (data?.user) {
-      const role = data.user.user_metadata?.role;
-      const isDevUser = data.user.user_metadata?.is_dev === true;
-      
-      if (env === 'dev') {
-        // En desarrollo, solo los que tengan rol 'admin' tienen permiso admin real
-        setIsAdmin(role === 'admin');
-      } else {
-        // En producción, SOLO admins que NO sean dev tienen permiso
-        setIsAdmin(role === 'admin' && !isDevUser);
-      }
+      setIsAdmin(computeIsAdmin(data.user, env as 'prod' | 'dev'));
     } else {
       setIsAdmin(false);
     }

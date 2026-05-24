@@ -37,10 +37,22 @@ export default function LoginScreen() {
     
     if (isLoginMode) {
       // Iniciar Sesión
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data: signInData, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
         Alert.alert(t('login.error_access'), error.message);
       } else {
+        // Si el usuario llegó por la vía de email-confirmation (sin role asignado
+        // todavía) y trae un pending_invite_code, lo procesamos AHORA.
+        const user = signInData.user;
+        const hasNoRole = !user?.app_metadata?.role || user.app_metadata.role === 'participant';
+        const pendingCode = user?.user_metadata?.pending_invite_code;
+        if (hasNoRole && pendingCode) {
+          try {
+            await supabase.functions.invoke('validate-invite', { body: { code: pendingCode } });
+            // Best-effort: si falla por código inválido, dejamos al usuario como participant.
+          } catch { /* no-op */ }
+        }
+
         if (from === 'dev') {
           router.replace('/dev' as any);
         } else {
@@ -52,51 +64,53 @@ export default function LoginScreen() {
         setLoading(false);
         return Alert.alert(t('common.notice'), t('login.name_required'));
       }
-      
-      const DEV_ADMIN_CODE = 'DEV_ADMIN';  // Solo para pruebas /test con permisos de edición
-      const DEV_PLAYER_CODE = 'DEV_PART';  // Solo para pruebas /test como jugador
-      const PROD_ADMIN_CODE = 'ADMINKKZ2026';  // Admin para la versión de producción
-      const PLAYER_CODE = 'KZ2026';        // Jugador normal para producción
-      
-      const code = inviteCode.trim().toUpperCase();
-      let role = '';
-      let isDev = false;
-      
-      if (code === DEV_ADMIN_CODE) {
-        role = 'admin';
-        isDev = true;
-      } else if (code === DEV_PLAYER_CODE) {
-        role = 'participant';
-        isDev = true;
-      } else if (code === PROD_ADMIN_CODE) {
-        role = 'admin';
-        isDev = false;
-      } else if (code === PLAYER_CODE) {
-        role = 'participant';
-        isDev = false;
-      } else {
+
+      const code = inviteCode.trim();
+      if (!code) {
         setLoading(false);
         return Alert.alert(t('login.access_denied'), t('login.invalid_invite'));
       }
 
-      // Registrar nueva cuenta guardando el nombre y el rol en los metadatos de Supabase Auth
-      const { error } = await supabase.auth.signUp({ 
-        email, 
+      // SECURITY: invite codes are validated server-side by the validate-invite
+      // Edge Function. Role/is_dev never travel in user_metadata (user-controlled);
+      // the function writes them to app_metadata via the service role key.
+      // SignUp only carries display data (full_name) y un `pending_invite_code`
+      // que la function consumirá tras la confirmación de email (ver más abajo).
+      const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
+        email,
         password,
-        options: {
-          data: { 
-            full_name: name,
-            role: role,
-            is_dev: isDev
-          }
-        }
+        options: { data: { full_name: name, pending_invite_code: code } },
       });
-      if (error) {
-        Alert.alert(t('login.error_register'), error.message);
-      } else {
+      if (signUpErr) {
+        setLoading(false);
+        return Alert.alert(t('login.error_register'), signUpErr.message);
+      }
+
+      // Si Supabase está en modo "email confirmation required", la session será null
+      // y no podremos llamar la function autenticados todavía. En ese caso pedimos
+      // al usuario que confirme y reintente al loguearse (asignación diferida).
+      if (!signUpData.session) {
         Alert.alert(t('login.account_created'), t('login.account_created_msg'));
         setIsLoginMode(true);
+        setLoading(false);
+        return;
       }
+
+      const { data: validation, error: validateErr } = await supabase.functions.invoke('validate-invite', {
+        body: { code },
+      });
+      if (validateErr || !validation?.ok) {
+        // El usuario quedó creado sin role asignado → sin permisos de admin.
+        // Borrarlo desde el cliente no es posible (necesita service role); le
+        // pedimos contactar al admin para escalarlo manualmente.
+        const detail = (validateErr as any)?.message || validation?.error || 'invalid_invite';
+        Alert.alert(t('login.access_denied'), `${t('login.invalid_invite')} (${detail})`);
+        setLoading(false);
+        return;
+      }
+
+      Alert.alert(t('login.account_created'), t('login.account_created_msg'));
+      setIsLoginMode(true);
     }
     
     setLoading(false);

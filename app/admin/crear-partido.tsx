@@ -11,7 +11,7 @@ import { parseMatchDate, toISODate } from '../../lib/date';
 
 type SavedLocation = { id?: number; name: string; location_url: string; image_url?: string };
 
-const GOOGLE_MAPS_API_KEY = "AIzaSyB_AnkpMAjZxw7lu78ZSjfKLpaiilxO0tk";
+const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
 const isMatchInPast = (dateISO: string, timeStr: string) => {
   if (!dateISO || !timeStr) return false;

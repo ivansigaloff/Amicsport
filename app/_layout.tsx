@@ -3,9 +3,11 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import { useEffect, useState } from 'react';
+import { Platform, Alert } from 'react-native';
 import { useRouter, useSegments, useGlobalSearchParams } from 'expo-router';
 import Head from 'expo-router/head';
 import { supabase } from '../lib/supabase';
+import { getUserIsDev } from '../lib/auth';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { EnvironmentProvider } from '../hooks/use-env';
 import Constants from 'expo-constants';
@@ -71,7 +73,7 @@ export default function RootLayout() {
       const isDev = (segments[0] as any) === 'dev';
       router.replace(isDev ? '/login?from=dev' : '/login');
     } else if (session) {
-      const isDevUser = session.user.user_metadata?.is_dev === true || session.user.email === 'audit-test@amicsport.com';
+      const isDevUser = getUserIsDev(session.user);
       
       // La validación de subdirectorio fue eliminada ya que /Kickerzbcn es ahora producción.
       if (isResetPage) {
@@ -85,8 +87,12 @@ export default function RootLayout() {
         // Protect /dev from normal users
         router.replace('/(tabs)');
         setTimeout(() => {
-          alert('Acceso Denegado: Tu cuenta no tiene permisos para el entorno de desarrollo.');
-        }, 500);
+          if (Platform.OS === 'web') {
+             window.alert('Acceso Denegado: Tu cuenta no tiene permisos para el entorno de desarrollo.');
+          } else {
+             Alert.alert('Acceso Denegado', 'Tu cuenta no tiene permisos para el entorno de desarrollo.');
+          }
+        }, 100);
       }
     }
   }, [session, segments, initialized, from]);

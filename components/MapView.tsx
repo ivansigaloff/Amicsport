@@ -16,7 +16,6 @@ const getMarkerImage = (maxFreePercent: number) => {
   return markerImages.yellow;
 };
 
-const GOOGLE_MAPS_API_KEY = "AIzaSyB_AnkpMAjZxw7lu78ZSjfKLpaiilxO0tk";
 
 interface MapViewProps {
   matches?: any[];
@@ -89,36 +88,20 @@ export default function MapView({ matches = [], selectedVenue, selectedMatchId, 
         let locationUrlToParse = v.location_url;
         const parsedUrl = parseMapsUrl(locationUrlToParse);
         
-        let apiUrl = '';
         if (parsedUrl?.location) {
-          apiUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${parsedUrl.location.lat},${parsedUrl.location.lng}&key=${GOOGLE_MAPS_API_KEY}`;
-        } else {
-          let addr = parsedUrl?.address ? parsedUrl.address + ', Barcelona, Spain' : (v.venue.toLowerCase().includes('barcelona') ? v.venue : `${v.venue}, Barcelona, Spain`);
-          apiUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(addr)}&key=${GOOGLE_MAPS_API_KEY}`;
-        }
-        
-        try {
-           const res = await fetch(apiUrl);
-           const data = await res.json();
-           if (data.status === 'OK' && data.results && data.results[0]) {
-               const loc = data.results[0].geometry.location;
-               newGeocoded[v.venue] = {
-                   lat: loc.lat,
-                   lng: loc.lng,
-                   address: data.results[0].formatted_address,
-                   link: v.location_url || ''
-               };
-           } else {
-               newGeocoded[v.venue] = {
-                   lat: 41.3851 + (Math.random() * 0.02 - 0.01),
-                   lng: 2.1734 + (Math.random() * 0.02 - 0.01),
-                   address: `${v.venue} (No pudimos localizar la ubicación exacta)`,
-                   link: v.location_url || ''
-               };
-           }
-        } catch {
            newGeocoded[v.venue] = {
-               lat: 41.3851, lng: 2.1734, address: v.venue, link: v.location_url || ''
+               lat: parsedUrl.location.lat,
+               lng: parsedUrl.location.lng,
+               address: parsedUrl.address || v.venue,
+               link: v.location_url || ''
+           };
+        } else {
+           // Fallback to central Barcelona if no exact coordinates found in URL
+           newGeocoded[v.venue] = {
+               lat: 41.3851 + (Math.random() * 0.02 - 0.01),
+               lng: 2.1734 + (Math.random() * 0.02 - 0.01),
+               address: `${v.venue} (Centro de Barcelona)`,
+               link: v.location_url || ''
            };
         }
       }

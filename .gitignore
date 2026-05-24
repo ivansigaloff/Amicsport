@@ -44,3 +44,7 @@ app-example
 
 # archives
 *.zip
+
+# env files
+.env
+

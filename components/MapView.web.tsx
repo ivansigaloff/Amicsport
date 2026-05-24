@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'rea
 import { Image } from 'expo-image';
 import { GoogleMap, useJsApiLoader, InfoWindow, OverlayView } from '@react-google-maps/api';
 
-const GOOGLE_MAPS_API_KEY = "AIzaSyB_AnkpMAjZxw7lu78ZSjfKLpaiilxO0tk";
+const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
 interface MapViewProps {
   matches: any[];

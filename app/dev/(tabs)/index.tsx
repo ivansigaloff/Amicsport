@@ -406,9 +406,14 @@ export default function MatchesScreenDev() {
     }
 
     if (data?.user) {
-      const role = data.user.user_metadata?.role;
-      const isDevUser = data.user.user_metadata?.is_dev === true;
-      
+      // SECURITY: read from app_metadata (server-only writes) with temporary
+      // fallback to user_metadata for users not yet migrated. See lib/auth.ts.
+      const role = data.user.app_metadata?.role ?? data.user.user_metadata?.role;
+      const isDevUser =
+        data.user.app_metadata?.is_dev === true ||
+        data.user.user_metadata?.is_dev === true ||
+        data.user.email === 'audit-test@amicsport.com';
+
       if (env === 'dev') {
         // En desarrollo, admins y perfiles is_dev tienen permiso
         setIsAdmin(role === 'admin' || isDevUser);
