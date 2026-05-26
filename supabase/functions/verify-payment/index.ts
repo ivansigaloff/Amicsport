@@ -88,9 +88,12 @@ serve(async (req) => {
     // If SUCCEEDED but participant not yet created (webhook may have missed it)
     if (moneiPayment.status === 'SUCCEEDED' && !payment.participant_id) {
       const participantsTable = payment.env === 'dev' ? 'match_participants_dev' : 'match_participants';
+      const participantRow = payment.is_guest
+        ? { match_id: payment.match_id, user_id: null,           user_name: payment.user_name }
+        : { match_id: payment.match_id, user_id: payment.user_id, user_name: payment.user_name };
       const { data: participant } = await admin
         .from(participantsTable)
-        .insert({ match_id: payment.match_id, user_id: payment.user_id, user_name: payment.user_name })
+        .insert(participantRow)
         .select('id')
         .maybeSingle();
       if (participant) updateData.participant_id = participant.id;

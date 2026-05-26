@@ -4,14 +4,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import { computeIsAdmin } from '../../lib/auth';
+import { useEnv } from '../../hooks/use-env';
 import { useEffect, useState } from 'react';
 import { COLORS, FONTS, SIZES, SHADOWS } from '../../constants/theme';
 
 export default function ProfileScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { env } = useEnv();
   const [profileName, setProfileName] = useState(t('profile.loading'));
   const [profileEmail, setProfileEmail] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const showComingSoon = () => {
     const title = t('menu.soon');
@@ -26,6 +30,7 @@ export default function ProfileScreen() {
         const meta = user.user_metadata || {};
         setProfileName(meta.full_name || meta.name || user.email?.split('@')[0] || t('profile.no_name'));
         setProfileEmail(user.email || '');
+        setIsAdmin(computeIsAdmin(user, env as 'prod' | 'dev'));
       } else {
         setProfileName(t('profile.not_connected'));
       }
@@ -137,6 +142,16 @@ export default function ProfileScreen() {
             <Text style={styles.actionText}>{t('profile.action_support')}</Text>
             <Ionicons name="chevron-forward" size={18} color={COLORS.TEXT_LIGHT} />
           </TouchableOpacity>
+
+          {isAdmin && (
+            <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/admin/pagos' as any)}>
+              <View style={styles.actionIconContainer}>
+                <Ionicons name="receipt-outline" size={22} color={COLORS.PRIMARY} />
+              </View>
+              <Text style={styles.actionText}>Gestión de Pagos</Text>
+              <Ionicons name="chevron-forward" size={18} color={COLORS.TEXT_LIGHT} />
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity style={[styles.actionButton, styles.logoutButton]} onPress={handleLogout}>
             <View style={[styles.actionIconContainer, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>

@@ -15,7 +15,7 @@ export const getBaseUrl = (): string => {
     // Dividimos la ruta y tomamos el primer segmento significativo.
     // Ignoramos segmentos que coincidan con nombres de rutas internas comunes como login, match, etc.
     const segments = pathname.split('/').filter(s => s.length > 0);
-    const internalRoutes = ['login', 'match', '(tabs)', 'dev', 'reset-password', 'legal'];
+    const internalRoutes = ['login', 'match', '(tabs)', 'dev', 'reset-password', 'legal', 'payment', 'admin', 'modal', 'privacy', 'terms'];
     
     if (segments.length > 0 && !internalRoutes.includes(segments[0])) {
       // El primer segmento parece ser una carpeta física (ej: /test o /Kickerzbcn)
@@ -26,8 +26,8 @@ export const getBaseUrl = (): string => {
     return origin;
   }
   
-  // En nativo, intentamos usar multigraf.info como fallback pero sin subdirectorio fijo
-  return 'https://multigraf.info';
+  // En nativo: construir desde el APP_BASE_URL configurado en el entorno
+  return `https://multigraf.info${process.env.EXPO_PUBLIC_BASE_URL || ''}`;
 };
 
 /**

@@ -83,6 +83,8 @@ export default function CreateMatchScreen() {
   const [isPrivate, setIsPrivate] = useState(false);
   const [isAdvanced, setIsAdvanced] = useState(false);
   const [cancellationHours, setCancellationHours] = useState('12');
+  const [requiresPayment, setRequiresPayment] = useState(false);
+  const [paymentDeadlineHours, setPaymentDeadlineHours] = useState('24');
 
   // Function to fetch saved locations
   const fetchLocations = async () => {
@@ -117,6 +119,8 @@ export default function CreateMatchScreen() {
           setIsMixed(data.is_mixed || false);
           setIsPrivate(data.is_private || false);
           setIsAdvanced(data.is_advanced || false);
+          setRequiresPayment(data.requires_payment || false);
+          if (data.payment_deadline_hours) setPaymentDeadlineHours(String(data.payment_deadline_hours));
         }
         setLoading(false);
       };
@@ -338,6 +342,8 @@ export default function CreateMatchScreen() {
       is_private: isPrivate,
       is_advanced: isAdvanced,
       cancellation_hours: parseInt(cancellationHours) || 12,
+      requires_payment: requiresPayment,
+      payment_deadline_hours: requiresPayment ? (parseInt(paymentDeadlineHours) || 24) : null,
       creator_email: creatorEmail
     };
 
@@ -552,7 +558,16 @@ export default function CreateMatchScreen() {
         <View style={styles.row}>
           <View style={[styles.formGroup, { flex: 1, marginRight: 10 }]}>
             <Text style={styles.label}>Precio (€)</Text>
-            <TextInput style={styles.input} value={price} onChangeText={setPrice} keyboardType="numeric" placeholderTextColor="#64748B" />
+            <TextInput
+              style={styles.input}
+              value={price}
+              onChangeText={(val) => {
+                setPrice(val);
+                if (parseFloat(val) > 0) setRequiresPayment(true);
+              }}
+              keyboardType="numeric"
+              placeholderTextColor="#64748B"
+            />
           </View>
           <View style={[styles.formGroup, { flex: 1, marginLeft: 10 }]}>
             <Text style={styles.label}>Plazas Máximas</Text>
@@ -609,7 +624,32 @@ export default function CreateMatchScreen() {
             </View>
             <Switch value={isAdvanced} onValueChange={setIsAdvanced} trackColor={{ false: '#E2E8F0', true: '#FFB81C' }} />
           </View>
+
+          <View style={[styles.categoryRow, { borderBottomWidth: 0 }]}>
+            <View style={styles.categoryLabelRow}>
+              <Ionicons name="card" size={20} color="#FFB81C" />
+              <Text style={styles.categoryLabel}>Requiere Pago</Text>
+            </View>
+            <Switch value={requiresPayment} onValueChange={setRequiresPayment} trackColor={{ false: '#E2E8F0', true: '#FFB81C' }} />
+          </View>
         </View>
+
+        {requiresPayment && (
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Horas límite para pagar plaza</Text>
+            <TextInput
+              style={styles.input}
+              value={paymentDeadlineHours}
+              onChangeText={setPaymentDeadlineHours}
+              keyboardType="numeric"
+              placeholder="24"
+              placeholderTextColor="#64748B"
+            />
+            <Text style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>
+              Los jugadores deben pagar antes de estas horas o perderán la plaza.
+            </Text>
+          </View>
+        )}
         
         {/* Horas de cancelación */}
         <View style={styles.formGroup}>

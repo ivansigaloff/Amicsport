@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { COLORS, SHADOWS, FONTS } from '../../constants/theme';
 
-export default function MatchActionBar({ match, isStarted, isOver, joined, acting, isFull, toggleJoin, addGuest, handleCancelSpot, cancellationDeadline, asComponent }: any) {
+export default function MatchActionBar({ match, isStarted, isOver, joined, acting, isFull, toggleJoin, addGuest, handleCancelSpot, cancellationDeadline, asComponent, initiatePayment }: any) {
   const { t } = useTranslation();
   if (!match) return null;
 
@@ -32,18 +32,25 @@ export default function MatchActionBar({ match, isStarted, isOver, joined, actin
           }
 
           if (joined) {
+            const isPaidMatch = match.requires_payment && match.price > 0;
             return (
               <View style={{ width: '100%', alignItems: 'flex-end' }}>
+                {isPaidMatch && (
+                  <View style={styles.paidBadge}>
+                    <Ionicons name="checkmark-circle" size={14} color="#059669" />
+                    <Text style={styles.paidBadgeText}>Pago confirmado</Text>
+                  </View>
+                )}
                 <View style={styles.actionRow}>
-                  <TouchableOpacity 
-                    style={[styles.smallIconBtn, { backgroundColor: COLORS.PRIMARY }]} 
+                  <TouchableOpacity
+                    style={[styles.smallIconBtn, { backgroundColor: COLORS.PRIMARY }]}
                     onPress={addGuest}
                     disabled={acting || isFull}
                   >
                     <Ionicons name="person-add" size={24} color="#FFF" />
                   </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.reserveBtn, styles.joinedBtn]} 
+                  <TouchableOpacity
+                    style={[styles.reserveBtn, styles.joinedBtn]}
                     onPress={handleCancelSpot}
                     disabled={acting}
                   >
@@ -57,7 +64,7 @@ export default function MatchActionBar({ match, isStarted, isOver, joined, actin
                 </View>
                 {cancellationDeadline && (
                   <Text style={[styles.deadlineText, cancellationDeadline.isPast && { color: COLORS.DANGER }]}>
-                    {cancellationDeadline.isPast 
+                    {cancellationDeadline.isPast
                       ? 'Ya no puedes realizar cambios en este partido'
                       : `Puedes hacer cambios hasta el ${cancellationDeadline.date} a las ${cancellationDeadline.time}`
                     }
@@ -67,17 +74,19 @@ export default function MatchActionBar({ match, isStarted, isOver, joined, actin
             );
           }
 
+          const isPaidMatch = match.requires_payment && match.price > 0;
+          const joinAction = isPaidMatch && initiatePayment ? initiatePayment : toggleJoin;
           return (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.reserveBtn, isFull && styles.fullBtn, acting && { opacity: 0.7 }]}
-              onPress={toggleJoin}
+              onPress={joinAction}
               disabled={acting || isFull}
             >
               {acting ? <ActivityIndicator color="#FFF" /> : (
                 <>
-                  <Ionicons name="flash" size={28} color="#FFF" />
+                  <Ionicons name={isPaidMatch ? 'card-outline' : 'flash'} size={28} color="#FFF" />
                   <Text style={styles.reserveBtnText}>
-                    {isFull ? t('match_details.reservation_limit') : t('match_details.reserve_btn')}
+                    {isFull ? t('match_details.reservation_limit') : isPaidMatch ? 'PAGAR PLAZA' : t('match_details.reserve_btn')}
                   </Text>
                 </>
               )}
@@ -100,5 +109,7 @@ const styles = StyleSheet.create({
   joinedBtn: { backgroundColor: COLORS.DANGER, flex: 1, maxWidth: 160 },
   reserveBtnText: { color: '#FFF', fontSize: 16, fontFamily: FONTS.BOLD },
   smallIconBtn: { width: 48, height: 48, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
-  deadlineText: { fontSize: 10, color: COLORS.TEXT_LIGHT, marginTop: 4, textAlign: 'right', fontStyle: 'italic' }
+  deadlineText: { fontSize: 10, color: COLORS.TEXT_LIGHT, marginTop: 4, textAlign: 'right', fontStyle: 'italic' },
+  paidBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#D1FAE5', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, marginBottom: 6, alignSelf: 'flex-end' },
+  paidBadgeText: { fontSize: 11, fontFamily: FONTS.BOLD, color: '#059669' },
 });

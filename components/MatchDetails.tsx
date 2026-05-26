@@ -30,8 +30,8 @@ export default function MatchDetails({ matchId, asComponent = false, onDeleteSuc
   const matchDataHook = useMatch(id, env, fromTable);
   const { match, loading, fetchData, participantsList, isFull, isAdmin, userId, isStarted, isOver, cancellationDeadline, formattedDate, joined } = matchDataHook;
   
-  const actionsHook = useMatchActions(matchDataHook, fromTable, prefix);
-  const { toggleJoin, addGuest, removeParticipant, removeDummyPlayer, executeDelete, acting, showAlert } = actionsHook;
+  const actionsHook = useMatchActions(matchDataHook, fromTable, prefix, env);
+  const { toggleJoin, addGuest, removeParticipant, removeDummyPlayer, executeDelete, acting, showAlert, initiatePayment } = actionsHook;
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -119,7 +119,7 @@ export default function MatchDetails({ matchId, asComponent = false, onDeleteSuc
         </View>
       )}
 
-      <MatchActionBar match={match} isStarted={isStarted} isOver={isOver} joined={joined} acting={acting} isFull={isFull} toggleJoin={toggleJoin} addGuest={addGuest} handleCancelSpot={handleCancelSpot} cancellationDeadline={cancellationDeadline} asComponent={asComponent} />
+      <MatchActionBar match={match} isStarted={isStarted} isOver={isOver} joined={joined} acting={acting} isFull={isFull} toggleJoin={toggleJoin} addGuest={addGuest} handleCancelSpot={handleCancelSpot} cancellationDeadline={cancellationDeadline} asComponent={asComponent} initiatePayment={initiatePayment} />
     </SafeAreaView>
   );
 }

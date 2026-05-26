@@ -54,9 +54,11 @@ serve(async (req) => {
   if (authErr || !user) return json({ error: 'invalid_jwt' }, 401);
 
   // Body
-  let body: { match_id?: string; env?: string };
+  let body: { match_id?: string; env?: string; return_base_url?: string; guest_name?: string };
   try { body = await req.json(); } catch { return json({ error: 'bad_json' }, 400); }
-  const { match_id, env = 'prod' } = body;
+  const { match_id, env = 'prod', return_base_url, guest_name } = body;
+  const isGuest = typeof guest_name === 'string' && guest_name.trim().length > 0;
+  const baseUrl = return_base_url || APP_BASE_URL;
   if (!match_id) return json({ error: 'match_id required' }, 400);
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
@@ -71,17 +73,38 @@ serve(async (req) => {
   if (!match.requires_payment) return json({ error: 'match_does_not_require_payment' }, 400);
   if (!match.price || match.price <= 0) return json({ error: 'invalid_price' }, 400);
 
-  // Check not already paid
-  const { data: existing } = await admin
+  // Check not already paid — skip for guest payments (multiple guest slots are fine)
+  const { data: existing } = isGuest ? { data: null } : await admin
     .from('payments')
     .select('id, status')
     .eq('match_id', match_id)
     .eq('user_id', user.id)
     .eq('env', env)
+    .eq('is_guest', false)
     .in('status', ['PENDING', 'SUCCEEDED'])
     .maybeSingle();
 
-  if (existing?.status === 'SUCCEEDED') return json({ error: 'already_paid' }, 409);
+  if (existing?.status === 'SUCCEEDED') {
+    // Verify with Monei — DB might be stale if refund wasn't synced
+    const { data: pmtRow } = await admin.from('payments').select('monei_payment_id').eq('id', existing.id).single();
+    if (pmtRow?.monei_payment_id) {
+      try {
+        const moneiPmt = await moneiRequest(`/payments/${pmtRow.monei_payment_id}`);
+        const REFUNDED_STATES = ['REFUNDED', 'PARTIALLY_REFUNDED', 'CANCELED', 'FAILED', 'EXPIRED'];
+        if (REFUNDED_STATES.includes(moneiPmt.status)) {
+          // Sync DB and allow re-payment
+          await admin.from('payments').update({ status: moneiPmt.status }).eq('id', existing.id);
+        } else {
+          return json({ error: 'already_paid' }, 409);
+        }
+      } catch {
+        return json({ error: 'already_paid' }, 409);
+      }
+    } else {
+      return json({ error: 'already_paid' }, 409);
+    }
+  }
+
   if (existing?.status === 'PENDING') {
     // Return the existing pending payment so the user can retry
     const { data: pmt } = await admin.from('payments').select('order_id, monei_payment_id').eq('id', existing.id).single();
@@ -91,6 +114,11 @@ serve(async (req) => {
         if (moneiPmt.nextAction?.redirectUrl) {
           return json({ redirectUrl: moneiPmt.nextAction.redirectUrl, order_id: pmt.order_id });
         }
+        // Monei payment is in terminal state — update DB and create new payment
+        const TERMINAL = ['SUCCEEDED', 'FAILED', 'CANCELED', 'EXPIRED', 'REFUNDED'];
+        if (TERMINAL.includes(moneiPmt.status)) {
+          await admin.from('payments').update({ status: moneiPmt.status }).eq('id', existing.id);
+        }
       } catch { /* fall through to create new */ }
     }
   }
@@ -98,10 +126,12 @@ serve(async (req) => {
   const amountCents = Math.round(match.price * 100);
   const orderId = crypto.randomUUID();
   const userEmail = user.email ?? '';
-  const userName = user.user_metadata?.full_name ?? user.user_metadata?.name ?? userEmail.split('@')[0];
+  const hostName = user.user_metadata?.full_name ?? user.user_metadata?.name ?? userEmail.split('@')[0];
+  // For guest payments the displayed name is the guest's; billing details remain the host's.
+  const userName = isGuest ? guest_name!.trim() : hostName;
 
-  const completeUrl = `${APP_BASE_URL}/payment/return?order_id=${orderId}&status=SUCCEEDED`;
-  const cancelUrl   = `${APP_BASE_URL}/payment/return?order_id=${orderId}&status=CANCELED`;
+  const completeUrl = `${baseUrl}/payment/return?order_id=${orderId}&status=SUCCEEDED`;
+  const cancelUrl   = `${baseUrl}/payment/return?order_id=${orderId}&status=CANCELED`;
   const callbackUrl = `${SUPABASE_URL}/functions/v1/monei-webhook`;
 
   let moneiPayment: { id: string; nextAction?: { redirectUrl?: string } };
@@ -110,8 +140,8 @@ serve(async (req) => {
       orderId:     orderId,
       amount:      amountCents,
       currency:    'EUR',
-      description: `AmicSport - ${match.title || match.venue}`,
-      customer:    { email: userEmail, name: userName },
+      description: `AmicSport - ${match.title || match.venue}${isGuest ? ` (${userName})` : ''}`,
+      customer:    { email: userEmail, name: hostName },
       completeUrl,
       cancelUrl,
       callbackUrl,
@@ -134,6 +164,7 @@ serve(async (req) => {
     user_id:          user.id,
     user_name:        userName,
     user_email:       userEmail,
+    is_guest:         isGuest,
     monei_payment_id: moneiPayment.id,
     order_id:         orderId,
     amount:           amountCents,
@@ -149,7 +180,7 @@ serve(async (req) => {
     env, actor_id: user.id, actor_email: userEmail,
     action: 'PAYMENT_CREATED',
     entity_type: 'payment', entity_id: orderId,
-    payload: { match_id, amount: amountCents, monei_payment_id: moneiPayment.id },
+    payload: { match_id, amount: amountCents, monei_payment_id: moneiPayment.id, is_guest: isGuest, guest_name: isGuest ? userName : undefined },
     source: 'app',
   });
 

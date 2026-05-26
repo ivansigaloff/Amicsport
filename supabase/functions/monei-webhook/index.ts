@@ -75,7 +75,7 @@ serve(async (req) => {
   // Find payment by order_id (our internal ID sent to Monei as orderId)
   const { data: payment, error: pmtErr } = await admin
     .from('payments')
-    .select('id, match_id, user_id, user_name, env, status, amount')
+    .select('id, match_id, user_id, user_name, env, status, amount, is_guest')
     .eq('order_id', event.orderId)
     .maybeSingle();
 
@@ -100,10 +100,15 @@ serve(async (req) => {
   if (event.status === 'SUCCEEDED') {
     const participantsTable = payment.env === 'dev' ? 'match_participants_dev' : 'match_participants';
 
-    // Add to match_participants
+    // Add to match_participants — guest payments use user_id: null so the slot
+    // doesn't appear as the host's own joined entry.
+    const participantRow = payment.is_guest
+      ? { match_id: payment.match_id, user_id: null,           user_name: payment.user_name }
+      : { match_id: payment.match_id, user_id: payment.user_id, user_name: payment.user_name };
+
     const { data: participant, error: partErr } = await admin
       .from(participantsTable)
-      .insert({ match_id: payment.match_id, user_id: payment.user_id, user_name: payment.user_name })
+      .insert(participantRow)
       .select('id')
       .single();
 
