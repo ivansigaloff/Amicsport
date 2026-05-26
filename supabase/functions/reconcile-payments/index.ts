@@ -1,0 +1,136 @@
+// Edge Function: reconcile-payments
+//
+// Reconciles PENDING payments older than 15 minutes against Monei.
+// Designed to run on a schedule (e.g. every hour via Supabase cron or pg_cron).
+// Can also be triggered manually by an admin via POST.
+//
+// For each stale PENDING payment:
+//   - Queries Monei GET /payments/{id}
+//   - Updates DB status to match Monei
+//   - Creates participant row if SUCCEEDED and not yet created
+//   - Marks as EXPIRED if >24h still PENDING in Monei
+//
+// Authorization: requires RECONCILE_SECRET header (set as a Supabase secret).
+// This avoids exposing it as a public unauthenticated endpoint.
+//
+// Deploy:
+//   supabase functions deploy reconcile-payments --no-verify-jwt
+//   supabase secrets set RECONCILE_SECRET=<random-string>
+
+import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { moneiRequest } from '../_shared/monei.ts';
+import { auditLog } from '../_shared/audit.ts';
+
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const RECONCILE_SECRET = Deno.env.get('RECONCILE_SECRET') ?? '';
+
+serve(async (req) => {
+  if (req.method !== 'POST') {
+    return new Response('method_not_allowed', { status: 405 });
+  }
+
+  // Simple secret-based auth for cron / admin trigger
+  const providedSecret = req.headers.get('x-reconcile-secret') ?? '';
+  if (RECONCILE_SECRET && providedSecret !== RECONCILE_SECRET) {
+    return new Response('unauthorized', { status: 401 });
+  }
+
+  const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+  const startedAt = new Date();
+  const staleThreshold = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+
+  // Load all PENDING payments older than 15 minutes that have a Monei ID
+  const { data: stalePending, error } = await admin
+    .from('payments')
+    .select('id, match_id, user_id, user_name, env, monei_payment_id, created_at')
+    .eq('status', 'PENDING')
+    .lt('created_at', staleThreshold)
+    .not('monei_payment_id', 'is', null)
+    .limit(100);  // process max 100 per run to avoid timeout
+
+  if (error) {
+    console.error('reconcile: failed to load pending payments:', error);
+    return new Response(JSON.stringify({ error: 'db_error' }), { status: 500 });
+  }
+
+  const results = { synced: 0, expired: 0, errors: 0, skipped: 0 };
+  const expiredThreshold = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+  for (const payment of stalePending ?? []) {
+    try {
+      let moneiPayment: { status: string; paymentMethod?: { method?: string } };
+      try {
+        moneiPayment = await moneiRequest(`/payments/${payment.monei_payment_id}`);
+      } catch {
+        results.errors++;
+        continue;
+      }
+
+      const TERMINAL = new Set(['SUCCEEDED', 'FAILED', 'CANCELED', 'EXPIRED', 'REFUNDED']);
+
+      if (!TERMINAL.has(moneiPayment.status)) {
+        // Still PENDING in Monei — check if past 24h and expire locally
+        if (new Date(payment.created_at) < expiredThreshold) {
+          await admin.from('payments').update({ status: 'EXPIRED' }).eq('id', payment.id);
+          await auditLog({
+            env: payment.env, action: 'PAYMENT_EXPIRED',
+            entity_type: 'payment', entity_id: payment.id,
+            payload: { monei_status: moneiPayment.status, age_hours: Math.round((Date.now() - new Date(payment.created_at).getTime()) / 3600000) },
+            source: 'reconcile',
+          });
+          results.expired++;
+        } else {
+          results.skipped++;
+        }
+        continue;
+      }
+
+      const updateData: Record<string, unknown> = {
+        status:         moneiPayment.status,
+        payment_method: moneiPayment.paymentMethod?.method,
+      };
+
+      if (moneiPayment.status === 'SUCCEEDED') {
+        const participantsTable = payment.env === 'dev' ? 'match_participants_dev' : 'match_participants';
+        // Check if participant already exists (webhook may have created it)
+        const { data: existing } = await admin
+          .from(participantsTable).select('id').eq('match_id', payment.match_id).eq('user_id', payment.user_id).maybeSingle();
+
+        if (!existing) {
+          const { data: participant } = await admin
+            .from(participantsTable)
+            .insert({ match_id: payment.match_id, user_id: payment.user_id, user_name: payment.user_name })
+            .select('id').maybeSingle();
+          if (participant) updateData.participant_id = participant.id;
+        }
+      }
+
+      await admin.from('payments').update(updateData).eq('id', payment.id);
+      await auditLog({
+        env: payment.env, action: `RECONCILE_SYNCED`,
+        entity_type: 'payment', entity_id: payment.id,
+        payload: { monei_status: moneiPayment.status },
+        source: 'reconcile',
+      });
+      results.synced++;
+
+    } catch (e) {
+      console.error(`reconcile: error processing payment ${payment.id}:`, e);
+      results.errors++;
+    }
+  }
+
+  const durationMs = Date.now() - startedAt.getTime();
+  await auditLog({
+    action: 'RECONCILE_RUN',
+    payload: { ...results, total: stalePending?.length ?? 0, duration_ms: durationMs },
+    source: 'reconcile',
+  });
+
+  return new Response(JSON.stringify({ ok: true, ...results, duration_ms: durationMs }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+});
