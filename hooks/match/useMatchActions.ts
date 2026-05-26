@@ -1,20 +1,35 @@
-import { useState } from 'react';
+import { useState, Dispatch, SetStateAction } from 'react';
 import { Alert, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { joinMatch, leaveMatch, addGuestParticipant, removeParticipantById, removeParticipantByName } from '../../lib/services/participantService';
 import { fetchLatestMatchJoinedPlayers, updateMatchJoinedPlayers, deleteMatchTransaction } from '../../lib/services/matchService';
 import { sendEmailNotification } from '../../lib/services/notificationService';
+import { Match, Participant, CancellationDeadline } from '../../lib/types';
 
-export const useMatchActions = (matchDataHook: any, fromTable: (t: string) => string, prefix: string) => {
+interface MatchDataHook {
+  match: Match | null;
+  setMatch: Dispatch<SetStateAction<Match | null>>;
+  participantsList: Participant[];
+  setParticipantsList: Dispatch<SetStateAction<Participant[]>>;
+  userId: string | null;
+  myUserName: string;
+  joined: boolean;
+  setJoined: Dispatch<SetStateAction<boolean>>;
+  isAdmin: boolean;
+  cancellationDeadline: CancellationDeadline | null;
+  isFull: boolean;
+}
+
+export const useMatchActions = (matchDataHook: MatchDataHook, fromTable: (t: string) => string, prefix: string) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { 
-    match, setMatch, participantsList, setParticipantsList, 
-    userId, myUserName, joined, setJoined, isAdmin, 
-    cancellationDeadline, isFull 
+  const {
+    match, setMatch, participantsList, setParticipantsList,
+    userId, myUserName, joined, setJoined, isAdmin,
+    cancellationDeadline, isFull
   } = matchDataHook;
-  const id = match?.id;
+  const id = match?.id ?? '';
 
   const [acting, setActing] = useState(false);
 
@@ -39,14 +54,14 @@ export const useMatchActions = (matchDataHook: any, fromTable: (t: string) => st
         await leaveMatch(id, userId, fromTable);
         setJoined(false);
         const newCount = participantsList.length - 1;
-        setParticipantsList((prev: any[]) => prev.filter((p: any) => p.user_id !== userId));
-        sendEmailNotification(match, 'leave', myUserName, newCount, id);
+        setParticipantsList((prev) => prev.filter((p) => p.user_id !== userId));
+        sendEmailNotification(match!, 'leave', myUserName, newCount, id);
       } else {
         const data = await joinMatch(id, userId, myUserName, fromTable);
         setJoined(true);
         const newCount = participantsList.length + 1;
-        setParticipantsList((prev: any[]) => [...prev, data]);
-        sendEmailNotification(match, 'join', myUserName, newCount, id);
+        setParticipantsList((prev) => [...prev, data]);
+        sendEmailNotification(match!, 'join', myUserName, newCount, id);
         showAlert(t('match_details.joined_msg'), t('match_details.joined_success'));
       }
     } catch(err: any) {
@@ -60,15 +75,15 @@ export const useMatchActions = (matchDataHook: any, fromTable: (t: string) => st
     if (isFull) return showAlert(t('match_details.reservation_limit'), t('match_details.reservation_limit_msg'));
     
     setActing(true);
-    const guestCount = participantsList.filter((p: any) => !p.user_id && p.user_name && p.user_name.toLowerCase().includes('invitado')).length;
+    const guestCount = participantsList.filter((p) => !p.user_id && p.user_name && p.user_name.toLowerCase().includes('invitado')).length;
     const guestSuffix = guestCount > 0 ? ` (invitado ${guestCount + 1})` : ` (invitado)`;
     const guestName = `${myUserName}${guestSuffix}`;
 
     try {
       const data = await addGuestParticipant(id, guestName, fromTable);
       const newCount = participantsList.length + 1;
-      setParticipantsList((prev: any[]) => [...prev, data]);
-      sendEmailNotification(match, 'join', guestName, newCount, id);
+      setParticipantsList((prev) => [...prev, data]);
+      sendEmailNotification(match!, 'join', guestName, newCount, id);
       showAlert(t('common.success'), t('match_details.guest_added_success'));
     } catch (err: any) {
       showAlert('Error', err.message || 'No se pudo añadir al invitado.');
@@ -76,7 +91,7 @@ export const useMatchActions = (matchDataHook: any, fromTable: (t: string) => st
     setActing(false);
   };
 
-  const removeParticipant = async (p: any) => {
+  const removeParticipant = async (p: Participant) => {
     setActing(true);
     try {
       if (p.id) {
@@ -84,9 +99,9 @@ export const useMatchActions = (matchDataHook: any, fromTable: (t: string) => st
       } else {
         await removeParticipantByName(id, p.user_name, fromTable);
       }
-      setParticipantsList((prev: any[]) => prev.filter((item: any) => p.id ? item.id !== p.id : item.user_name !== p.user_name));
+      setParticipantsList((prev) => prev.filter((item) => p.id ? item.id !== p.id : item.user_name !== p.user_name));
       if (p.user_id === userId) setJoined(false);
-      sendEmailNotification(match, 'leave', p.user_name, participantsList.length - 1, id);
+      sendEmailNotification(match!, 'leave', p.user_name, participantsList.length - 1, id);
     } catch(err) {
       showAlert('Error', 'No se pudo quitar al jugador.');
     }
@@ -100,7 +115,7 @@ export const useMatchActions = (matchDataHook: any, fromTable: (t: string) => st
       const currentVal = await fetchLatestMatchJoinedPlayers(id, fromTable);
       const newVal = Math.max(0, currentVal - 1);
       await updateMatchJoinedPlayers(id, newVal, fromTable);
-      setMatch({ ...match, joined_players: newVal });
+      setMatch({ ...match!, joined_players: newVal });
     } catch(err) {
       showAlert('Error', 'No se pudo actualizar el contador.');
     }

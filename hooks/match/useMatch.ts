@@ -5,10 +5,11 @@ import { fetchParticipants } from '../../lib/services/participantService';
 import { computeIsAdmin } from '../../lib/auth';
 import { parseMatchDate, formatLocalizedDate } from '../../lib/date';
 import i18n from '../../lib/i18n';
+import { Match, Participant, CancellationDeadline } from '../../lib/types';
 
 export const useMatch = (id: string, env: string, fromTable: (t: string) => string) => {
-  const [match, setMatch] = useState<any>(null);
-  const [participantsList, setParticipantsList] = useState<any[]>([]);
+  const [match, setMatch] = useState<Match | null>(null);
+  const [participantsList, setParticipantsList] = useState<Participant[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
   const [myUserName, setMyUserName] = useState<string>('');
   const [joined, setJoined] = useState(false);
@@ -28,12 +29,12 @@ export const useMatch = (id: string, env: string, fromTable: (t: string) => stri
       if (authData?.user) {
         const uid = authData.user.id;
         setUserId(uid);
-        
+
         const meta = authData.user.user_metadata || {};
         const nameToSave = meta.full_name || meta.name || authData.user.email?.split('@')[0] || 'Jugador App';
         setMyUserName(nameToSave);
 
-        setJoined(partsData.some((p: any) => p.user_id === uid));
+        setJoined(partsData.some((p) => p.user_id === uid));
 
         setIsAdmin(computeIsAdmin(authData.user, env as 'prod' | 'dev'));
       }
@@ -82,15 +83,15 @@ export const useMatch = (id: string, env: string, fromTable: (t: string) => stri
   const isStarted = matchStartTime ? bcnDate >= matchStartTime : false;
   const isOver = matchStartTime ? bcnDate >= new Date(matchStartTime.getTime() + 2 * 60 * 60 * 1000) : false;
 
-  const cancellationDeadline = (() => {
-    if (!matchStartTime) return null;
+  const cancellationDeadline = ((): CancellationDeadline | null => {
+    if (!matchStartTime || !match) return null;
     const limitHours = match.cancellation_hours || 12;
     const deadline = new Date(matchStartTime.getTime() - (limitHours * 60 * 60 * 1000));
-    
+
     const isPast = bcnDate > deadline;
     const formattedDeadline = formatLocalizedDate(deadline, i18n.language);
     const timeStr = deadline.toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' });
-    
+
     return { date: formattedDeadline, time: timeStr, isPast, limitHours };
   })();
 

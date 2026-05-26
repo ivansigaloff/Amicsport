@@ -1,9 +1,10 @@
 import { supabase } from '../supabase';
+import { Match } from '../types';
 
-export const fetchMatchById = async (id: string, fromTable: (t: string) => string) => {
+export const fetchMatchById = async (id: string, fromTable: (t: string) => string): Promise<Match> => {
   const { data, error } = await supabase.from(fromTable('matches')).select('*').eq('id', id).single();
   if (error) throw error;
-  return data;
+  return data as Match;
 };
 
 export const updateMatchJoinedPlayers = async (id: string, newVal: number, fromTable: (t: string) => string) => {

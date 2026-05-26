@@ -1,19 +1,21 @@
-import { Platform } from 'react-native';
+import { Match } from '../types';
+import { getMatchUrl } from '../share';
+
+const NOTIFICATION_ENDPOINT = process.env.EXPO_PUBLIC_NOTIFICATION_URL;
 
 export const sendEmailNotification = async (
-  match: any, 
-  type: 'join' | 'leave', 
-  playerName: string, 
-  currentParticipants: number, 
+  match: Match,
+  type: 'join' | 'leave',
+  playerName: string,
+  currentParticipants: number,
   matchId: string
 ) => {
-  if (!match?.creator_email) return;
-  
-  const count = currentParticipants;
-  const matchLink = `https://multigraf.info/Kickerzbcn/match/${matchId}`;
+  if (!match?.creator_email || !NOTIFICATION_ENDPOINT) return;
+
+  const matchLink = getMatchUrl(matchId);
 
   try {
-    const response = await fetch('https://multigraf.info/send_match_update.php', {
+    const response = await fetch(NOTIFICATION_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -24,17 +26,16 @@ export const sendEmailNotification = async (
         matchVenue: match.venue,
         matchDate: match.date,
         matchTime: match.time,
-        playerCount: count,
+        playerCount: currentParticipants,
         maxPlayers: match.max_players,
         matchLink
       })
     });
     const resData = await response.json();
-    console.log('Notificación enviada:', resData);
-    if (Platform.OS === 'web' && resData.status === 'ok') {
-      console.log('Correo enviado correctamente al administrador.');
+    if (resData.status !== 'ok') {
+      console.warn('Notification response:', resData);
     }
   } catch (e) {
-    console.log('Error sending email notification:', e);
+    console.warn('Error sending email notification:', e);
   }
 };

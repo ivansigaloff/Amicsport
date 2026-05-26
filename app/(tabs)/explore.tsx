@@ -1,19 +1,23 @@
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, Platform, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useEffect, useState } from 'react';
-import { useEnv } from '../../hooks/use-env';
 import { COLORS, FONTS, SIZES, SHADOWS } from '../../constants/theme';
 
 export default function ProfileScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const [profileName, setProfileName] = useState(t('profile.loading'));
-  const { fromTable } = useEnv();
   const [profileEmail, setProfileEmail] = useState('');
+
+  const showComingSoon = () => {
+    const title = t('menu.soon');
+    if (Platform.OS === 'web') window.alert(title);
+    else Alert.alert(title, '');
+  };
 
   useEffect(() => {
     async function loadProfile() {
@@ -72,6 +76,7 @@ export default function ProfileScreen() {
           <Text style={styles.level}>{t('profile.level_tbd')}</Text>
         </View>
 
+        {/* TODO: replace hardcoded stats with real data from match_participants (Tier 2) */}
         <View style={styles.statsContainer}>
           <View style={styles.statBox}>
             <Text style={styles.statNumber}>12</Text>
@@ -101,7 +106,7 @@ export default function ProfileScreen() {
             <Ionicons name="chevron-forward" size={20} color={COLORS.TEXT_WHITE} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity style={styles.actionButton} onPress={showComingSoon}>
             <View style={styles.actionIconContainer}>
               <Ionicons name="settings-outline" size={22} color={COLORS.PRIMARY} />
             </View>
@@ -109,7 +114,7 @@ export default function ProfileScreen() {
             <Ionicons name="chevron-forward" size={18} color={COLORS.TEXT_LIGHT} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity style={styles.actionButton} onPress={showComingSoon}>
             <View style={styles.actionIconContainer}>
               <Ionicons name="card-outline" size={22} color={COLORS.PRIMARY} />
             </View>
@@ -117,7 +122,7 @@ export default function ProfileScreen() {
             <Ionicons name="chevron-forward" size={18} color={COLORS.TEXT_LIGHT} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity style={styles.actionButton} onPress={showComingSoon}>
             <View style={styles.actionIconContainer}>
               <Ionicons name="notifications-outline" size={22} color={COLORS.PRIMARY} />
             </View>
@@ -125,7 +130,7 @@ export default function ProfileScreen() {
             <Ionicons name="chevron-forward" size={18} color={COLORS.TEXT_LIGHT} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity style={styles.actionButton} onPress={showComingSoon}>
             <View style={styles.actionIconContainer}>
               <Ionicons name="help-circle-outline" size={22} color={COLORS.PRIMARY} />
             </View>
