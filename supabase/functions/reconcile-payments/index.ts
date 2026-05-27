@@ -44,7 +44,7 @@ serve(async (req) => {
   // Load all PENDING payments older than 15 minutes that have a Monei ID
   const { data: stalePending, error } = await admin
     .from('payments')
-    .select('id, match_id, user_id, user_name, env, monei_payment_id, created_at')
+    .select('id, match_id, user_id, user_name, env, monei_payment_id, created_at, is_guest')
     .eq('status', 'PENDING')
     .lt('created_at', staleThreshold)
     .not('monei_payment_id', 'is', null)
@@ -94,14 +94,21 @@ serve(async (req) => {
 
       if (moneiPayment.status === 'SUCCEEDED') {
         const participantsTable = payment.env === 'dev' ? 'match_participants_dev' : 'match_participants';
-        // Check if participant already exists (webhook may have created it)
-        const { data: existing } = await admin
-          .from(participantsTable).select('id').eq('match_id', payment.match_id).eq('user_id', payment.user_id).maybeSingle();
+        // Check if participant already exists (webhook may have created it).
+        // Guest slots have user_id: null, so they must be matched by name.
+        let existingQuery = admin.from(participantsTable).select('id').eq('match_id', payment.match_id);
+        existingQuery = payment.is_guest
+          ? existingQuery.is('user_id', null).eq('user_name', payment.user_name)
+          : existingQuery.eq('user_id', payment.user_id);
+        const { data: existingRows } = await existingQuery.limit(1);
 
-        if (!existing) {
+        if (!existingRows || existingRows.length === 0) {
+          const participantRow = payment.is_guest
+            ? { match_id: payment.match_id, user_id: null,           user_name: payment.user_name }
+            : { match_id: payment.match_id, user_id: payment.user_id, user_name: payment.user_name };
           const { data: participant } = await admin
             .from(participantsTable)
-            .insert({ match_id: payment.match_id, user_id: payment.user_id, user_name: payment.user_name })
+            .insert(participantRow)
             .select('id').maybeSingle();
           if (participant) updateData.participant_id = participant.id;
         }

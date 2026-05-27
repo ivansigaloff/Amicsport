@@ -1,10 +1,9 @@
 // Auth helpers — single source of truth for reading role/is_dev from a Supabase user.
 //
 // SECURITY: role/is_dev MUST be read from `app_metadata` (server-only writes via
-// service role). The fallback to `user_metadata` is TEMPORARY for users created
-// before supabase/migrations/20260522000000_secure_roles.sql was applied. Once the
-// migration has run AND the deletion block (STEP 2) has been executed, the
-// fallback can be removed.
+// service role). getUserRole no longer falls back to user_metadata (user-writable).
+// getUserIsDev still does for legacy users — remove once the DB RLS helper
+// auth_is_dev() is migrated off user_metadata.is_dev (see RLS cleanup).
 
 type AnyUser = {
     app_metadata?: { role?: string; is_dev?: boolean; [k: string]: any } | null;
@@ -17,9 +16,9 @@ export type Role = 'admin' | 'participant';
 export function getUserRole(user: AnyUser): Role {
     const fromApp = user?.app_metadata?.role;
     if (fromApp === 'admin' || fromApp === 'participant') return fromApp;
-    // Backward compat — pre-migration users
-    const fromUserMeta = user?.user_metadata?.role;
-    if (fromUserMeta === 'admin' || fromUserMeta === 'participant') return fromUserMeta;
+    // role lives ONLY in app_metadata (server-written via validate-invite).
+    // No user_metadata fallback: it is user-writable, so trusting it would let
+    // any user self-elevate to admin. Unknown/absent → least privilege.
     return 'participant';
 }
 
