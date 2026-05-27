@@ -17,6 +17,7 @@ export default function ProfileScreen() {
   const [profileEmail, setProfileEmail] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [matchCount, setMatchCount] = useState<number | null>(null);
+  const prefix = env === 'dev' ? '/dev' : '';
 
   const showComingSoon = () => {
     const title = t('menu.soon');
@@ -98,7 +99,7 @@ export default function ProfileScreen() {
         <ScrollView style={styles.actionsContainer} showsVerticalScrollIndicator={false}>
           <TouchableOpacity 
             style={[styles.actionButton, styles.publishButton]} 
-            onPress={() => router.push('/admin/crear-partido' as any)}
+            onPress={() => router.push(`${prefix}/admin/crear-partido` as any)}
           >
             <View style={[styles.actionIconContainer, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
               <Ionicons name="add" size={24} color={COLORS.TEXT_WHITE} />
@@ -140,7 +141,7 @@ export default function ProfileScreen() {
           </TouchableOpacity>
 
           {isAdmin && (
-            <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/admin/pagos' as any)}>
+            <TouchableOpacity style={styles.actionButton} onPress={() => router.push(`${prefix}/admin/pagos` as any)}>
               <View style={styles.actionIconContainer}>
                 <Ionicons name="receipt-outline" size={22} color={COLORS.PRIMARY} />
               </View>
