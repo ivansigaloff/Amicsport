@@ -1,0 +1,41 @@
+﻿"cmd","permissive","policyname","qual","roles","schemaname","tablename","with_check"
+"ALL","PERMISSIVE","Only admins can manage the player directory v2","(auth_role() IS DISTINCT FROM 'participant'::text)","{public}","public","admin_players","(auth_role() IS DISTINCT FROM 'participant'::text)"
+"ALL","PERMISSIVE","admin_players_prod_admin_policy","((auth_role() <> 'participant'::text) AND (auth_is_dev() IS NOT TRUE))","{public}","public","admin_players",
+"ALL","PERMISSIVE","strict_players_isolation","(auth_is_dev() IS NOT TRUE)","{public}","public","admin_players",
+"ALL","PERMISSIVE","admin_players_dev_all","(auth_is_admin() OR auth_is_dev())","{public}","public","admin_players_dev",
+"ALL","PERMISSIVE","admin_players_dev_strict_policy","((auth_role() <> 'participant'::text) AND (auth_is_dev() = true))","{public}","public","admin_players_dev",
+"SELECT","PERMISSIVE","settings_admin_select","auth_is_admin()","{public}","public","app_settings",
+"UPDATE","PERMISSIVE","settings_admin_update","auth_is_admin()","{public}","public","app_settings",
+"SELECT","PERMISSIVE","audit_log_admin_select","auth_is_admin()","{public}","public","audit_log",
+"ALL","PERMISSIVE","Users can remove themselves or admins can manage all v2","((auth.uid() = user_id) OR (auth_role() IS DISTINCT FROM 'participant'::text))","{public}","public","match_participants",
+"ALL","PERMISSIVE","participants_isolation_policy","((auth_is_dev() IS NOT TRUE) AND (auth_is_read() IS NOT TRUE))","{public}","public","match_participants",
+"ALL","PERMISSIVE","participants_prod_strict_policy","(auth_is_dev() IS NOT TRUE)","{public}","public","match_participants",
+"ALL","PERMISSIVE","strict_participants_isolation","(auth_is_dev() IS NOT TRUE)","{public}","public","match_participants",
+"DELETE","PERMISSIVE","Usuarios se dan de baja","(auth.uid() = user_id)","{public}","public","match_participants",
+"INSERT","PERMISSIVE","Authenticated users can join matches",,"{public}","public","match_participants","(auth.role() = 'authenticated'::text)"
+"INSERT","PERMISSIVE","Permitir inscripcion de agenda",,"{public}","public","match_participants","true"
+"INSERT","PERMISSIVE","Usuarios se apuntan",,"{public}","public","match_participants","(auth.uid() = user_id)"
+"SELECT","PERMISSIVE","Cualquiera ve participantes","true","{public}","public","match_participants",
+"SELECT","PERMISSIVE","Participants are viewable by everyone","true","{public}","public","match_participants",
+"ALL","PERMISSIVE","match_participants_dev_all","(auth_is_admin() OR auth_is_dev() OR (auth.uid() = user_id))","{public}","public","match_participants_dev",
+"ALL","PERMISSIVE","participants_dev_strict_policy","(auth_is_dev() = true)","{public}","public","match_participants_dev",
+"INSERT","PERMISSIVE","match_participants_dev_insert",,"{authenticated}","public","match_participants_dev","true"
+"INSERT","PERMISSIVE","match_participants_dev_insert_auth",,"{authenticated}","public","match_participants_dev","true"
+"SELECT","PERMISSIVE","match_participants_dev_select","true","{public}","public","match_participants_dev",
+"SELECT","PERMISSIVE","match_participants_dev_select_all","true","{public}","public","match_participants_dev",
+"ALL","PERMISSIVE","Admins can manage matches v2","(auth_role() IS DISTINCT FROM 'participant'::text)","{public}","public","matches","(auth_role() IS DISTINCT FROM 'participant'::text)"
+"ALL","PERMISSIVE","matches_prod_admin_policy","((auth_role() <> 'participant'::text) AND (auth_is_dev() IS NOT TRUE))","{public}","public","matches",
+"ALL","PERMISSIVE","strict_production_isolation","(auth_is_dev() IS NOT TRUE)","{public}","public","matches",
+"INSERT","PERMISSIVE","Admins (cualquier usuario) puede crear partidos",,"{public}","public","matches","(auth.role() = 'authenticated'::text)"
+"SELECT","PERMISSIVE","Matches are viewable by everyone","true","{public}","public","matches",
+"SELECT","PERMISSIVE","Todos pueden ver partidos","true","{public}","public","matches",
+"ALL","PERMISSIVE","Permitir todo en matches_dev","true","{public}","public","matches_dev","true"
+"ALL","PERMISSIVE","matches_dev_admin_all","(auth_is_admin() OR auth_is_dev())","{public}","public","matches_dev",
+"ALL","PERMISSIVE","matches_dev_strict_policy","((auth_role() <> 'participant'::text) AND (auth_is_dev() = true))","{public}","public","matches_dev",
+"SELECT","PERMISSIVE","matches_dev_select","true","{public}","public","matches_dev",
+"SELECT","PERMISSIVE","matches_dev_select_all","true","{public}","public","matches_dev",
+"SELECT","PERMISSIVE","payments_user_select","((auth.uid() = user_id) OR auth_is_admin())","{public}","public","payments",
+"ALL","PERMISSIVE","Permitir inserción y actualización global","true","{public}","public","saved_locations","true"
+"ALL","PERMISSIVE","strict_locations_isolation","(auth_is_dev() IS NOT TRUE)","{public}","public","saved_locations",
+"SELECT","PERMISSIVE","Permitir lectura global","true","{public}","public","saved_locations",
+"ALL","PERMISSIVE","saved_locations_dev_all","(auth_is_admin() OR auth_is_dev())","{public}","public","saved_locations_dev",
