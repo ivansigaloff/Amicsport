@@ -82,3 +82,44 @@ export const formatLocalizedDate = (date: Date | null, lng: string = 'es'): stri
     month: 'short'
   });
 };
+
+/**
+ * "Ahora" en la zona horaria de Europa/Madrid, como Date cuyos campos locales
+ * reflejan la hora de Madrid (para comparar con horas de partido).
+ */
+export const barcelonaNow = (): Date => {
+  const now = new Date();
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Europe/Madrid',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hour12: false,
+    }).formatToParts(now);
+    const get = (t: string) => parts.find((p) => p.type === t)?.value;
+    const d = new Date(`${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}:${get('second')}`);
+    if (!isNaN(d.getTime())) return d;
+  } catch {}
+  return now;
+};
+
+/** Construye la fecha/hora de inicio de un partido desde su fecha ISO (YYYY-MM-DD) y hora (HH:mm). */
+export const matchStartDate = (dateISO: string, time: string): Date | null => {
+  if (!dateISO || !time) return null;
+  const [y, mo, d] = dateISO.split('-').map(Number);
+  const [h, mi] = time.split(':').map(Number);
+  if ([y, mo, d, h, mi].some((n) => Number.isNaN(n))) return null;
+  return new Date(y, mo - 1, d, h, mi, 0);
+};
+
+/** Estado temporal de un partido respecto a la hora de Madrid (inicio + 2h = fin). */
+export const getMatchTiming = (
+  dateISO: string,
+  time: string,
+  now: Date = barcelonaNow()
+): { start: Date | null; isStarted: boolean; isOver: boolean } => {
+  const start = matchStartDate(dateISO, time);
+  if (!start) return { start: null, isStarted: false, isOver: false };
+  const end = new Date(start.getTime() + MATCH_DURATION_MS);
+  return { start, isStarted: now >= start, isOver: now >= end };
+};

@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { fetchMatchById } from '../../lib/services/matchService';
 import { fetchParticipants } from '../../lib/services/participantService';
 import { computeIsAdmin } from '../../lib/auth';
-import { parseMatchDate, formatLocalizedDate, MATCH_DURATION_MS } from '../../lib/date';
+import { parseMatchDate, formatLocalizedDate, toISODate, barcelonaNow, getMatchTiming } from '../../lib/date';
 import i18n from '../../lib/i18n';
 import { Match, Participant, CancellationDeadline } from '../../lib/types';
 
@@ -52,36 +52,13 @@ export const useMatch = (id: string, env: string, fromTable: (t: string) => stri
   const availableSpots = match ? match.max_players - (match.joined_players + participantsList.length) : 0;
   const isFull = availableSpots <= 0;
 
-  const bcnDate = (() => {
-    const now = new Date();
-    try {
-      const parts = new Intl.DateTimeFormat('en-US', { 
-        timeZone: 'Europe/Madrid', 
-        year: 'numeric', month: '2-digit', day: '2-digit', 
-        hour: '2-digit', minute: '2-digit', second: '2-digit', 
-        hour12: false 
-      }).formatToParts(now);
-      const getP = (type: string) => parts.find(p => p.type === type)?.value;
-      const d = new Date(`${getP('year')}-${getP('month')}-${getP('day')}T${getP('hour')}:${getP('minute')}:${getP('second')}`);
-      if (!isNaN(d.getTime())) return d;
-    } catch {}
-    return now;
-  })();
+  const bcnDate = barcelonaNow();
 
-  const getMatchTimes = () => {
-    if (!match?.date || !match?.time) return null;
-    const matchDateObj = parseMatchDate(match.date);
-    if (!matchDateObj) return null;
-    const [h, m] = match.time.split(':').map(Number);
-    const matchStartTime = new Date(matchDateObj);
-    matchStartTime.setHours(h, m, 0, 0);
-    return matchStartTime;
-  };
-
-  const matchStartTime = getMatchTimes();
-  
-  const isStarted = matchStartTime ? bcnDate >= matchStartTime : false;
-  const isOver = matchStartTime ? bcnDate >= new Date(matchStartTime.getTime() + MATCH_DURATION_MS) : false;
+  const matchDateISO = match?.date ? toISODate(parseMatchDate(match.date)) : null;
+  const { start: matchStartTime, isStarted, isOver } =
+    matchDateISO && match?.time
+      ? getMatchTiming(matchDateISO, match.time, bcnDate)
+      : { start: null as Date | null, isStarted: false, isOver: false };
 
   const cancellationDeadline = ((): CancellationDeadline | null => {
     if (!matchStartTime || !match) return null;

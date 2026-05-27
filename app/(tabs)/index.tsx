@@ -13,7 +13,7 @@ import MatchDetails from '../../components/MatchDetails';
 import MapView from '../../components/MapView';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { shareMultipleMatches, copyMultipleMatchUrls } from '../../lib/share';
-import { parseMatchDate, toISODate, MATCH_DURATION_MS } from '../../lib/date';
+import { parseMatchDate, toISODate, getMatchTiming } from '../../lib/date';
 import i18n from '../../lib/i18n';
 import { COLORS, SHADOWS, FONTS, SIZES } from '../../constants/theme';
 
@@ -120,20 +120,10 @@ const MatchCard = ({ item, fetchMatches, onSelectMatch, isDesktop, isSelected, i
     setDuplicating(false);
   };
 
-  const { isStarted, isOver } = useMemo(() => {
-    if (!item.dateISO || !item.time) return { isStarted: false, isOver: false };
-    const [year, month, day] = item.dateISO.split('-').map(Number);
-    const [h, m] = item.time.split(':').map(Number);
-    const matchDate = new Date(year, month - 1, day, h, m, 0);
-    const matchEndDate = new Date(matchDate.getTime() + MATCH_DURATION_MS);
-    const now = new Date();
-    let bcnDate;
-    try { bcnDate = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' })); } catch (e) { bcnDate = now; }
-    return {
-      isStarted: bcnDate >= matchDate,
-      isOver: bcnDate >= matchEndDate
-    };
-  }, [item.dateISO, item.time]);
+  const { isStarted, isOver } = useMemo(
+    () => getMatchTiming(item.dateISO, item.time),
+    [item.dateISO, item.time]
+  );
 
   return (
     <View style={[styles.card, isSelected && isDesktop && styles.cardSelected, isShareSelected && styles.cardShareSelected]}>
@@ -398,28 +388,7 @@ export default function MatchesScreen() {
   const isDesktop = Platform.OS === 'web' && width > 1024; // Increased threshold for 3 columns
   const isSmallScreen = width < 500;
 
-  const isMatchOver = (dateISO: string, timeStr: string) => {
-    if (!dateISO || !timeStr) return false;
-    
-    const now = new Date();
-    let bcnDate;
-    try {
-       const bcnStr = now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' });
-       bcnDate = new Date(bcnStr);
-    } catch (e) {
-       bcnDate = now;
-    }
-    
-    const [year, month, day] = dateISO.split('-').map(Number);
-    const [h, m] = timeStr.split(':').map(Number);
-    
-    const matchDate = new Date(year, month - 1, day, h, m, 0);
-    
-    // Un partido se considera "terminado" pasadas 2 horas desde su inicio
-    const matchEndDate = new Date(matchDate.getTime() + MATCH_DURATION_MS);
-    
-    return matchEndDate < bcnDate;
-  };
+  const isMatchOver = (dateISO: string, timeStr: string) => getMatchTiming(dateISO, timeStr).isOver;
 
   const fetchMatches = async (isRefresh = false) => {
     if (isRefresh) {
