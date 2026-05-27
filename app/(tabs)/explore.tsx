@@ -12,10 +12,11 @@ import { COLORS, FONTS, SIZES, SHADOWS } from '../../constants/theme';
 export default function ProfileScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { env } = useEnv();
+  const { env, fromTable } = useEnv();
   const [profileName, setProfileName] = useState(t('profile.loading'));
   const [profileEmail, setProfileEmail] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [matchCount, setMatchCount] = useState<number | null>(null);
 
   const showComingSoon = () => {
     const title = t('menu.soon');
@@ -31,6 +32,12 @@ export default function ProfileScreen() {
         setProfileName(meta.full_name || meta.name || user.email?.split('@')[0] || t('profile.no_name'));
         setProfileEmail(user.email || '');
         setIsAdmin(computeIsAdmin(user, env as 'prod' | 'dev'));
+
+        const { count } = await supabase
+          .from(fromTable('match_participants'))
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id);
+        setMatchCount(count ?? 0);
       } else {
         setProfileName(t('profile.not_connected'));
       }
@@ -81,21 +88,10 @@ export default function ProfileScreen() {
           <Text style={styles.level}>{t('profile.level_tbd')}</Text>
         </View>
 
-        {/* TODO: replace hardcoded stats with real data from match_participants (Tier 2) */}
         <View style={styles.statsContainer}>
           <View style={styles.statBox}>
-            <Text style={styles.statNumber}>12</Text>
+            <Text style={styles.statNumber}>{matchCount === null ? '—' : matchCount}</Text>
             <Text style={styles.statLabel}>{t('profile.stats_matches')}</Text>
-          </View>
-          <View style={styles.divider} />
-          <View style={styles.statBox}>
-            <Text style={styles.statNumber}>8</Text>
-            <Text style={styles.statLabel}>{t('profile.stats_goals')}</Text>
-          </View>
-          <View style={styles.divider} />
-          <View style={styles.statBox}>
-            <Text style={styles.statNumber}>4.8</Text>
-            <Text style={styles.statLabel}>{t('profile.stats_rating')}</Text>
           </View>
         </View>
 
