@@ -48,3 +48,6 @@ app-example
 # env files
 .env
 
+# local operational scripts (weekly match data, not versioned)
+create_matches_from_image.js
+
