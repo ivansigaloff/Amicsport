@@ -13,7 +13,7 @@ import MatchDetails from '../../components/MatchDetails';
 import MapView from '../../components/MapView';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { shareMultipleMatches, copyMultipleMatchUrls } from '../../lib/share';
-import { parseMatchDate, toISODate } from '../../lib/date';
+import { parseMatchDate, toISODate, MATCH_DURATION_MS } from '../../lib/date';
 import i18n from '../../lib/i18n';
 import { COLORS, SHADOWS, FONTS, SIZES } from '../../constants/theme';
 
@@ -125,7 +125,7 @@ const MatchCard = ({ item, fetchMatches, onSelectMatch, isDesktop, isSelected, i
     const [year, month, day] = item.dateISO.split('-').map(Number);
     const [h, m] = item.time.split(':').map(Number);
     const matchDate = new Date(year, month - 1, day, h, m, 0);
-    const matchEndDate = new Date(matchDate.getTime() + 2 * 60 * 60 * 1000);
+    const matchEndDate = new Date(matchDate.getTime() + MATCH_DURATION_MS);
     const now = new Date();
     let bcnDate;
     try { bcnDate = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' })); } catch (e) { bcnDate = now; }
@@ -416,7 +416,7 @@ export default function MatchesScreen() {
     const matchDate = new Date(year, month - 1, day, h, m, 0);
     
     // Un partido se considera "terminado" pasadas 2 horas desde su inicio
-    const matchEndDate = new Date(matchDate.getTime() + 2 * 60 * 60 * 1000);
+    const matchEndDate = new Date(matchDate.getTime() + MATCH_DURATION_MS);
     
     return matchEndDate < bcnDate;
   };

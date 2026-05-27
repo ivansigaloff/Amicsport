@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { fetchMatchById } from '../../lib/services/matchService';
 import { fetchParticipants } from '../../lib/services/participantService';
 import { computeIsAdmin } from '../../lib/auth';
-import { parseMatchDate, formatLocalizedDate } from '../../lib/date';
+import { parseMatchDate, formatLocalizedDate, MATCH_DURATION_MS } from '../../lib/date';
 import i18n from '../../lib/i18n';
 import { Match, Participant, CancellationDeadline } from '../../lib/types';
 
@@ -81,7 +81,7 @@ export const useMatch = (id: string, env: string, fromTable: (t: string) => stri
   const matchStartTime = getMatchTimes();
   
   const isStarted = matchStartTime ? bcnDate >= matchStartTime : false;
-  const isOver = matchStartTime ? bcnDate >= new Date(matchStartTime.getTime() + 2 * 60 * 60 * 1000) : false;
+  const isOver = matchStartTime ? bcnDate >= new Date(matchStartTime.getTime() + MATCH_DURATION_MS) : false;
 
   const cancellationDeadline = ((): CancellationDeadline | null => {
     if (!matchStartTime || !match) return null;

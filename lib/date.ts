@@ -1,5 +1,8 @@
 import { LocaleConfig } from 'react-native-calendars';
 
+/** Duración estimada de un partido en milisegundos (2 horas). */
+export const MATCH_DURATION_MS = 2 * 60 * 60 * 1000;
+
 /**
  * Parsea una cadena de fecha en formato español (ej: "Lun 12 Abr")
  * a un objeto Date o una cadena ISO YYYY-MM-DD.

@@ -3,8 +3,24 @@ import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Platform }
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { COLORS, SHADOWS, FONTS } from '../../constants/theme';
+import { Match, CancellationDeadline } from '../../lib/types';
 
-export default function MatchActionBar({ match, isStarted, isOver, joined, acting, isFull, toggleJoin, addGuest, handleCancelSpot, cancellationDeadline, asComponent, initiatePayment }: any) {
+interface MatchActionBarProps {
+  match: Match | null;
+  isStarted: boolean;
+  isOver: boolean;
+  joined: boolean;
+  acting: boolean;
+  isFull: boolean;
+  toggleJoin: () => void;
+  addGuest: () => void;
+  handleCancelSpot: () => void;
+  cancellationDeadline: CancellationDeadline | null;
+  asComponent?: boolean;
+  initiatePayment?: () => void;
+}
+
+export default function MatchActionBar({ match, isStarted, isOver, joined, acting, isFull, toggleJoin, addGuest, handleCancelSpot, cancellationDeadline, asComponent, initiatePayment }: MatchActionBarProps) {
   const { t } = useTranslation();
   if (!match) return null;
 
