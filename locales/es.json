@@ -146,11 +146,156 @@
   },
   "privacy": {
     "title": "Política de Privacidad",
-    "content": "En AmicSport nos tomamos muy en serio tu privacidad. Recopilamos datos mínimos..."
+    "updated": "Última actualización: mayo de 2026",
+    "intro": "En AmicSport nos tomamos en serio tu privacidad. Esta política explica qué datos recogemos, cómo los usamos y con quién los compartimos cuando utilizas nuestros servicios.",
+    "sections": [
+      {
+        "heading": "1. Responsable del tratamiento",
+        "items": [
+          "El responsable del tratamiento de tus datos es [ENTITY]. Para cualquier cuestión relativa a tus datos personales, puedes escribirnos a [CONTACT_EMAIL]."
+        ]
+      },
+      {
+        "heading": "2. Qué datos recogemos",
+        "items": [
+          "Datos que nos facilitas: nombre, dirección de correo electrónico y los datos necesarios para gestionar tu reserva.",
+          "Si te registras con Google o Facebook, podemos recibir información de tu perfil público según tu configuración de privacidad en esas plataformas.",
+          "Datos recogidos automáticamente: información técnica de tu dispositivo y navegador (dirección IP, identificadores, tipo de navegador y sistema operativo) y datos de uso, como la fecha y hora de acceso.",
+          "Datos de ubicación, únicamente si activas el acceso a la ubicación en la app.",
+          "No recogemos ni tratamos datos relativos a la salud."
+        ]
+      },
+      {
+        "heading": "3. Para qué usamos tus datos",
+        "items": [
+          "Prestar y mantener el servicio y gestionar tu cuenta.",
+          "Enviarte comunicaciones esenciales del servicio (avisos técnicos, alertas de seguridad y actualizaciones de tu cuenta).",
+          "Analizar tendencias y mejorar la calidad, la funcionalidad y la seguridad de la plataforma.",
+          "Prevenir actividades fraudulentas o no autorizadas y cumplir nuestras obligaciones legales."
+        ]
+      },
+      {
+        "heading": "4. Pagos (Monei)",
+        "items": [
+          "Para procesar los pagos de las plazas compartimos los datos necesarios (nombre y correo electrónico) con Monei, nuestra pasarela de pago.",
+          "Monei procesa los datos de tu tarjeta y, en su caso, de Bizum directamente. AmicSport no accede ni almacena los datos completos de tu tarjeta.",
+          "Base jurídica: la ejecución del contrato (art. 6.1.b RGPD), es decir, gestionar tu reserva y tu pago.",
+          "Monei actúa como proveedor de servicios de pago. Puedes consultar su política de privacidad en monei.com/privacy-policy."
+        ]
+      },
+      {
+        "heading": "5. Cookies y tecnologías similares",
+        "items": [
+          "Utilizamos cookies y tecnologías similares para recordar tus preferencias y mantener tu sesión activa, mejorar tu experiencia de navegación, analizar el uso del sitio y respetar tus decisiones sobre cookies."
+        ]
+      },
+      {
+        "heading": "6. Con quién compartimos tus datos",
+        "items": [
+          "Proveedores que prestan servicios por cuenta nuestra (alojamiento, analítica, soporte o envío de comunicaciones).",
+          "Monei, para el procesamiento de los pagos (ver apartado 4).",
+          "Otros usuarios, si publicas contenido en zonas públicas de la plataforma.",
+          "Autoridades públicas o reguladoras cuando lo exija la ley o sea necesario para proteger derechos legítimos."
+        ]
+      },
+      {
+        "heading": "7. Conservación de los datos",
+        "items": [
+          "Conservamos tus datos durante el tiempo necesario para las finalidades descritas. Los registros de pago se conservan durante los plazos exigidos por la normativa fiscal y contable."
+        ]
+      },
+      {
+        "heading": "8. Tus derechos",
+        "items": [
+          "Puedes ejercer tus derechos de acceso, rectificación, supresión, oposición, limitación del tratamiento y portabilidad, así como retirar tu consentimiento en cualquier momento cuando el tratamiento se base en él.",
+          "Para ejercerlos, escríbenos a [CONTACT_EMAIL]. Responderemos en el plazo de un mes conforme a la normativa aplicable.",
+          "Si consideras que no hemos atendido correctamente tus derechos, puedes presentar una reclamación ante la Agencia Española de Protección de Datos (AEPD)."
+        ]
+      },
+      {
+        "heading": "9. Menores",
+        "items": [
+          "Nuestros servicios no están dirigidos a menores de 18 años. Si detectamos que hemos recogido datos de un menor sin el consentimiento adecuado, los eliminaremos."
+        ]
+      },
+      {
+        "heading": "10. Cambios en esta política",
+        "items": [
+          "Podemos actualizar esta política para reflejar cambios legales o de nuestros servicios. Si los cambios son relevantes, te lo notificaremos por email o mediante avisos en la plataforma."
+        ]
+      }
+    ]
   },
   "terms": {
     "title": "Términos de Uso",
-    "content": "Al usar AmicSport, aceptas nuestros términos y condiciones..."
+    "updated": "Última actualización: mayo de 2026",
+    "intro": "Al acceder y utilizar AmicSport (en adelante, la plataforma), aceptas quedar vinculado por estos Términos de Uso. Léelos con atención; si no estás de acuerdo, no utilices la plataforma.",
+    "sections": [
+      {
+        "heading": "1. Cuenta y responsabilidades del usuario",
+        "items": [
+          "Debes ser mayor de 18 años para registrarte y usar AmicSport.",
+          "Eres responsable de proteger tus credenciales de acceso y de toda actividad realizada desde tu cuenta.",
+          "Las cuentas son personales e intransferibles. No está permitido compartir ni ceder tu cuenta a terceros."
+        ]
+      },
+      {
+        "heading": "2. Reserva, pagos y reembolsos",
+        "items": [
+          "Reserva. Algunos partidos requieren el pago de la plaza para confirmar la reserva (se indican como partidos de pago). El precio por jugador se muestra antes de confirmar.",
+          "La reserva solo queda confirmada una vez completado el pago, que se realiza por adelantado a través de Monei con tu método preferido (tarjeta o Bizum). Tras el pago, tu nombre aparece en la lista de jugadores y recibes una confirmación.",
+          "Responsable del cobro. El cobro lo efectúa [ENTITY].",
+          "Cancelación y reembolso. Puedes cancelar tu plaza hasta el plazo indicado en cada partido (por defecto, 12 horas antes del inicio) y recibirás el reembolso íntegro a tu método de pago original.",
+          "Las cancelaciones realizadas con menos antelación que ese plazo no son reembolsables. Todas las cancelaciones se gestionan desde la app.",
+          "El reembolso suele procesarse de inmediato; en algunos casos puede requerir revisión y tardar unos días hábiles en reflejarse según tu entidad bancaria. Recibirás una confirmación cuando se procese.",
+          "Aunque ya no tengas derecho a reembolso, te recomendamos cancelar tu plaza para liberarla y que otra persona pueda jugar.",
+          "Plazas de invitado. Si pagas la plaza de un invitado, el reembolso se realiza a tu método de pago.",
+          "No presentarse. No asistir a un partido sin cancelar a tiempo supone la pérdida del importe, sin reembolso. Las ausencias reiteradas pueden afectar a tu capacidad de participar en futuros partidos.",
+          "Cancelación por el organizador. Si un partido se cancela (por ejemplo, por mal tiempo, falta de jugadores o problemas con la instalación), se reembolsa el importe íntegro de forma automática a todos los jugadores en su método de pago original."
+        ]
+      },
+      {
+        "heading": "3. Conducta y participación",
+        "items": [
+          "Queremos un entorno respetuoso y seguro. Trata con respeto a compañeros, rivales, organizadores y personal de las instalaciones.",
+          "Llega al menos 10-15 minutos antes del inicio, juega limpio y respeta las normas de la instalación.",
+          "No se tolera: ausencias o retrasos sin motivo justificado, lenguaje ofensivo o discriminatorio, entradas peligrosas, conductas violentas, ni consumir alcohol o sustancias en la instalación.",
+          "Consecuencias. Según la gravedad, podemos aplicar una advertencia, la expulsión inmediata del partido o el veto temporal o permanente de la plataforma."
+        ]
+      },
+      {
+        "heading": "4. Uso de la plataforma",
+        "items": [
+          "Te comprometes a usar AmicSport únicamente con fines lícitos y conforme a estos Términos.",
+          "No nos hacemos responsables de interrupciones por mantenimiento, actualizaciones o causas ajenas a nuestro control; procuraremos restablecer el servicio con prontitud.",
+          "Queda prohibido alterar el funcionamiento de la plataforma, interferir con otros usuarios o realizar conductas que perjudiquen la equidad o la experiencia de los demás."
+        ]
+      },
+      {
+        "heading": "5. Responsabilidad y ley aplicable",
+        "items": [
+          "En la máxima medida permitida por la ley, AmicSport no es responsable de los daños derivados del uso de la plataforma o de la participación en los partidos, incluidas las lesiones personales.",
+          "Participas en los partidos bajo tu propia responsabilidad y asumes los riesgos inherentes a la práctica deportiva. Debes asegurarte de encontrarte en condiciones físicas adecuadas.",
+          "Estos Términos se rigen por la legislación española. Si eres consumidor en la UE, conservas la protección de las leyes de tu país de residencia. Las controversias se someten a la jurisdicción no exclusiva de los juzgados de Barcelona o de los del país de residencia del consumidor en la UE."
+        ]
+      },
+      {
+        "heading": "6. Propiedad intelectual",
+        "items": [
+          "Todo el contenido, las marcas, los logotipos y los materiales de la plataforma son propiedad de sus titulares o se utilizan bajo licencia, y están protegidos por las leyes de propiedad intelectual.",
+          "El uso de la plataforma es para fines personales e informativos. Queda prohibida su reproducción, modificación, distribución o uso comercial sin autorización por escrito."
+        ]
+      },
+      {
+        "heading": "7. Disposiciones generales",
+        "items": [
+          "Estos Términos, junto con la Política de Privacidad, constituyen el acuerdo completo entre tú y AmicSport.",
+          "Si alguna cláusula resultara inválida, el resto seguirá siendo de aplicación.",
+          "Podemos actualizar estos Términos; te informaremos de los cambios relevantes a través de la app o por email.",
+          "Para cualquier consulta sobre estos Términos, contacta con [CONTACT_EMAIL]."
+        ]
+      }
+    ]
   },
   "cookies": {
     "message": "Utilizamos cookies para mejorar tu experiencia.",

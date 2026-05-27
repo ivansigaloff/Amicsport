@@ -146,11 +146,156 @@
   },
   "privacy": {
     "title": "Política de Privacitat",
-    "content": "A AmicSport ens prenem molt seriosament la teva privacitat. Recollim dades mínimes..."
+    "updated": "Última actualització: maig de 2026",
+    "intro": "A AmicSport ens prenem seriosament la teva privacitat. Aquesta política explica quines dades recollim, com les utilitzem i amb qui les compartim quan fas servir els nostres serveis.",
+    "sections": [
+      {
+        "heading": "1. Responsable del tractament",
+        "items": [
+          "El responsable del tractament de les teves dades és [ENTITY]. Per a qualsevol qüestió relativa a les teves dades personals, pots escriure'ns a [CONTACT_EMAIL]."
+        ]
+      },
+      {
+        "heading": "2. Quines dades recollim",
+        "items": [
+          "Dades que ens facilites: nom, adreça de correu electrònic i les dades necessàries per gestionar la teva reserva.",
+          "Si et registres amb Google o Facebook, podem rebre informació del teu perfil públic segons la teva configuració de privacitat en aquestes plataformes.",
+          "Dades recollides automàticament: informació tècnica del teu dispositiu i navegador (adreça IP, identificadors, tipus de navegador i sistema operatiu) i dades d'ús, com la data i hora d'accés.",
+          "Dades d'ubicació, únicament si actives l'accés a la ubicació a l'app.",
+          "No recollim ni tractem dades relatives a la salut."
+        ]
+      },
+      {
+        "heading": "3. Per a què utilitzem les teves dades",
+        "items": [
+          "Prestar i mantenir el servei i gestionar el teu compte.",
+          "Enviar-te comunicacions essencials del servei (avisos tècnics, alertes de seguretat i actualitzacions del teu compte).",
+          "Analitzar tendències i millorar la qualitat, la funcionalitat i la seguretat de la plataforma.",
+          "Prevenir activitats fraudulentes o no autoritzades i complir les nostres obligacions legals."
+        ]
+      },
+      {
+        "heading": "4. Pagaments (Monei)",
+        "items": [
+          "Per processar els pagaments de les places compartim les dades necessàries (nom i correu electrònic) amb Monei, la nostra passarel·la de pagament.",
+          "Monei processa les dades de la teva targeta i, si escau, de Bizum directament. AmicSport no accedeix ni emmagatzema les dades completes de la teva targeta.",
+          "Base jurídica: l'execució del contracte (art. 6.1.b RGPD), és a dir, gestionar la teva reserva i el teu pagament.",
+          "Monei actua com a proveïdor de serveis de pagament. Pots consultar la seva política de privacitat a monei.com/privacy-policy."
+        ]
+      },
+      {
+        "heading": "5. Galetes i tecnologies similars",
+        "items": [
+          "Utilitzem galetes i tecnologies similars per recordar les teves preferències i mantenir la teva sessió activa, millorar la teva experiència de navegació, analitzar l'ús del lloc i respectar les teves decisions sobre galetes."
+        ]
+      },
+      {
+        "heading": "6. Amb qui compartim les teves dades",
+        "items": [
+          "Proveïdors que presten serveis per compte nostre (allotjament, analítica, suport o enviament de comunicacions).",
+          "Monei, per al processament dels pagaments (vegeu l'apartat 4).",
+          "Altres usuaris, si publiques contingut en zones públiques de la plataforma.",
+          "Autoritats públiques o reguladores quan ho exigeixi la llei o sigui necessari per protegir drets legítims."
+        ]
+      },
+      {
+        "heading": "7. Conservació de les dades",
+        "items": [
+          "Conservem les teves dades durant el temps necessari per a les finalitats descrites. Els registres de pagament es conserven durant els terminis exigits per la normativa fiscal i comptable."
+        ]
+      },
+      {
+        "heading": "8. Els teus drets",
+        "items": [
+          "Pots exercir els teus drets d'accés, rectificació, supressió, oposició, limitació del tractament i portabilitat, així com retirar el teu consentiment en qualsevol moment quan el tractament es basi en ell.",
+          "Per exercir-los, escriu-nos a [CONTACT_EMAIL]. Respondrem en el termini d'un mes conforme a la normativa aplicable.",
+          "Si consideres que no hem atès correctament els teus drets, pots presentar una reclamació davant l'Agència Espanyola de Protecció de Dades (AEPD)."
+        ]
+      },
+      {
+        "heading": "9. Menors",
+        "items": [
+          "Els nostres serveis no estan dirigits a menors de 18 anys. Si detectem que hem recollit dades d'un menor sense el consentiment adequat, les eliminarem."
+        ]
+      },
+      {
+        "heading": "10. Canvis en aquesta política",
+        "items": [
+          "Podem actualitzar aquesta política per reflectir canvis legals o dels nostres serveis. Si els canvis són rellevants, t'ho notificarem per email o mitjançant avisos a la plataforma."
+        ]
+      }
+    ]
   },
   "terms": {
     "title": "Termes d'Ús",
-    "content": "En utilitzar AmicSport, acceptes els nostres termes i condicions..."
+    "updated": "Última actualització: maig de 2026",
+    "intro": "En accedir i utilitzar AmicSport (la plataforma), acceptes quedar vinculat per aquests Termes d'Ús. Llegeix-los amb atenció; si no hi estàs d'acord, no utilitzis la plataforma.",
+    "sections": [
+      {
+        "heading": "1. Compte i responsabilitats de l'usuari",
+        "items": [
+          "Has de ser major de 18 anys per registrar-te i usar AmicSport.",
+          "Ets responsable de protegir les teves credencials d'accés i de tota l'activitat realitzada des del teu compte.",
+          "Els comptes són personals i intransferibles. No està permès compartir ni cedir el teu compte a tercers."
+        ]
+      },
+      {
+        "heading": "2. Reserva, pagaments i reemborsaments",
+        "items": [
+          "Reserva. Alguns partits requereixen el pagament de la plaça per confirmar la reserva (s'indiquen com a partits de pagament). El preu per jugador es mostra abans de confirmar.",
+          "La reserva només queda confirmada una vegada completat el pagament, que es fa per avançat a través de Monei amb el teu mètode preferit (targeta o Bizum). Després del pagament, el teu nom apareix a la llista de jugadors i reps una confirmació.",
+          "Responsable del cobrament. El cobrament l'efectua [ENTITY].",
+          "Cancel·lació i reemborsament. Pots cancel·lar la teva plaça fins al termini indicat a cada partit (per defecte, 12 hores abans de l'inici) i rebràs el reemborsament íntegre al teu mètode de pagament original.",
+          "Les cancel·lacions fetes amb menys antelació que aquest termini no són reemborsables. Totes les cancel·lacions es gestionen des de l'app.",
+          "El reemborsament normalment es processa de manera immediata; en alguns casos pot requerir revisió i trigar uns dies hàbils a reflectir-se segons la teva entitat bancària. Rebràs una confirmació quan es processi.",
+          "Encara que ja no tinguis dret a reemborsament, et recomanem cancel·lar la teva plaça per alliberar-la i que una altra persona pugui jugar.",
+          "Places de convidat. Si pagues la plaça d'un convidat, el reemborsament es fa al teu mètode de pagament.",
+          "No presentar-se. No assistir a un partit sense cancel·lar a temps suposa la pèrdua de l'import, sense reemborsament. Les absències reiterades poden afectar la teva capacitat de participar en futurs partits.",
+          "Cancel·lació per part de l'organitzador. Si un partit es cancel·la (per exemple, per mal temps, falta de jugadors o problemes amb la instal·lació), es reemborsa l'import íntegre de manera automàtica a tots els jugadors al seu mètode de pagament original."
+        ]
+      },
+      {
+        "heading": "3. Conducta i participació",
+        "items": [
+          "Volem un entorn respectuós i segur. Tracta amb respecte companys, rivals, organitzadors i personal de les instal·lacions.",
+          "Arriba almenys 10-15 minuts abans de l'inici, juga net i respecta les normes de la instal·lació.",
+          "No es tolera: absències o retards sense motiu justificat, llenguatge ofensiu o discriminatori, entrades perilloses, conductes violentes, ni consumir alcohol o substàncies a la instal·lació.",
+          "Conseqüències. Segons la gravetat, podem aplicar una advertència, l'expulsió immediata del partit o el veto temporal o permanent de la plataforma."
+        ]
+      },
+      {
+        "heading": "4. Ús de la plataforma",
+        "items": [
+          "Et compromets a usar AmicSport únicament amb finalitats lícites i conforme a aquests Termes.",
+          "No ens fem responsables d'interrupcions per manteniment, actualitzacions o causes alienes al nostre control; procurarem restablir el servei amb promptitud.",
+          "Queda prohibit alterar el funcionament de la plataforma, interferir amb altres usuaris o realitzar conductes que perjudiquin l'equitat o l'experiència dels altres."
+        ]
+      },
+      {
+        "heading": "5. Responsabilitat i llei aplicable",
+        "items": [
+          "En la màxima mesura permesa per la llei, AmicSport no és responsable dels danys derivats de l'ús de la plataforma o de la participació en els partits, incloses les lesions personals.",
+          "Participes en els partits sota la teva pròpia responsabilitat i assumeixes els riscos inherents a la pràctica esportiva. Has d'assegurar-te de trobar-te en condicions físiques adequades.",
+          "Aquests Termes es regeixen per la legislació espanyola. Si ets consumidor a la UE, conserves la protecció de les lleis del teu país de residència. Les controvèrsies se sotmeten a la jurisdicció no exclusiva dels jutjats de Barcelona o dels del país de residència del consumidor a la UE."
+        ]
+      },
+      {
+        "heading": "6. Propietat intel·lectual",
+        "items": [
+          "Tot el contingut, les marques, els logotips i els materials de la plataforma són propietat dels seus titulars o s'utilitzen sota llicència, i estan protegits per les lleis de propietat intel·lectual.",
+          "L'ús de la plataforma és per a finalitats personals i informatives. Queda prohibida la seva reproducció, modificació, distribució o ús comercial sense autorització per escrit."
+        ]
+      },
+      {
+        "heading": "7. Disposicions generals",
+        "items": [
+          "Aquests Termes, juntament amb la Política de Privacitat, constitueixen l'acord complet entre tu i AmicSport.",
+          "Si alguna clàusula resultés invàlida, la resta seguirà sent aplicable.",
+          "Podem actualitzar aquests Termes; t'informarem dels canvis rellevants a través de l'app o per email.",
+          "Per a qualsevol consulta sobre aquests Termes, contacta amb [CONTACT_EMAIL]."
+        ]
+      }
+    ]
   },
   "cookies": {
     "message": "Utilitzem cookies per millorar la teva experiència.",

@@ -144,11 +144,156 @@
   },
   "privacy": {
     "title": "Privacy Policy",
-    "content": "At AmicSport we take your privacy very seriously. We collect minimal data..."
+    "updated": "Last updated: May 2026",
+    "intro": "At AmicSport we take your privacy seriously. This policy explains what data we collect, how we use it and with whom we share it when you use our services.",
+    "sections": [
+      {
+        "heading": "1. Data controller",
+        "items": [
+          "The controller of your data is [ENTITY]. For any matter relating to your personal data, you can write to us at [CONTACT_EMAIL]."
+        ]
+      },
+      {
+        "heading": "2. What data we collect",
+        "items": [
+          "Data you provide: name, email address and the data needed to manage your booking.",
+          "If you sign up with Google or Facebook, we may receive information from your public profile according to your privacy settings on those platforms.",
+          "Data collected automatically: technical data about your device and browser (IP address, identifiers, browser type and operating system) and usage data, such as the date and time of access.",
+          "Location data, only if you enable location access in the app.",
+          "We do not collect or process any health-related data."
+        ]
+      },
+      {
+        "heading": "3. How we use your data",
+        "items": [
+          "Operate and maintain the service and manage your account.",
+          "Send you essential service communications (technical notices, security alerts and account updates).",
+          "Analyze trends and improve the quality, functionality and security of the platform.",
+          "Prevent fraudulent or unauthorized activity and comply with our legal obligations."
+        ]
+      },
+      {
+        "heading": "4. Payments (Monei)",
+        "items": [
+          "To process payments for spots, we share the necessary data (name and email) with Monei, our payment gateway.",
+          "Monei processes your card data, and Bizum data where applicable, directly. AmicSport does not access or store your full card details.",
+          "Legal basis: performance of the contract (Art. 6.1.b GDPR), i.e. managing your booking and payment.",
+          "Monei acts as our payment service provider. You can review its privacy policy at monei.com/privacy-policy."
+        ]
+      },
+      {
+        "heading": "5. Cookies and similar technologies",
+        "items": [
+          "We use cookies and similar technologies to remember your preferences and keep your session active, improve your browsing experience, analyze how the site is used and respect your cookie choices."
+        ]
+      },
+      {
+        "heading": "6. Who we share your data with",
+        "items": [
+          "Providers that deliver services on our behalf (hosting, analytics, support or sending communications).",
+          "Monei, to process payments (see section 4).",
+          "Other users, if you post content in public areas of the platform.",
+          "Public or regulatory authorities where required by law or necessary to protect legitimate rights."
+        ]
+      },
+      {
+        "heading": "7. Data retention",
+        "items": [
+          "We keep your data for as long as necessary for the purposes described. Payment records are kept for the periods required by tax and accounting regulations."
+        ]
+      },
+      {
+        "heading": "8. Your rights",
+        "items": [
+          "You can exercise your rights of access, rectification, erasure, objection, restriction of processing and portability, and withdraw your consent at any time where processing is based on it.",
+          "To exercise them, write to us at [CONTACT_EMAIL]. We will respond within one month in accordance with applicable law.",
+          "If you believe we have not handled your rights correctly, you can lodge a complaint with the Spanish Data Protection Agency (AEPD)."
+        ]
+      },
+      {
+        "heading": "9. Minors",
+        "items": [
+          "Our services are not intended for individuals under 18. If we detect that we have collected a minor's data without appropriate consent, we will delete it."
+        ]
+      },
+      {
+        "heading": "10. Changes to this policy",
+        "items": [
+          "We may update this policy to reflect legal or service changes. If the changes are material, we will notify you by email or through notices on the platform."
+        ]
+      }
+    ]
   },
   "terms": {
     "title": "Terms of Use",
-    "content": "By using AmicSport, you agree to our terms and conditions..."
+    "updated": "Last updated: May 2026",
+    "intro": "By accessing and using AmicSport (the platform), you agree to be bound by these Terms of Use. Please read them carefully; if you do not agree, do not use the platform.",
+    "sections": [
+      {
+        "heading": "1. Account and user responsibilities",
+        "items": [
+          "You must be at least 18 years old to register and use AmicSport.",
+          "You are responsible for safeguarding your login credentials and for all activity carried out through your account.",
+          "Accounts are personal and non-transferable. Sharing or lending your account to others is not permitted."
+        ]
+      },
+      {
+        "heading": "2. Booking, payments and refunds",
+        "items": [
+          "Booking. Some matches require payment of the spot to confirm the booking (shown as paid matches). The price per player is displayed before confirming.",
+          "A booking is only confirmed once payment is completed, made in advance through Monei with your preferred method (card or Bizum). After payment, your name appears on the player list and you receive a confirmation.",
+          "Responsible for charging. Charges are made by [ENTITY].",
+          "Cancellation and refund. You can cancel your spot up to the deadline shown for each match (by default, 12 hours before kick-off) and receive a full refund to your original payment method.",
+          "Cancellations made later than that deadline are non-refundable. All cancellations are managed through the app.",
+          "Refunds are usually processed instantly; in some cases they may require review and take a few business days to appear depending on your bank. You will receive a confirmation once processed.",
+          "Even if you are no longer entitled to a refund, we recommend cancelling your spot so it is freed up and someone else can play.",
+          "Guest spots. If you pay for a guest's spot, the refund is made to your payment method.",
+          "No-shows. Failing to attend a match without cancelling in time results in loss of the amount, with no refund. Repeated no-shows may affect your ability to participate in future matches.",
+          "Cancellation by the organizer. If a match is cancelled (for example, due to bad weather, insufficient players or venue issues), the full amount is refunded automatically to all players to their original payment method."
+        ]
+      },
+      {
+        "heading": "3. Conduct and participation",
+        "items": [
+          "We want a respectful and safe environment. Treat teammates, opponents, organizers and venue staff with respect.",
+          "Arrive at least 10-15 minutes before kick-off, play fair and follow the venue rules.",
+          "Not tolerated: absences or lateness without a valid reason, offensive or discriminatory language, dangerous tackles, violent behavior, or consuming alcohol or substances at the venue.",
+          "Consequences. Depending on severity, we may issue a warning, immediate expulsion from the match, or a temporary or permanent ban from the platform."
+        ]
+      },
+      {
+        "heading": "4. Platform use",
+        "items": [
+          "You agree to use AmicSport only for lawful purposes and in accordance with these Terms.",
+          "We are not responsible for interruptions due to maintenance, updates or causes beyond our control; we will aim to restore the service promptly.",
+          "It is prohibited to disrupt the platform, interfere with other users, or engage in conduct that harms the fairness or experience of others."
+        ]
+      },
+      {
+        "heading": "5. Liability and governing law",
+        "items": [
+          "To the fullest extent permitted by law, AmicSport is not liable for damages arising from use of the platform or participation in matches, including personal injury.",
+          "You participate in matches at your own risk and assume the risks inherent to sport. You must ensure you are in adequate physical condition.",
+          "These Terms are governed by Spanish law. If you are a consumer in the EU, you retain the protection of the laws of your country of residence. Disputes are subject to the non-exclusive jurisdiction of the courts of Barcelona or those of the consumer's country of residence in the EU."
+        ]
+      },
+      {
+        "heading": "6. Intellectual property",
+        "items": [
+          "All content, trademarks, logos and materials on the platform are owned by their holders or used under license, and are protected by intellectual property laws.",
+          "Use of the platform is for personal and informational purposes only. Reproduction, modification, distribution or commercial use without written authorization is prohibited."
+        ]
+      },
+      {
+        "heading": "7. General provisions",
+        "items": [
+          "These Terms, together with the Privacy Policy, constitute the entire agreement between you and AmicSport.",
+          "If any clause is found invalid, the rest remain in effect.",
+          "We may update these Terms; we will inform you of material changes through the app or by email.",
+          "For any questions about these Terms, contact [CONTACT_EMAIL]."
+        ]
+      }
+    ]
   },
   "cookies": {
     "message": "We use cookies to improve your experience.",
