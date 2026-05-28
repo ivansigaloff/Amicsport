@@ -37,10 +37,7 @@ export default function PaymentReturn() {
       router.replace('/(tabs)');
       return;
     }
-    const path = payment.env === 'dev'
-      ? `/dev/match/${payment.match_id}`
-      : `/match/${payment.match_id}`;
-    router.replace(path as any);
+    router.replace(`/match/${payment.match_id}` as any);
   };
 
   const isSuccess = finalStatus === 'SUCCEEDED';
