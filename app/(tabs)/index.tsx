@@ -1539,8 +1539,20 @@ const styles = StyleSheet.create({
     borderWidth: 1, 
     borderColor: COLORS.BORDER_LIGHT 
   },
-  shareToggleBtnActive: { 
-    backgroundColor: COLORS.SUCCESS, 
-    borderColor: COLORS.SUCCESS 
+  shareToggleBtnActive: {
+    backgroundColor: COLORS.SUCCESS,
+    borderColor: COLORS.SUCCESS
   },
+  horizontalScrollContent: { paddingHorizontal: 4, alignItems: 'center' },
+  expandInScroll: { paddingHorizontal: 8, height: 48, justifyContent: 'center', alignItems: 'center' },
+  tooltipContainer: { position: 'absolute', backgroundColor: COLORS.SECONDARY, borderRadius: 8, maxWidth: 220 },
+  tooltipTitle: { color: COLORS.TEXT_WHITE, fontSize: 12, fontFamily: FONTS.BOLD, marginBottom: 4 },
+  tooltipText: { color: COLORS.TEXT_WHITE, fontSize: 11, fontFamily: FONTS.REGULAR, lineHeight: 16 },
+  tooltipArrow: { position: 'absolute', bottom: -6, left: 20, width: 0, height: 0, borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 6, borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: COLORS.SECONDARY },
+  sectionHeaderCompact: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
+  sectionTitleSmall: { fontSize: 14, fontFamily: FONTS.BOLD, color: COLORS.TEXT_MAIN },
+  toggleBtn: { padding: 4 },
+  langOption: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 4 },
+  langOptionText: { fontSize: 16, fontFamily: FONTS.SEMI_BOLD, color: COLORS.TEXT_MAIN },
+  langOptionTextActive: { color: COLORS.PRIMARY, fontFamily: FONTS.BOLD },
 });

@@ -12,7 +12,9 @@ export const COLORS = {
   // Semantic Colors
   SUCCESS: '#10B981', // Emerald 500
   DANGER: '#EF4444', // Red 500
-  WARNING: '#FFB81C', 
+  DANGER_LIGHT: '#FEE2E2', // Red 100
+  WARNING: '#FFB81C',
+  WARNING_LIGHT: '#FEF3C7', // Amber 100
   INFO: '#3B82F6', // Blue 500
   
   // Backgrounds
@@ -29,6 +31,29 @@ export const COLORS = {
   // Borders
   BORDER: '#E2E8F0', // Slate 200
   BORDER_LIGHT: '#F1F5F9', // Slate 100
+};
+
+// Light/dark palette consumed by the Expo template helpers (useThemeColor,
+// ThemedText/ThemedView, Collapsible). Separate from the flat brand COLORS above.
+const tintColorLight = '#0a7ea4';
+const tintColorDark = '#fff';
+export const Colors = {
+  light: {
+    text: '#11181C',
+    background: '#fff',
+    tint: tintColorLight,
+    icon: '#687076',
+    tabIconDefault: '#687076',
+    tabIconSelected: tintColorLight,
+  },
+  dark: {
+    text: '#ECEDEE',
+    background: '#151718',
+    tint: tintColorDark,
+    icon: '#9BA1A6',
+    tabIconDefault: '#9BA1A6',
+    tabIconSelected: tintColorDark,
+  },
 };
 
 export const SHADOWS = {

@@ -53,7 +53,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.CARD_BG,
     borderTopWidth: 1,
     borderTopColor: COLORS.BORDER_LIGHT,
-    borderTopColor: COLORS.BORDER_LIGHT,
     height: 75,
     paddingBottom: 5,
     paddingTop: 5,
