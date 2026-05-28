@@ -575,6 +575,31 @@ export default function CreateMatchScreen() {
           </View>
         </View>
 
+        <View style={[styles.formGroup, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="card" size={20} color="#FFB81C" />
+            <Text style={styles.label}>Requiere Pago</Text>
+          </View>
+          <Switch value={requiresPayment} onValueChange={setRequiresPayment} trackColor={{ false: '#E2E8F0', true: '#FFB81C' }} />
+        </View>
+
+        {requiresPayment && (
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Horas límite para pagar plaza</Text>
+            <TextInput
+              style={styles.input}
+              value={paymentDeadlineHours}
+              onChangeText={setPaymentDeadlineHours}
+              keyboardType="numeric"
+              placeholder="24"
+              placeholderTextColor="#64748B"
+            />
+            <Text style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>
+              Los jugadores deben pagar antes de estas horas o perderán la plaza.
+            </Text>
+          </View>
+        )}
+
         <View style={styles.row}>
           <View style={[styles.formGroup, { flex: 1, marginRight: 10 }]}>
             <Text style={styles.label}>Nivel esperado</Text>
@@ -617,39 +642,14 @@ export default function CreateMatchScreen() {
             <Switch value={isPrivate} onValueChange={setIsPrivate} trackColor={{ false: '#E2E8F0', true: '#FFB81C' }} />
           </View>
 
-          <View style={styles.categoryRow}>
+          <View style={[styles.categoryRow, { borderBottomWidth: 0 }]}>
             <View style={styles.categoryLabelRow}>
               <Ionicons name="trophy" size={20} color="#FFB81C" />
               <Text style={styles.categoryLabel}>Avanzado</Text>
             </View>
             <Switch value={isAdvanced} onValueChange={setIsAdvanced} trackColor={{ false: '#E2E8F0', true: '#FFB81C' }} />
           </View>
-
-          <View style={[styles.categoryRow, { borderBottomWidth: 0 }]}>
-            <View style={styles.categoryLabelRow}>
-              <Ionicons name="card" size={20} color="#FFB81C" />
-              <Text style={styles.categoryLabel}>Requiere Pago</Text>
-            </View>
-            <Switch value={requiresPayment} onValueChange={setRequiresPayment} trackColor={{ false: '#E2E8F0', true: '#FFB81C' }} />
-          </View>
         </View>
-
-        {requiresPayment && (
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Horas límite para pagar plaza</Text>
-            <TextInput
-              style={styles.input}
-              value={paymentDeadlineHours}
-              onChangeText={setPaymentDeadlineHours}
-              keyboardType="numeric"
-              placeholder="24"
-              placeholderTextColor="#64748B"
-            />
-            <Text style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>
-              Los jugadores deben pagar antes de estas horas o perderán la plaza.
-            </Text>
-          </View>
-        )}
         
         {/* Horas de cancelación */}
         <View style={styles.formGroup}>
