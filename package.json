@@ -9,7 +9,8 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "web:bg": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-web.ps1",
-    "deploy": "node scripts/deploy.js",
+    "deploy": "node scripts/deploy-delta.js",
+    "deploy:full": "node scripts/deploy-delta.js --full",
     "lint": "expo lint"
   },
   "dependencies": {
