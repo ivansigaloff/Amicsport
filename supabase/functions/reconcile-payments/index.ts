@@ -31,9 +31,11 @@ serve(async (req) => {
     return new Response('method_not_allowed', { status: 405 });
   }
 
-  // Simple secret-based auth for cron / admin trigger
+  // Simple secret-based auth for cron / admin trigger.
+  // Fail-closed: if RECONCILE_SECRET is unset, deny ALL requests rather than
+  // letting the endpoint become public.
   const providedSecret = req.headers.get('x-reconcile-secret') ?? '';
-  if (RECONCILE_SECRET && providedSecret !== RECONCILE_SECRET) {
+  if (!RECONCILE_SECRET || providedSecret !== RECONCILE_SECRET) {
     return new Response('unauthorized', { status: 401 });
   }
 

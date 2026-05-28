@@ -11,6 +11,7 @@
  *   node scripts/deploy-delta.js --full   # force full upload (like original)
  */
 
+require('dotenv').config();
 const FtpDeploy = require('ftp-deploy');
 const fs   = require('fs');
 const path = require('path');
@@ -20,10 +21,16 @@ const DIST_DIR      = path.join(__dirname, '../dist');
 const MANIFEST_FILE = path.join(DIST_DIR, '.deploy-manifest.json');
 const FORCE_FULL    = process.argv.includes('--full');
 
+const { FTP_HOST, FTP_USER, FTP_PASSWORD } = process.env;
+if (!FTP_HOST || !FTP_USER || !FTP_PASSWORD) {
+  console.error('❌  Missing FTP_HOST / FTP_USER / FTP_PASSWORD in .env');
+  process.exit(1);
+}
+
 const FTP_CONFIG = {
-  user:       'user-8594235',
-  password:   'X6#x8XqnLw#vwae5',
-  host:       '79.139.120.28',
+  user:       FTP_USER,
+  password:   FTP_PASSWORD,
+  host:       FTP_HOST,
   port:       21,
   localRoot:  DIST_DIR,
   remoteRoot: '/multigraf.info/Kickerzbcn/',

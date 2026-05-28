@@ -398,6 +398,10 @@ export default function MatchesScreen() {
     const { data: { session } } = await supabase.auth.getSession();
     const user = session?.user ?? null;
     const userName = user?.user_metadata?.full_name || user?.email || '';
+    // user_metadata.full_name is user-controlled. Strip characters that have
+    // special meaning in PostgREST .or() filters (separators + ilike wildcard)
+    // so an attacker cannot inject extra filter clauses.
+    const safeUserName = userName.replace(/[,.()%]/g, ' ').trim();
 
     // Fire matches + user-participations in parallel (was sequential: matches → auth → parts).
     // Only select columns used in the list; omit location_url, creator_email,
@@ -412,7 +416,7 @@ export default function MatchesScreen() {
       ? supabase
           .from(fromTable('match_participants'))
           .select(`match_id, user_id, user_name, ${fromTable('matches')}(id, date, venue, time)`)
-          .or(`user_id.eq.${user.id},user_name.ilike.${userName} (invitado%`)
+          .or(`user_id.eq.${user.id},user_name.ilike.${safeUserName} (invitado%`)
       : Promise.resolve({ data: null });
 
     const [{ data }, { data: pData }] = await Promise.all([matchesPromise, partsPromise]);
