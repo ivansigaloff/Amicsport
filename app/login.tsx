@@ -1,7 +1,7 @@
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, ImageBackground, Alert, ActivityIndicator, ScrollView, Image } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
@@ -21,7 +21,6 @@ export default function LoginScreen() {
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [isResetMode, setIsResetMode] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
-  const { from } = useLocalSearchParams<{ from: string }>();
 
   const handleAuth = async () => {
     if (!email || !password) return Alert.alert(t('common.notice'), t('login.complete_fields_msg'));
@@ -53,11 +52,7 @@ export default function LoginScreen() {
           } catch { /* no-op */ }
         }
 
-        if (from === 'dev') {
-          router.replace('/dev' as any);
-        } else {
-          router.replace('/(tabs)' as any);
-        }
+        router.replace('/(tabs)' as any);
       }
     } else {
       if (!name.trim()) {

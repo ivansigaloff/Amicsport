@@ -1,9 +1,8 @@
-// Auth helpers — single source of truth for reading role/is_dev from a Supabase user.
+// Auth helpers — single source of truth for reading the user's role.
 //
-// SECURITY: role/is_dev MUST be read from `app_metadata` (server-only writes via
-// service role). getUserRole no longer falls back to user_metadata (user-writable).
-// getUserIsDev still does for legacy users — remove once the DB RLS helper
-// auth_is_dev() is migrated off user_metadata.is_dev (see RLS cleanup).
+// SECURITY: role MUST be read from `app_metadata` (server-only writes via the
+// service role). getUserRole does NOT fall back to user_metadata (user-writable),
+// so a user cannot self-elevate to admin.
 
 type AnyUser = {
     app_metadata?: { role?: string; is_dev?: boolean; [k: string]: any } | null;
@@ -22,23 +21,11 @@ export function getUserRole(user: AnyUser): Role {
     return 'participant';
 }
 
-export function getUserIsDev(user: AnyUser): boolean {
-    if (user?.app_metadata?.is_dev === true) return true;
-    if (user?.user_metadata?.is_dev === true) return true;
-    // Legacy back-door (audit account) — kept until the user creates a real role-flagged account.
-    if (user?.email === 'audit-test@amicsport.com') return true;
-    return false;
-}
-
 /**
- * Resolves whether the current viewer should see admin UI. Mirrors the original
- * behaviour from useMatch / (tabs)/index / _layout:
- *   - In `dev` env: any admin counts (incluido is_dev=true)
- *   - In `prod` env: solo admins que NO sean is_dev
+ * Resolves whether the current viewer should see admin UI.
+ * Single environment: an admin is simply role === 'admin'.
+ * (The optional env param is kept for call-site compatibility and ignored.)
  */
-export function computeIsAdmin(user: AnyUser, env: 'prod' | 'dev'): boolean {
-    const role = getUserRole(user);
-    if (role !== 'admin') return false;
-    if (env === 'dev') return true;
-    return !getUserIsDev(user);
+export function computeIsAdmin(user: AnyUser, _env?: 'prod' | 'dev'): boolean {
+    return getUserRole(user) === 'admin';
 }

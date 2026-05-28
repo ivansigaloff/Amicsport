@@ -3,11 +3,9 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import { useEffect, useState } from 'react';
-import { Platform, Alert } from 'react-native';
-import { useRouter, useSegments, useGlobalSearchParams } from 'expo-router';
+import { useRouter, useSegments } from 'expo-router';
 import Head from 'expo-router/head';
 import { supabase } from '../lib/supabase';
-import { getUserIsDev } from '../lib/auth';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { EnvironmentProvider } from '../hooks/use-env';
 import Constants from 'expo-constants';
@@ -32,7 +30,6 @@ export default function RootLayout() {
   const [initialized, setInitialized] = useState(false);
   const segments = useSegments();
   const router = useRouter();
-  const { from } = useGlobalSearchParams<{ from: string }>();
 
   const [fontsLoaded] = useFonts({
     Montserrat_400Regular,
@@ -65,15 +62,11 @@ export default function RootLayout() {
     if (!initialized) return;
 
     const inAuthGroup = segments[0] === 'login';
-    const inDevGroup = segments[0] === 'dev';
     const isResetPage = segments[0] === 'reset-password';
 
     if (!session && !inAuthGroup && !isResetPage) {
-      // Redirect to login if not authenticated, pass the current env if we were in dev
-      const isDev = (segments[0] as any) === 'dev';
-      router.replace(isDev ? '/login?from=dev' : '/login');
+      router.replace('/login');
     } else if (session) {
-      const isDevUser = getUserIsDev(session.user);
       
       // La validación de subdirectorio fue eliminada ya que /Kickerzbcn es ahora producción.
       if (isResetPage) {
@@ -81,21 +74,10 @@ export default function RootLayout() {
       }
 
       if (inAuthGroup) {
-        // Now dev users also go to tabs by default unless they manually go to /dev
         router.replace('/(tabs)');
-      } else if (inDevGroup && !isDevUser) {
-        // Protect /dev from normal users
-        router.replace('/(tabs)');
-        setTimeout(() => {
-          if (Platform.OS === 'web') {
-             window.alert('Acceso Denegado: Tu cuenta no tiene permisos para el entorno de desarrollo.');
-          } else {
-             Alert.alert('Acceso Denegado', 'Tu cuenta no tiene permisos para el entorno de desarrollo.');
-          }
-        }, 100);
       }
     }
-  }, [session, segments, initialized, from]);
+  }, [session, segments, initialized]);
 
   if (!initialized || !fontsLoaded) return null;
 
@@ -107,7 +89,6 @@ export default function RootLayout() {
         </Head>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="dev" options={{ headerShown: false }} />
           <Stack.Screen name="login" options={{ headerShown: false }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
         </Stack>
