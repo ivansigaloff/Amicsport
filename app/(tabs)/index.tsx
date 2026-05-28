@@ -391,33 +391,71 @@ export default function MatchesScreen() {
   const isMatchOver = (dateISO: string, timeStr: string) => getMatchTiming(dateISO, timeStr).isOver;
 
   const fetchMatches = async (isRefresh = false) => {
-    if (isRefresh) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
-    }
-    
-    // Pedimos a Supabase que traiga los partidos y CUENTE cuántos registros reales hay en match_participants para cada uno
-    const { data, error } = await supabase
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+
+    // getSession() reads from local storage — no extra network round-trip.
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user ?? null;
+    const userName = user?.user_metadata?.full_name || user?.email || '';
+
+    // Fire matches + user-participations in parallel (was sequential: matches → auth → parts).
+    // Only select columns used in the list; omit location_url, creator_email,
+    // cancellation_hours, payment_deadline_hours (not needed here).
+    const matchCols = 'id, title, venue, date, time, price, max_players, joined_players, level, image_url, distance, created_at, is_female, is_mixed, is_private, is_advanced, requires_payment';
+    const matchesPromise = supabase
       .from(fromTable('matches'))
-      .select(`*, ${fromTable('match_participants')}(count)`)
+      .select(`${matchCols}, ${fromTable('match_participants')}(count)`)
       .order('created_at', { ascending: false });
 
+    const partsPromise = user
+      ? supabase
+          .from(fromTable('match_participants'))
+          .select(`match_id, user_id, user_name, ${fromTable('matches')}(id, date, venue, time)`)
+          .or(`user_id.eq.${user.id},user_name.ilike.${userName} (invitado%`)
+      : Promise.resolve({ data: null });
+
+    const [{ data }, { data: pData }] = await Promise.all([matchesPromise, partsPromise]);
+
     if (data) {
+      const partTable = fromTable('match_participants');
+
+      // Build participation maps from the parallel query result.
+      const pMap: Record<string, { venue: string; time: string }[]> = {};
+      const statusMap: Record<string, { isJoined: boolean; guestCount: number }> = {};
+      if (pData && user) {
+        for (const pEntry of pData as any[]) {
+          const m = pEntry[fromTable('matches')];
+          if (m?.date) {
+            const iso = parseDateString(m.date);
+            if (iso) {
+              if (!pMap[iso]) pMap[iso] = [];
+              if (!pMap[iso].find(x => x.venue === m.venue && x.time === m.time))
+                pMap[iso].push({ venue: m.venue, time: m.time });
+            }
+          }
+          const mid = pEntry.match_id;
+          if (!statusMap[mid]) statusMap[mid] = { isJoined: false, guestCount: 0 };
+          if (pEntry.user_id === user.id) {
+            statusMap[mid].isJoined = true;
+          } else if (pEntry.user_name?.toLowerCase().includes(`${userName.toLowerCase()} (invitado`)) {
+            statusMap[mid].guestCount += 1;
+          }
+        }
+      }
+
       const processed = (data as any[])
-        .filter(m => m && m.id) // Ensure valid records
+        .filter(m => m?.id)
         .map(m => {
-          // Obtenemos el conteo real de la relación
-          const devPartTable = fromTable('match_participants');
-          const realCount = Array.isArray(m[devPartTable]) ? (m[devPartTable][0]?.count || 0) : 0;
+          const realCount = Array.isArray(m[partTable]) ? (m[partTable][0]?.count || 0) : 0;
           return {
             ...m,
             dateISO: parseDateString(m.date),
-            computed_joined: (m.joined_players || 0) + realCount
+            computed_joined: (m.joined_players || 0) + realCount,
+            userStatus: statusMap[m.id] || { isJoined: false, guestCount: 0 },
           };
         });
-      
-      // Sort by date proximity (closest first)
+
       processed.sort((a, b) => {
         if (!a.dateISO) return 1;
         if (!b.dateISO) return -1;
@@ -425,53 +463,11 @@ export default function MatchesScreen() {
         return (a.time || '').localeCompare(b.time || '');
       });
 
+      // Single setState — one render instead of two.
+      setUserParticipationMap(pMap);
       setMatches(processed);
-
-      // 3. Fetch User Participations for indicators AND list badges
-      const { data: authData } = await supabase.auth.getUser();
-      if (authData?.user) {
-        const userName = authData.user.user_metadata?.full_name || authData.user.email;
-        const { data: pData } = await supabase
-          .from(fromTable('match_participants'))
-          .select(`match_id, user_id, user_name, ${fromTable('matches')}(id, date, venue, time)`)
-          .or(`user_id.eq.${authData.user.id},user_name.ilike.${userName} (invitado%`);
-        
-        if (pData) {
-          const pMap: Record<string, { venue: string, time: string }[]>= {};
-          const statusMap: Record<string, { isJoined: boolean, guestCount: number }> = {};
-          
-          pData.forEach((pEntry: any) => {
-            const m = pEntry[fromTable('matches')];
-            if (m && m.date) {
-              const iso = parseDateString(m.date);
-              if (iso) {
-                if (!pMap[iso]) pMap[iso] = [];
-                // Only unique ones
-                if (!pMap[iso].find(x => x.venue === m.venue && x.time === m.time)) {
-                  pMap[iso].push({ venue: m.venue, time: m.time });
-                }
-              }
-            }
-            
-            const mid = pEntry.match_id;
-            if (!statusMap[mid]) statusMap[mid] = { isJoined: false, guestCount: 0 };
-            
-            if (pEntry.user_id === authData.user.id) {
-              statusMap[mid].isJoined = true;
-            } else if (pEntry.user_name?.toLowerCase().includes(`${userName?.toLowerCase()} (invitado`)) {
-              statusMap[mid].guestCount += 1;
-            }
-          });
-          
-          setUserParticipationMap(pMap);
-          setMatches(prev => prev.map(m => ({
-             ...m,
-             userStatus: statusMap[m.id] || { isJoined: false, guestCount: 0 }
-          })));
-        }
-      }
     }
-    
+
     setLoading(false);
     setRefreshing(false);
   };
@@ -487,18 +483,8 @@ export default function MatchesScreen() {
   }, [env]);
 
   const checkRole = async () => {
-    const { data, error } = await supabase.auth.getUser();
-    if (error) {
-      console.error('Error getting user for role check:', error);
-      setIsAdmin(false);
-      return;
-    }
-
-    if (data?.user) {
-      setIsAdmin(computeIsAdmin(data.user, env as 'prod' | 'dev'));
-    } else {
-      setIsAdmin(false);
-    }
+    const { data: { session } } = await supabase.auth.getSession();
+    setIsAdmin(session?.user ? computeIsAdmin(session.user) : false);
   };
 
   const todayISO = new Date().toISOString().split('T')[0];
