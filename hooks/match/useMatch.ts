@@ -19,24 +19,28 @@ export const useMatch = (id: string, env: string, fromTable: (t: string) => stri
   const fetchData = async () => {
     setLoading(true);
     try {
-      const matchData = await fetchMatchById(id, fromTable);
+      // Run the three independent reads in parallel instead of sequentially.
+      // getSession() reads from local storage — no network round-trip like getUser().
+      const [matchData, partsData, { data: { session } }] = await Promise.all([
+        fetchMatchById(id, fromTable),
+        fetchParticipants(id, fromTable),
+        supabase.auth.getSession(),
+      ]);
       setMatch(matchData);
-
-      const partsData = await fetchParticipants(id, fromTable);
       setParticipantsList(partsData);
 
-      const { data: authData } = await supabase.auth.getUser();
-      if (authData?.user) {
-        const uid = authData.user.id;
+      const user = session?.user ?? null;
+      if (user) {
+        const uid = user.id;
         setUserId(uid);
 
-        const meta = authData.user.user_metadata || {};
-        const nameToSave = meta.full_name || meta.name || authData.user.email?.split('@')[0] || 'Jugador App';
+        const meta = user.user_metadata || {};
+        const nameToSave = meta.full_name || meta.name || user.email?.split('@')[0] || 'Jugador App';
         setMyUserName(nameToSave);
 
         setJoined(partsData.some((p) => p.user_id === uid));
 
-        setIsAdmin(computeIsAdmin(authData.user, env as 'prod' | 'dev'));
+        setIsAdmin(computeIsAdmin(user, env as 'prod' | 'dev'));
       }
     } catch (err) {
       console.log('Error fetching match data:', err);

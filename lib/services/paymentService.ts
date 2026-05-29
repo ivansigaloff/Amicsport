@@ -21,8 +21,19 @@ async function callEdgeFn<T>(name: string, body: Record<string, unknown>): Promi
     body: JSON.stringify(body),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || `${name} failed (${res.status})`);
+  if (!res.ok) throw new Error(mapEdgeError(data.error) || `${name} failed (${res.status})`);
   return data as T;
+}
+
+// Maps Edge Function error codes to user-facing Spanish messages.
+function mapEdgeError(code?: string): string | undefined {
+  switch (code) {
+    case 'match_full':   return 'El partido está completo.';
+    case 'already_paid': return 'Ya tienes un pago confirmado para este partido.';
+    case 'invalid_price':
+    case 'match_does_not_require_payment': return 'Este partido no admite pago.';
+    default: return code;
+  }
 }
 
 function getReturnBaseUrl(): string {

@@ -123,6 +123,21 @@ serve(async (req) => {
     }
   }
 
+  // Capacity check: real participants + manual "external" counter + PENDING
+  // payments by OTHER users (each a soft hold on a spot). Prevents charging a
+  // user for a match that is already full / fully held. (Paid participants are
+  // inserted later by the webhook, hence the PENDING-aware count here.)
+  const participantsTable = env === 'dev' ? 'match_participants_dev' : 'match_participants';
+  const [{ count: partCount }, { count: pendingOthers }] = await Promise.all([
+    admin.from(participantsTable).select('*', { count: 'exact', head: true }).eq('match_id', match_id),
+    admin.from('payments').select('*', { count: 'exact', head: true })
+      .eq('match_id', match_id).eq('env', env).eq('status', 'PENDING').neq('user_id', user.id),
+  ]);
+  const taken = (partCount ?? 0) + (match.joined_players ?? 0) + (pendingOthers ?? 0);
+  if (taken >= match.max_players) {
+    return json({ error: 'match_full' }, 409);
+  }
+
   const amountCents = Math.round(match.price * 100);
   const orderId = crypto.randomUUID();
   const userEmail = user.email ?? '';
