@@ -1,6 +1,6 @@
 # TODO — AmicSport
 
-Pendientes y mejoras. Última revisión: 2026-05-28.
+Pendientes y mejoras. Última revisión: 2026-05-30.
 
 ## A. Bloqueantes / acción requerida
 
@@ -46,3 +46,17 @@ Pendientes y mejoras. Última revisión: 2026-05-28.
 - Bump de Expo (`expo`, `expo-linking`, `expo-web-browser`) a versiones de SDK 54 + plugin `expo-web-browser`. (`ceb174f`)
 - Dedup de rutas `dev/(tabs)/*` como re-exports de prod (−1079 líneas); `dev/admin/pagos` añadido. (`4ad9c8b`)
 - Verificado: el pago no recoge teléfono (Bizum lo gestiona Monei); la Política de Privacidad ya es correcta.
+
+**2026-05-30**
+- Perf web (lentitud "los partidos tardan en salir"): el mapa de Google ya no
+  bloquea el primer paint de la lista. `MapView` ahora es `React.lazy` (code-split)
+  y se monta diferido en desktop (`requestIdleCallback`) / colapsado por defecto en
+  móvil (`isMapExpanded=false`). Diagnóstico medido: el backend responde en
+  ~100-700ms y los payloads son de 1-6KB — la lentitud era render de cliente + carga
+  de Maps, NO la BD ni la red.
+- Perf web ("se tarda en entrar a un partido"): el detalle se siembra al instante
+  desde `lib/matchCache` (datos que la lista ya tiene) y revalida en 2º plano, en
+  vez de mostrar spinner para un round-trip nuevo. Afecta a la ruta `/match/[id]`
+  (móvil) y al panel inline de desktop.
+- Pendiente de desplegar: requiere `npx expo export -p web` + deploy para que llegue
+  al sitio en producción.

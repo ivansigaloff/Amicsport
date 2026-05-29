@@ -5,6 +5,21 @@ import { GoogleMap, useJsApiLoader, InfoWindow, OverlayView } from '@react-googl
 
 const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
+// Persist geocoded venue coordinates so we don't re-hit the Google Geocoder API
+// on every mount (it was sequential at 400ms/venue and lost on navigation).
+const GEOCODE_CACHE_KEY = 'amicsport_geocode_v1';
+type GeoEntry = { lat: number; lng: number; address: string; link: string; approx?: boolean };
+
+const loadGeocodeCache = (): Record<string, GeoEntry> => {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const raw = window.localStorage.getItem(GEOCODE_CACHE_KEY);
+      if (raw) return JSON.parse(raw);
+    }
+  } catch {}
+  return {};
+};
+
 interface MapViewProps {
   matches: any[];
   selectedVenue: string | null;
@@ -29,9 +44,24 @@ export default function MapView({ matches, selectedVenue, selectedMatchId, onSel
     libraries: ['places'] as any
   });
 
-  const [geocodedVenues, setGeocodedVenues] = useState<Record<string, { lat: number, lng: number, address: string, link: string }>>({});
+  // Lazy-init from the persisted cache so previously geocoded venues render instantly.
+  const [geocodedVenues, setGeocodedVenues] = useState<Record<string, GeoEntry>>(loadGeocodeCache);
   const geocoderRef = useRef<any>(null);
   const [mapInstance, setMapInstance] = useState<any>(null);
+
+  // Persist successful geocodes (skip the random "approx" fallbacks so they retry next time).
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const persistable = Object.fromEntries(
+          Object.entries(geocodedVenues).filter(([, v]) => !v.approx)
+        );
+        if (Object.keys(persistable).length > 0) {
+          window.localStorage.setItem(GEOCODE_CACHE_KEY, JSON.stringify(persistable));
+        }
+      }
+    } catch {}
+  }, [geocodedVenues]);
 
   const uniqueVenues = useMemo(() => {
      const map = new Map<string, { count: number, location_url: string, max_free_percent: number }>();
@@ -150,14 +180,16 @@ export default function MapView({ matches, selectedVenue, selectedMatchId, onSel
                           }
                       }));
                   } else {
-                      // Fallback: If Geocoder fails completely (generic venue + short URL), place marker near center
+                      // Fallback: If Geocoder fails completely (generic venue + short URL), place marker near center.
+                      // Marked approx so it is NOT persisted — it will be retried on the next mount.
                       setGeocodedVenues(prev => ({
                           ...prev,
                           [v.venue]: {
                               lat: center.lat + (Math.random() * 0.02 - 0.01),
                               lng: center.lng + (Math.random() * 0.02 - 0.01),
                               address: `${v.venue} (No pudimos extraer ubicación exacta del link)`,
-                              link: v.location_url || ''
+                              link: v.location_url || '',
+                              approx: true
                           }
                       }));
                   }

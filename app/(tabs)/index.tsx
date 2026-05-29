@@ -5,17 +5,28 @@ import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback, memo, lazy, Suspense } from 'react';
 import { supabase } from '../../lib/supabase';
 import { computeIsAdmin } from '../../lib/auth';
 import { useEnv } from '../../hooks/use-env';
 import MatchDetails from '../../components/MatchDetails';
-import MapView from '../../components/MapView';
+import { cacheMatchList } from '../../lib/matchCache';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { shareMultipleMatches, copyMultipleMatchUrls } from '../../lib/share';
 import { parseMatchDate, toISODate, getMatchTiming } from '../../lib/date';
 import i18n from '../../lib/i18n';
 import { COLORS, SHADOWS, FONTS, SIZES } from '../../constants/theme';
+
+// Google Maps (heavy JS API + per-venue geocoding) was a top contributor to the
+// list feeling slow to appear. Code-split it so its bundle loads OFF the initial
+// critical path, and mount it only after the list has painted (desktop) or on
+// demand (mobile) — see `mapDeferReady` / `isMapExpanded` below.
+const MapView = lazy(() => import('../../components/MapView'));
+const MapFallback = () => (
+  <View style={{ flex: 1, minHeight: 220, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC', borderRadius: 24 }}>
+    <ActivityIndicator size="large" color="#556080" />
+  </View>
+);
 
 // In-memory cache of the matches list. Avoids refetching on every screen
 // remount (Expo Router can unmount/remount tab screens) and on tab focus.
@@ -75,7 +86,25 @@ const addDaysToDateString = (dateStr: string, daysToAdd: number = 7) => {
   return dateStr;
 };
 
-const MatchCard = ({ item, fetchMatches, onSelectMatch, isDesktop, isSelected, isAdmin, isShareMode, isShareSelected, onToggleShareSelect }: { item: any, fetchMatches: any, onSelectMatch: (id: string) => void, isDesktop: boolean, isSelected: boolean, isAdmin: boolean, isShareMode: boolean, isShareSelected: boolean, onToggleShareSelect: (id: string) => void }) => {
+const AVAIL_COLORS = { GREEN: '#10B981', YELLOW: '#F59E0B', RED: '#EF4444', INDIGO: '#FFB81C' };
+
+/** Best availability color for a set of matches: green (>25% free) > yellow (>0) > red (full). */
+const getAvailabilityColor = (mList: any[]) => {
+  let bestPriority = 0;
+  let bestColor = AVAIL_COLORS.INDIGO;
+  mList.forEach(m => {
+    const freeSlots = m.max_players - m.computed_joined;
+    const freePct = (freeSlots / m.max_players) * 100;
+    let color = AVAIL_COLORS.RED;
+    let priority = 1;
+    if (freePct > 25) { color = AVAIL_COLORS.GREEN; priority = 3; }
+    else if (freePct > 0) { color = AVAIL_COLORS.YELLOW; priority = 2; }
+    if (priority > bestPriority) { bestPriority = priority; bestColor = color; }
+  });
+  return bestColor;
+};
+
+const MatchCard = memo(({ item, fetchMatches, onSelectMatch, isDesktop, isSelected, isAdmin, isShareMode, isShareSelected, onToggleShareSelect }: { item: any, fetchMatches: any, onSelectMatch: (id: string) => void, isDesktop: boolean, isSelected: boolean, isAdmin: boolean, isShareMode: boolean, isShareSelected: boolean, onToggleShareSelect: (id: string) => void }) => {
   const { t } = useTranslation();
   const router = useRouter();
   const { fromTable, env } = useEnv();
@@ -101,17 +130,20 @@ const MatchCard = ({ item, fetchMatches, onSelectMatch, isDesktop, isSelected, i
       newDate = addDaysToDateString(item.date, 7);
     }
     
+    // image_url is not loaded in the list query (kept lean); fetch it on demand.
+    const { data: src } = await supabase.from(fromTable('matches')).select('image_url').eq('id', item.id).single();
     const { error } = await supabase.from(fromTable('matches')).insert({
       title: item.title,
       venue: item.venue,
       location_url: item.location_url,
       date: newDate,
+      match_date: toISODate(parseMatchDate(newDate)),
       time: item.time,
       price: item.price,
       max_players: item.max_players,
       joined_players: 0,
       level: item.level,
-      image_url: item.image_url,
+      image_url: src?.image_url ?? null,
       distance: item.distance,
       is_female: item.is_female,
       is_mixed: item.is_mixed,
@@ -244,7 +276,7 @@ const MatchCard = ({ item, fetchMatches, onSelectMatch, isDesktop, isSelected, i
       )}
     </View>
   );
-};
+});
 
 export default function MatchesScreen() {
   const { t, i18n } = useTranslation();
@@ -264,7 +296,12 @@ export default function MatchesScreen() {
 
   // Expansion states
   const [isCalendarExpanded, setIsCalendarExpanded] = useState(false);
-  const [isMapExpanded, setIsMapExpanded] = useState(true);
+  // Mobile: map starts COLLAPSED so the list paints immediately. Mounting Google
+  // Maps was a top cause of the list feeling slow; users open it via the toggle.
+  const [isMapExpanded, setIsMapExpanded] = useState(false);
+  // Desktop shows the map panel permanently; defer its mount until the list has
+  // painted (see effect below) for the same reason.
+  const [mapDeferReady, setMapDeferReady] = useState(false);
 
   // Advanced Filters
   const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
@@ -275,12 +312,15 @@ export default function MatchesScreen() {
   const [filterMorning, setFilterMorning] = useState(false);
   const [filterEvening, setFilterEvening] = useState(false);
   const [showPastMatches, setShowPastMatches] = useState(false);
+  // Mirror of showPastMatches readable inside the stable fetchMatches callback
+  // (kept in a ref so fetchMatches identity stays stable for memoized children).
+  const showPastRef = useRef(false);
   const [isLangModalVisible, setIsLangModalVisible] = useState(false);
 
   // Participation Indicator States
   const [userParticipationMap, setUserParticipationMap] = useState<Record<string, { venue: string, time: string }[]>>({});
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
-  const [horizontalScrollX, setHorizontalScrollX] = useState(0);
+  const horizontalScrollXRef = useRef(0);
 
   const changeLanguage = async (lng: string) => {
     await i18n.changeLanguage(lng);
@@ -343,14 +383,14 @@ export default function MatchesScreen() {
     node.scrollLeft = dragScrollLeft - walk;
   };
 
-  const toggleShareSelect = (id: string) => {
+  const toggleShareSelect = useCallback((id: string) => {
     setShareSelectedIds(prev => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
-  };
+  }, []);
 
   const cancelShareMode = () => setShareSelectedIds(new Set());
 
@@ -400,7 +440,7 @@ export default function MatchesScreen() {
 
   const isMatchOver = (dateISO: string, timeStr: string) => getMatchTiming(dateISO, timeStr).isOver;
 
-  const fetchMatches = async (isRefresh = false) => {
+  const fetchMatches = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
 
@@ -416,16 +456,31 @@ export default function MatchesScreen() {
     // Fire matches + user-participations in parallel (was sequential: matches → auth → parts).
     // Only select columns used in the list; omit location_url, creator_email,
     // cancellation_hours, payment_deadline_hours (not needed here).
-    const matchCols = 'id, title, venue, date, time, price, max_players, joined_players, level, image_url, distance, created_at, is_female, is_mixed, is_private, is_advanced, requires_payment';
-    const matchesPromise = supabase
+    const matchCols = 'id, title, venue, location_url, date, match_date, time, price, max_players, joined_players, level, distance, created_at, is_female, is_mixed, is_private, is_advanced, requires_payment';
+
+    // Server-side window: by default only UPCOMING matches, ordered + capped, so the
+    // payload stays bounded as history grows (was: fetch the entire table every load).
+    // The admin "show past" toggle keeps the legacy fetch (rare, capped at 500).
+    const includePast = showPastRef.current;
+    let matchesQuery = supabase
       .from(fromTable('matches'))
-      .select(`${matchCols}, ${fromTable('match_participants')}(count)`)
-      .order('created_at', { ascending: false });
+      .select(`${matchCols}, ${fromTable('match_participants')}(count)`);
+    if (includePast) {
+      matchesQuery = matchesQuery.order('created_at', { ascending: false }).limit(500);
+    } else {
+      const today = new Date().toISOString().split('T')[0];
+      matchesQuery = matchesQuery
+        .gte('match_date', today)
+        .order('match_date', { ascending: true })
+        .order('time', { ascending: true })
+        .limit(200);
+    }
+    const matchesPromise = matchesQuery;
 
     const partsPromise = user
       ? supabase
           .from(fromTable('match_participants'))
-          .select(`match_id, user_id, user_name, ${fromTable('matches')}(id, date, venue, time)`)
+          .select(`match_id, user_id, user_name, ${fromTable('matches')}(id, date, match_date, venue, time)`)
           .or(`user_id.eq.${user.id},user_name.ilike.${safeUserName} (invitado%`)
       : Promise.resolve({ data: null });
 
@@ -440,8 +495,8 @@ export default function MatchesScreen() {
       if (pData && user) {
         for (const pEntry of pData as any[]) {
           const m = pEntry[fromTable('matches')];
-          if (m?.date) {
-            const iso = parseDateString(m.date);
+          if (m?.match_date || m?.date) {
+            const iso = m.match_date || parseDateString(m.date);
             if (iso) {
               if (!pMap[iso]) pMap[iso] = [];
               if (!pMap[iso].find(x => x.venue === m.venue && x.time === m.time))
@@ -464,7 +519,7 @@ export default function MatchesScreen() {
           const realCount = Array.isArray(m[partTable]) ? (m[partTable][0]?.count || 0) : 0;
           return {
             ...m,
-            dateISO: parseDateString(m.date),
+            dateISO: m.match_date || parseDateString(m.date),
             computed_joined: (m.joined_players || 0) + realCount,
             userStatus: statusMap[m.id] || { isJoined: false, guestCount: 0 },
           };
@@ -480,17 +535,20 @@ export default function MatchesScreen() {
       // Single setState — one render instead of two.
       setUserParticipationMap(pMap);
       setMatches(processed);
-      matchesCache = { matches: processed, participations: pMap, ts: Date.now() };
+      cacheMatchList(processed); // seed the detail-screen cache for instant open
+      // Only cache the default upcoming view; the past view is a transient admin query.
+      if (!includePast) matchesCache = { matches: processed, participations: pMap, ts: Date.now() };
     }
 
     setLoading(false);
     setRefreshing(false);
-  };
+  }, [fromTable]);
 
   useEffect(() => {
     // Use cached data if it is still fresh; otherwise fetch.
     if (matchesCache && Date.now() - matchesCache.ts < MATCHES_CACHE_TTL_MS) {
       setMatches(matchesCache.matches);
+      cacheMatchList(matchesCache.matches);
       setUserParticipationMap(matchesCache.participations);
       setLoading(false);
     } else {
@@ -499,6 +557,27 @@ export default function MatchesScreen() {
     // Set initial filter to today as requested
     setSelectedDateFilter(todayISO);
   }, []);
+
+  // Defer mounting the desktop map until the browser is idle, so Google Maps'
+  // heavy JS load runs AFTER the list has painted (not during first render).
+  useEffect(() => {
+    const w = typeof window !== 'undefined' ? (window as any) : null;
+    if (w?.requestIdleCallback) {
+      const id = w.requestIdleCallback(() => setMapDeferReady(true), { timeout: 1500 });
+      return () => w.cancelIdleCallback?.(id);
+    }
+    const id = setTimeout(() => setMapDeferReady(true), 200);
+    return () => clearTimeout(id);
+  }, []);
+
+  // Admin "show past" changes the server-side query window, so refetch when it
+  // toggles. Skips the initial mount (handled by the effect above).
+  const didTogglePastRef = useRef(false);
+  useEffect(() => {
+    showPastRef.current = showPastMatches;
+    if (!didTogglePastRef.current) { didTogglePastRef.current = true; return; }
+    fetchMatches();
+  }, [showPastMatches, fetchMatches]);
 
   useEffect(() => {
     checkRole();
@@ -510,95 +589,72 @@ export default function MatchesScreen() {
   };
 
   const todayISO = new Date().toISOString().split('T')[0];
-  const COLORS = {
-    GREEN: '#10B981',
-    YELLOW: '#F59E0B',
-    RED: '#EF4444',
-    INDIGO: '#FFB81C'
-  };
-
-  const getAvailabilityColor = (mList: any[]) => {
-    let bestPriority = 0;
-    let bestColor = COLORS.INDIGO;
-
-    mList.forEach(m => {
-      const freeSlots = m.max_players - m.computed_joined;
-      const freePct = (freeSlots / m.max_players) * 100;
-      let color = COLORS.RED;
-      let priority = 1;
-
-      if (freePct > 25) { color = COLORS.GREEN; priority = 3; }
-      else if (freePct > 0) { color = COLORS.YELLOW; priority = 2; }
-
-      if (priority > bestPriority) {
-        bestPriority = priority;
-        bestColor = color;
+  // 1. Map upcoming matches to their date (memoized — only recomputed when matches change).
+  const matchesByDateMap = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    matches.forEach(m => {
+      if (m.dateISO && m.dateISO >= todayISO) {
+        if (!map[m.dateISO]) map[m.dateISO] = [];
+        map[m.dateISO].push(m);
       }
     });
-    return bestColor;
-  };
+    return map;
+  }, [matches, todayISO]);
 
-  const markedDates: any = {};
-  
-  // 1. Map matches to dates
-  const matchesByDateMap: Record<string, any[]> = {};
-  matches.forEach(m => {
-    if (m.dateISO && m.dateISO >= todayISO) {
-      if (!matchesByDateMap[m.dateISO]) matchesByDateMap[m.dateISO] = [];
-      matchesByDateMap[m.dateISO].push(m);
-    }
-  });
+  // 2. Calendar markings (memoized — depends on the date map + current selection).
+  const markedDates = useMemo(() => {
+    const marks: any = {};
+    Object.keys(matchesByDateMap).forEach(dISO => {
+      const dayMatches = matchesByDateMap[dISO];
+      const isSelectedDay = selectedDateFilter === dISO;
 
-  // 2. Generate markings based on mode
-  Object.keys(matchesByDateMap).forEach(dISO => {
-    const dayMatches = matchesByDateMap[dISO];
-    const isSelectedDay = selectedDateFilter === dISO;
-    
-    if (!selectedVenueFilter) {
-      // GLOBAL MODE: Availability dot for all days
-      markedDates[dISO] = { 
-        marked: true, 
-        dotColor: getAvailabilityColor(dayMatches), 
-        activeOpacity: 0.8,
-        selected: isSelectedDay,
-        selectedColor: COLORS.INDIGO
-      };
-    } else {
-      // VENUE MODE: Ring for target venue, Indigo dot for others
-      const normalizedSelected = selectedVenueFilter.trim().toLowerCase();
-      const venueMatches = dayMatches.filter(m => m.venue.trim().toLowerCase() === normalizedSelected);
-      
-      if (venueMatches.length > 0) {
-        // ENHANCED UI: Solid Circle for target venue
-        const availabilityColor = getAvailabilityColor(venueMatches);
-        markedDates[dISO] = {
-          customStyles: {
-            container: {
-              backgroundColor: availabilityColor, // Solid circle
-              borderRadius: 20,
-              justifyContent: 'center',
-              alignItems: 'center',
-              borderWidth: isSelectedDay ? 2 : 0,
-              borderColor: COLORS.INDIGO
-            },
-            text: {
-              color: '#0F172A', // Keep original dark color
-              fontWeight: '700'
-            }
-          }
-        };
-      } else {
-        // Standard Indigo Dot for other venues
-        markedDates[dISO] = { 
-          marked: true, 
-          dotColor: COLORS.INDIGO, 
+      if (!selectedVenueFilter) {
+        // GLOBAL MODE: Availability dot for all days
+        marks[dISO] = {
+          marked: true,
+          dotColor: getAvailabilityColor(dayMatches),
           activeOpacity: 0.8,
           selected: isSelectedDay,
-          selectedColor: COLORS.INDIGO
+          selectedColor: AVAIL_COLORS.INDIGO
         };
+      } else {
+        // VENUE MODE: Ring for target venue, Indigo dot for others
+        const normalizedSelected = selectedVenueFilter.trim().toLowerCase();
+        const venueMatches = dayMatches.filter(m => m.venue.trim().toLowerCase() === normalizedSelected);
+
+        if (venueMatches.length > 0) {
+          // ENHANCED UI: Solid Circle for target venue
+          const availabilityColor = getAvailabilityColor(venueMatches);
+          marks[dISO] = {
+            customStyles: {
+              container: {
+                backgroundColor: availabilityColor, // Solid circle
+                borderRadius: 20,
+                justifyContent: 'center',
+                alignItems: 'center',
+                borderWidth: isSelectedDay ? 2 : 0,
+                borderColor: AVAIL_COLORS.INDIGO
+              },
+              text: {
+                color: '#0F172A', // Keep original dark color
+                fontWeight: '700'
+              }
+            }
+          };
+        } else {
+          // Standard Indigo Dot for other venues
+          marks[dISO] = {
+            marked: true,
+            dotColor: AVAIL_COLORS.INDIGO,
+            activeOpacity: 0.8,
+            selected: isSelectedDay,
+            selectedColor: AVAIL_COLORS.INDIGO
+          };
+        }
       }
-    }
-  });
+    });
+    return marks;
+  }, [matchesByDateMap, selectedDateFilter, selectedVenueFilter]);
 
   const handleSelectVenue = (venue: string | null) => {
     setSelectedVenueFilter(venue);
@@ -614,7 +670,7 @@ export default function MatchesScreen() {
     setShowPastMatches(false);
   };
 
-  const filteredMatches = matches.filter(m => {
+  const filteredMatches = useMemo(() => matches.filter(m => {
     // 0. Past Matches Filter (Admins only)
     if (!showPastMatches && isMatchOver(m.dateISO, m.time)) return false;
 
@@ -642,7 +698,7 @@ export default function MatchesScreen() {
     }
 
     return true;
-  });
+  }), [matches, showPastMatches, selectedVenueFilter, filterFemale, filterMixed, filterPrivate, filterAdvanced, filterMorning, filterEvening]);
 
   // Group matches into sections for SectionList
   const sections = useMemo(() => {
@@ -765,7 +821,7 @@ export default function MatchesScreen() {
                   keyExtractor={item => item.dateString}
                   contentContainerStyle={styles.horizontalScrollContent}
                   scrollEnabled={Platform.OS !== 'web' || !isScrolling}
-                  onScroll={(e) => setHorizontalScrollX(e.nativeEvent.contentOffset.x)}
+                  onScroll={(e) => { horizontalScrollXRef.current = e.nativeEvent.contentOffset.x; }}
                   scrollEventThrottle={16}
                   renderItem={({ item }) => {
                     const isSelected = selectedDateFilter === item.dateString;
@@ -812,7 +868,7 @@ export default function MatchesScreen() {
                     const idx = dayList.findIndex(d => d.dateString === hoveredDate);
                     const participations = userParticipationMap[hoveredDate];
                     if (idx !== -1 && participations) {
-                      const leftPos = (idx * 55) + 10 - horizontalScrollX;
+                      const leftPos = (idx * 55) + 10 - horizontalScrollXRef.current;
                       // Don't show if scrolled out of view on the left
                       if (leftPos < -100 || leftPos > width - 40) return null;
                       
@@ -911,12 +967,14 @@ export default function MatchesScreen() {
                       </View>
                       {isMapExpanded && (
                         <View style={styles.mobileMapWrapper}>
-                          <MapView 
-                            matches={filteredMatches} 
-                            selectedVenue={selectedVenueFilter} 
-                            selectedMatchId={selectedMatchId}
-                            onSelectVenue={handleSelectVenue} 
-                          />
+                          <Suspense fallback={<MapFallback />}>
+                            <MapView
+                              matches={filteredMatches}
+                              selectedVenue={selectedVenueFilter}
+                              selectedMatchId={selectedMatchId}
+                              onSelectVenue={handleSelectVenue}
+                            />
+                          </Suspense>
                         </View>
                       )}
                     </View>
@@ -968,12 +1026,18 @@ export default function MatchesScreen() {
 
         {isDesktop && (
           <View style={styles.desktopMapPanel}>
-            <MapView 
-              matches={filteredMatches} 
-              selectedVenue={selectedVenueFilter} 
-              selectedMatchId={selectedMatchId}
-              onSelectVenue={handleSelectVenue} 
-            />
+            {mapDeferReady ? (
+              <Suspense fallback={<MapFallback />}>
+                <MapView
+                  matches={filteredMatches}
+                  selectedVenue={selectedVenueFilter}
+                  selectedMatchId={selectedMatchId}
+                  onSelectVenue={handleSelectVenue}
+                />
+              </Suspense>
+            ) : (
+              <MapFallback />
+            )}
           </View>
         )}
       </View>

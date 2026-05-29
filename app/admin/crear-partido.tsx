@@ -333,6 +333,7 @@ export default function CreateMatchScreen() {
       title,
       venue,
       date,
+      match_date: dateISO, // real sortable date (ISO), derived from the display string above
       time,
       price: parseFloat(price) || 0,
       max_players: parseInt(maxPlayers) || 10,
