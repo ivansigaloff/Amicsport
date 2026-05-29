@@ -17,6 +17,16 @@ import { parseMatchDate, toISODate, getMatchTiming } from '../../lib/date';
 import i18n from '../../lib/i18n';
 import { COLORS, SHADOWS, FONTS, SIZES } from '../../constants/theme';
 
+// In-memory cache of the matches list. Avoids refetching on every screen
+// remount (Expo Router can unmount/remount tab screens) and on tab focus.
+// Pull-to-refresh and post-mutation calls (duplicate / bulk delete) bypass it.
+const MATCHES_CACHE_TTL_MS = 5 * 60 * 1000;
+let matchesCache: {
+  matches: any[];
+  participations: Record<string, { venue: string; time: string }[]>;
+  ts: number;
+} | null = null;
+
 LocaleConfig.locales['es'] = {
   monthNames: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
   monthNamesShort: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
@@ -470,6 +480,7 @@ export default function MatchesScreen() {
       // Single setState — one render instead of two.
       setUserParticipationMap(pMap);
       setMatches(processed);
+      matchesCache = { matches: processed, participations: pMap, ts: Date.now() };
     }
 
     setLoading(false);
@@ -477,7 +488,14 @@ export default function MatchesScreen() {
   };
 
   useEffect(() => {
-    fetchMatches();
+    // Use cached data if it is still fresh; otherwise fetch.
+    if (matchesCache && Date.now() - matchesCache.ts < MATCHES_CACHE_TTL_MS) {
+      setMatches(matchesCache.matches);
+      setUserParticipationMap(matchesCache.participations);
+      setLoading(false);
+    } else {
+      fetchMatches();
+    }
     // Set initial filter to today as requested
     setSelectedDateFilter(todayISO);
   }, []);
