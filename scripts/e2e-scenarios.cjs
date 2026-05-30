@@ -384,7 +384,13 @@ async function scChaos(browser) {
   let pool = await fetchMatchPool();
   if (!RUN_PAID) pool = pool.filter(m => !m.paid);
   if (!pool.length) { check(S, 'match pool', false, 'no upcoming matches'); return; }
-  const initial = {}; for (const m of pool) initial[m.id] = await participantCount(m.id);
+  const initial = {}, initialIds = {};
+  for (const m of pool) {
+    const r = await fetch(SB_URL + '/rest/v1/match_participants?match_id=eq.' + m.id + '&select=id', { headers: sbH });
+    const j = await r.json().catch(() => []);
+    initialIds[m.id] = new Set(Array.isArray(j) ? j.map(x => x.id) : []); // protect pre-existing rows
+    initial[m.id] = initialIds[m.id].size;
+  }
   log(`> CHAOS users=${users.length} sessions=${SESSIONS} ${soak ? 'SOAK(5-15min)' : 'fast(5-15s)'} paid=${RUN_PAID} pool=${pool.length}`);
 
   const joinedSet = {}; users.forEach(usr => joinedSet[usr.name] = new Set());
@@ -419,7 +425,8 @@ async function scChaos(browser) {
           if (act === 'reserve' && (n == null || n < max)) {
             if (m.paid) {
               const url = await captureRedirect(page, () => page.getByText(/PAGAR PLAZA/i).first().click({ timeout: 8000 }));
-              const r = await payMonei(page, url, pick(['card', 'bizum'])); payN++; if (r.method.startsWith('bizum')) bizumN++;
+              const method = (m.price > 0 && m.price < 5) ? pick(['card', 'bizum']) : 'card'; // Bizum test only approves <5€
+              const r = await payMonei(page, url, method); payN++; if (r.method.startsWith('bizum')) bizumN++;
               await openMatch(page, m.id);
             } else {
               await reserveFree(page).catch(() => {});
@@ -429,7 +436,8 @@ async function scChaos(browser) {
             for (let g = 0, gn = randInt(1, 2); g < gn; g++) {
               if (m.paid) {
                 const url = await captureRedirect(page, () => addGuestBtn(page).click({ timeout: 8000 }));
-                const r = await payMonei(page, url, pick(['card', 'bizum'])); payN++; if (r.method.startsWith('bizum')) bizumN++;
+                const method = (m.price > 0 && m.price < 5) ? pick(['card', 'bizum']) : 'card'; // Bizum test only approves <5€
+                const r = await payMonei(page, url, method); payN++; if (r.method.startsWith('bizum')) bizumN++;
                 await openMatch(page, m.id);
               } else {
                 await addGuestBtn(page).click({ timeout: 8000 }).catch(() => {});
@@ -508,7 +516,9 @@ async function scChaos(browser) {
   for (const usr of users) {
     const auth = await authUser(usr.email); if (!auth) continue;
     for (const m of pool) {
-      await fetch(SB_URL + '/rest/v1/match_participants?match_id=eq.' + m.id + '&or=(user_id.eq.' + auth.uid + ',created_by.eq.' + auth.uid + ')', { method: 'DELETE', headers: { apikey: SB_KEY, Authorization: 'Bearer ' + auth.token } }).catch(() => {});
+      const keep = [...(initialIds[m.id] || [])];
+      const notIn = keep.length ? '&id=not.in.(' + keep.join(',') + ')' : ''; // never delete pre-existing rows (real data)
+      await fetch(SB_URL + '/rest/v1/match_participants?match_id=eq.' + m.id + '&or=(user_id.eq.' + auth.uid + ',created_by.eq.' + auth.uid + ')' + notIn, { method: 'DELETE', headers: { apikey: SB_KEY, Authorization: 'Bearer ' + auth.token } }).catch(() => {});
     }
   }
   let extra = 0; for (const m of pool) extra += Math.max(0, (await participantCount(m.id)) - initial[m.id]);
