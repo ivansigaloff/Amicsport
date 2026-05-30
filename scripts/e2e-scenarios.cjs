@@ -32,6 +32,39 @@ const check = (scenario, step, ok, detail) => {
   log(`  ${ok ? '✅' : '❌'} [${scenario}] ${step}${detail ? ' — ' + detail : ''}`);
 };
 
+// ── Chaos/soak helpers (REST for state + cleanup, randomness) ───────────────
+require('dotenv').config();
+const SB_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const SB_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const sbH = { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY };
+const ALL_USERS = ['edu', 'paisa', 'felix', 'nico', 'ogdier', 'delvis', 'oussama', 'adam', 'alex', 'cristian', 'bony', 'bob', 'luisjr', 'moha', 'luis', 'elkin', 'andres', 'cali', 'johnatan', 'david', 'paul', 'percy'];
+const arg = (k, d) => { const a = process.argv.find(x => x.startsWith(k + '=')); return a ? a.slice(k.length + 1) : d; };
+const randInt = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+async function authUser(email) {
+  try {
+    const r = await fetch(SB_URL + '/auth/v1/token?grant_type=password', {
+      method: 'POST', headers: { apikey: SB_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: PASSWORD }),
+    });
+    const j = await r.json();
+    return j.access_token ? { token: j.access_token, uid: j.user.id } : null;
+  } catch { return null; }
+}
+async function participantCount(matchId) {
+  const r = await fetch(SB_URL + '/rest/v1/match_participants?match_id=eq.' + matchId + '&select=id', { headers: sbH });
+  const j = await r.json().catch(() => []);
+  return Array.isArray(j) ? j.length : 0;
+}
+async function fetchMatchPool() {
+  const today = new Date().toISOString().split('T')[0];
+  const r = await fetch(SB_URL + '/rest/v1/matches?match_date=gte.' + today + '&select=id,requires_payment,max_players,joined_players,price&order=match_date.asc&limit=20', { headers: sbH });
+  const j = await r.json().catch(() => []);
+  return Array.isArray(j) ? j.map(m => ({ id: m.id, paid: !!m.requires_payment, max: m.max_players - (m.joined_players || 0), price: m.price })) : [];
+}
+
 // ── Browser primitives ─────────────────────────────────────────────────────
 async function login(browser, user) {
   const ctx = await browser.newContext({ viewport: { width: 430, height: 920 } });
@@ -39,15 +72,28 @@ async function login(browser, user) {
   const dialogs = [];
   page.on('dialog', d => { dialogs.push(d.message()); d.accept().catch(() => {}); });
   page._dialogs = dialogs;
-  await page.goto(BASE + '/login', { waitUntil: 'domcontentloaded', timeout: 30000 });
-  await page.waitForTimeout(2500);
-  await page.getByText('Entendido', { exact: false }).click({ timeout: 2000 }).catch(() => {});
-  await page.getByPlaceholder('Email').fill(user.email);
-  await page.getByPlaceholder(/Contrase/i).fill(PASSWORD);
-  await page.getByText(/INICIAR\s+SESI/i, { exact: false }).click();
-  await page.waitForURL(x => !String(x).includes('/login'), { timeout: 20000 });
-  await page.waitForTimeout(2500);
-  return { ctx, page };
+  // Retry: browser login is intermittently flaky (waitForURL can time out even
+  // though the account is fine). 3 tries so a transient hiccup doesn't leave state.
+  let lastErr;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      await page.goto(BASE + '/login', { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await page.waitForTimeout(attempt === 1 ? 2500 : 1200);
+      await page.getByText('Entendido', { exact: false }).click({ timeout: 2000 }).catch(() => {});
+      await page.getByPlaceholder('Email').fill(user.email);
+      await page.getByPlaceholder(/Contrase/i).fill(PASSWORD);
+      await page.getByText(/INICIAR\s+SESI/i, { exact: false }).click();
+      await page.waitForURL(x => !String(x).includes('/login'), { timeout: 20000 });
+      await page.waitForTimeout(2500);
+      return { ctx, page };
+    } catch (e) {
+      if (!page.url().includes('/login')) { await page.waitForTimeout(1500); return { ctx, page }; }
+      lastErr = e;
+      if (attempt < 3) await page.waitForTimeout(2500 * attempt);
+    }
+  }
+  await ctx.close().catch(() => {});
+  throw new Error('login failed: ' + (lastErr ? String(lastErr.message).split('\n')[0] : '?'));
 }
 
 async function openMatch(page, matchId) {
@@ -90,37 +136,58 @@ async function cancelAll(page, max = 20) {
 }
 
 // ── MONEI test form ────────────────────────────────────────────────────────
-async function payMonei(page, redirectUrl) {
+async function payMonei(page, redirectUrl, method = 'card') {
   await page.waitForTimeout(2000);
-  // initiatePayment/addGuest redirect via window.location; if we captured the URL
-  // and the page hasn't navigated to MONEI yet, go there explicitly.
   if (redirectUrl && !/monei|checkout|secure\./.test(page.url())) {
     await page.goto(redirectUrl, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
   }
-  // Wait until the MONEI checkout has actually loaded before filling — the guest
-  // flow (confirm → createPayment → redirect) can take >2.5s, so a fixed wait
-  // raced ahead and filled nothing. billingName lives on the main MONEI page.
   await page.waitForURL(/monei|secure\./, { timeout: 15000 }).catch(() => {});
-  await page.waitForSelector('input[name="billingName"]', { timeout: 20000 }).catch(() => {});
-  await page.waitForTimeout(800);
-  const frames = [page, ...page.frames()];
+  await page.waitForTimeout(1000);
+  const frames = () => [page, ...page.frames()];
   const fill = async (sels, val) => {
-    for (const f of frames) for (const s of sels) {
-      try { const l = f.locator(s).first(); if (await l.isVisible({ timeout: 500 })) { await l.fill(val); return; } } catch {}
+    for (const f of frames()) for (const s of sels) {
+      try { const l = f.locator(s).first(); if (await l.isVisible({ timeout: 400 })) { await l.fill(val); return true; } } catch {}
     }
+    return false;
   };
-  await fill(['input[name="cardNumber"]', 'input[autocomplete="cc-number"]', 'input[placeholder*="0000"]', 'input[id*="card"]'], CARD.number);
-  await fill(['input[name*="expir" i]', 'input[autocomplete="cc-exp"]', 'input[placeholder*="MM"]'], CARD.expiry);
-  await fill(['input[name*="cvc" i]', 'input[name*="cvv" i]', 'input[autocomplete="cc-csc"]', 'input[placeholder*="CVC"]'], CARD.cvc);
-  // Cardholder name is REQUIRED by MONEI (name="billingName", placeholder
-  // "Nombre en la tarjeta"); without it the submit is blocked by validation.
-  await fill(['input[name="billingName"]', 'input[name*="holder" i]', 'input[autocomplete="cc-name"]', 'input[placeholder*="ombre" i]', 'input[placeholder*="name" i]'], CARD.name);
-  await page.waitForTimeout(700);
-  for (const f of frames) for (const s of ['button[type="submit"]', 'button:has-text("Pagar")', 'button:has-text("Pay")', 'button:has-text("Confirmar")']) {
-    try { const b = f.locator(s).first(); if (await b.isVisible({ timeout: 500 })) { await b.click(); break; } } catch {}
+  const clickAny = async (sels) => {
+    for (const f of frames()) for (const s of sels) {
+      try { const b = f.locator(s).first(); if (await b.isVisible({ timeout: 400 })) { await b.click(); return true; } } catch {}
+    }
+    return false;
+  };
+  const reachedReturn = () => /payment\/return/.test(page.url()) || (page.url().startsWith(BASE) && !/monei|secure\./.test(page.url()));
+  const fillCard = async () => {
+    await page.waitForSelector('input[name="billingName"]', { timeout: 15000 }).catch(() => {});
+    await fill(['input[name="cardNumber"]', 'input[autocomplete="cc-number"]', 'input[placeholder*="0000"]', 'input[id*="card"]'], CARD.number);
+    await fill(['input[name*="expir" i]', 'input[autocomplete="cc-exp"]', 'input[placeholder*="MM"]'], CARD.expiry);
+    await fill(['input[name*="cvc" i]', 'input[name*="cvv" i]', 'input[autocomplete="cc-csc"]', 'input[placeholder*="CVC"]'], CARD.cvc);
+    await fill(['input[name="billingName"]', 'input[name*="holder" i]', 'input[autocomplete="cc-name"]', 'input[placeholder*="ombre" i]', 'input[placeholder*="name" i]'], CARD.name);
+    await page.waitForTimeout(700);
+    await clickAny(['button[type="submit"]', 'button:has-text("Pagar")', 'button:has-text("Pay")', 'button:has-text("Confirmar")']);
+  };
+
+  let used = 'card';
+  if (method === 'bizum') {
+    // Best-effort Bizum: select it + enter a test phone + submit. If it doesn't
+    // complete, fall back to card on the same page (avoids PENDING leftovers).
+    const sel = await clickAny(['button:has-text("Bizum")', 'div[role="button"]:has-text("Bizum")', '[data-method*="bizum" i]', '[aria-label*="bizum" i]']);
+    if (sel) {
+      await page.waitForTimeout(1500);
+      await fill(['input[type="tel"]', 'input[name*="phone" i]', 'input[autocomplete="tel"]', 'input[placeholder*="vil" i]', 'input[placeholder*="fono" i]'], '600000000');
+      await page.waitForTimeout(400);
+      await clickAny(['button[type="submit"]', 'button:has-text("Pagar")', 'button:has-text("Continuar")', 'button:has-text("Bizum")']);
+      await page.waitForTimeout(3500);
+    }
+    if (reachedReturn()) used = 'bizum';
+    else { await fillCard(); used = sel ? 'bizum→card' : 'card(no-bizum-ui)'; }
+  } else {
+    await fillCard();
   }
-  await page.waitForURL(x => String(x).includes('payment/return') || String(x).startsWith(BASE), { timeout: 40000 }).catch(() => {});
+
+  await page.waitForURL(x => String(x).includes('payment/return') || (String(x).startsWith(BASE) && !/monei|secure\./.test(String(x))), { timeout: 40000 }).catch(() => {});
   await page.waitForTimeout(5000);
+  return { ok: reachedReturn(), method: used };
 }
 
 // ── Scenario 1: enter + add guests (free) ───────────────────────────────────
@@ -294,17 +361,175 @@ async function scPaid(browser) {
   finally { await ctx.close().catch(() => {}); }
 }
 
+// ── Scenario 5: CHAOS / SOAK — realistic random actions over many sessions ──
+// Per user: ~8 sessions (logins). Each session does 2-3 random actions on
+// random matches (reserve free/paid, add guest(s), leave one, cancel all, or
+// just browse); waits a random time between sessions. Joins accumulate across
+// users (sequential, no per-user reset) so popular matches fill up. Paid actions
+// pay via MONEI test (card + best-effort Bizum). At the end EVERY test user
+// cancels everything (UI cancel refunds paid; REST sweep mops up free) so the
+// matches are left exactly as they started.
+//   node scripts/e2e-scenarios.cjs --chaos                       # free only, fast waits
+//   node scripts/e2e-scenarios.cjs --chaos --paid                # + paid (card/bizum)
+//   node scripts/e2e-scenarios.cjs --chaos --paid --soak         # real 5-15min waits
+//   node scripts/e2e-scenarios.cjs --chaos --users=edu,paisa --sessions=2   # quick
+async function scChaos(browser) {
+  const S = 'CHAOS';
+  const SESSIONS = parseInt(arg('--sessions', '8'), 10) || 8;
+  const soak = process.argv.includes('--soak');
+  const usersArg = arg('--users', '');
+  const users = (usersArg ? usersArg.split(',').filter(Boolean) : ALL_USERS).map(u);
+  const waitMs = () => soak ? randInt(300000, 900000) : randInt(5000, 15000);
+
+  let pool = await fetchMatchPool();
+  if (!RUN_PAID) pool = pool.filter(m => !m.paid);
+  if (!pool.length) { check(S, 'match pool', false, 'no upcoming matches'); return; }
+  const initial = {}; for (const m of pool) initial[m.id] = await participantCount(m.id);
+  log(`> CHAOS users=${users.length} sessions=${SESSIONS} ${soak ? 'SOAK(5-15min)' : 'fast(5-15s)'} paid=${RUN_PAID} pool=${pool.length}`);
+
+  const joinedSet = {}; users.forEach(usr => joinedSet[usr.name] = new Set());
+  let payN = 0, bizumN = 0; const filled = new Set();
+
+  const captureRedirect = async (page, clickFn) => {
+    const respP = page.waitForResponse(r => r.url().includes('create-payment'), { timeout: 30000 }).catch(() => null);
+    await clickFn().catch(() => {});
+    const r = await respP; if (!r) return null;
+    try { return (await r.json()).redirectUrl; } catch { return null; }
+  };
+
+  for (const usr of users) {
+    for (let s = 0; s < SESSIONS; s++) {
+      const winding = s >= Math.ceil(SESSIONS * 0.7); // last ~30%: wind down toward leaving
+      let sess; try { sess = await login(browser, usr); } catch { check(S, `${usr.name} login s${s + 1}`, false, 'login failed'); continue; }
+      const { ctx, page } = sess;
+      try {
+        const nActions = randInt(2, 3);
+        for (let a = 0; a < nActions; a++) {
+          const m = pick(pool);
+          await openMatch(page, m.id);
+          const joined = await isJoined(page);
+          let [n, max] = await joinedCount(page);
+          if (n != null && max != null && n >= max) filled.add(m.id);
+
+          let act;
+          if (winding && joined) act = 'cancel_all';
+          else if (joined) act = pick(['guest', 'leave', 'guest']);
+          else act = pick(['reserve', 'reserve', 'browse']);
+
+          if (act === 'reserve' && (n == null || n < max)) {
+            if (m.paid) {
+              const url = await captureRedirect(page, () => page.getByText(/PAGAR PLAZA/i).first().click({ timeout: 8000 }));
+              const r = await payMonei(page, url, pick(['card', 'bizum'])); payN++; if (r.method.startsWith('bizum')) bizumN++;
+              await openMatch(page, m.id);
+            } else {
+              await reserveFree(page).catch(() => {});
+            }
+            if (await isJoined(page)) joinedSet[usr.name].add(m.id);
+          } else if (act === 'guest' && joined && (n == null || n < max)) {
+            for (let g = 0, gn = randInt(1, 2); g < gn; g++) {
+              if (m.paid) {
+                const url = await captureRedirect(page, () => addGuestBtn(page).click({ timeout: 8000 }));
+                const r = await payMonei(page, url, pick(['card', 'bizum'])); payN++; if (r.method.startsWith('bizum')) bizumN++;
+                await openMatch(page, m.id);
+              } else {
+                await addGuestBtn(page).click({ timeout: 8000 }).catch(() => {});
+                await page.waitForTimeout(2500);
+              }
+              [n, max] = await joinedCount(page); if (n != null && n >= max) { filled.add(m.id); break; }
+            }
+          } else if (act === 'leave' && joined) {
+            await cancelOnce(page);
+            if (!(await isJoined(page))) joinedSet[usr.name].delete(m.id);
+          } else if (act === 'cancel_all' && joined) {
+            await cancelAll(page);
+            joinedSet[usr.name].delete(m.id);
+          }
+          // browse: no-op
+        }
+        check(S, `${usr.name} session ${s + 1}/${SESSIONS}`, true, `on=[${[...joinedSet[usr.name]].map(x => x.slice(0, 6)).join(',') || '-'}]`);
+      } catch (e) { check(S, `${usr.name} session ${s + 1} error`, false, e.message.slice(0, 70)); }
+      finally { await ctx.close().catch(() => {}); }
+      if (s < SESSIONS - 1) await sleep(waitMs());
+    }
+  }
+
+  for (const m of pool) { if (await participantCount(m.id) >= m.max) filled.add(m.id); }
+  // "si hace falta añade invitados hasta llenar": if nothing filled naturally,
+  // top up the least-occupied FREE match with guests until it reaches capacity.
+  const fm = pool.filter(m => !m.paid).sort((a, b) => initial[a.id] - initial[b.id])[0];
+  if (filled.size === 0 && fm) {
+    let sess; try { sess = await login(browser, users[0]); } catch { sess = null; }
+    if (sess) {
+      try {
+        await openMatch(sess.page, fm.id);
+        if (!(await isJoined(sess.page))) await reserveFree(sess.page).catch(() => {});
+        if (await isJoined(sess.page)) joinedSet[users[0].name].add(fm.id);
+        let [n, max] = await joinedCount(sess.page), guard = 0;
+        while ((n == null || n < max) && guard++ < (max || 16) + 3) {
+          await addGuestBtn(sess.page).click({ timeout: 8000 }).catch(() => {});
+          await sess.page.waitForTimeout(2300);
+          [n, max] = await joinedCount(sess.page);
+        }
+        if (n != null && n >= max) filled.add(fm.id);
+        log(`  topped up ${fm.id.slice(0, 6)} with guests -> ${n}/${max}`);
+      } catch (e) { log('  guest-fill error: ' + e.message.slice(0, 60)); }
+      await sess.ctx.close().catch(() => {});
+    }
+  }
+  check(S, 'some matches filled', filled.size > 0, `${filled.size} match(es) reached capacity`);
+  check(S, 'payments executed', !RUN_PAID || payN > 0, `${payN} payments (${bizumN} Bizum best-effort)`);
+
+  // ── RESTORE: cancel every test-user spot (UI cancel refunds paid), then REST sweep for free ──
+  log('  CHAOS restore — leaving it as it was...');
+  const myRows = async (mid, uid) => {
+    const r = await fetch(SB_URL + '/rest/v1/match_participants?match_id=eq.' + mid + '&or=(user_id.eq.' + uid + ',created_by.eq.' + uid + ')&select=id', { headers: sbH });
+    const j = await r.json().catch(() => []); return Array.isArray(j) ? j.length : 0;
+  };
+  for (const usr of users) {
+    const mids = [...joinedSet[usr.name]];
+    if (!mids.length) continue;
+    const auth = await authUser(usr.email);
+    let sess; try { sess = await login(browser, usr); } catch { continue; }
+    for (const mid of mids) {
+      // Retry: paid cancels are slow refund round-trips and can leave a row on
+      // the first pass. Re-cancel until this user's rows on the match are gone.
+      for (let r = 0; r < 3; r++) {
+        try { await openMatch(sess.page, mid); await cancelAll(sess.page, 25); } catch {}
+        if (!auth || (await myRows(mid, auth.uid)) === 0) break;
+      }
+    }
+    await sess.ctx.close().catch(() => {});
+  }
+  // REST safety sweep — remove any remaining test-user rows (own + created guests)
+  // on ALL pool matches so the participant state is left exactly as it started.
+  // NOTE: deleting a PAID row this way does NOT refund the payment — the app's
+  // paid-cancel is buggy when a user has several SUCCEEDED payments (self + paid
+  // guests); see the bug report. reconcile is off so the row won't reappear.
+  for (const usr of users) {
+    const auth = await authUser(usr.email); if (!auth) continue;
+    for (const m of pool) {
+      await fetch(SB_URL + '/rest/v1/match_participants?match_id=eq.' + m.id + '&or=(user_id.eq.' + auth.uid + ',created_by.eq.' + auth.uid + ')', { method: 'DELETE', headers: { apikey: SB_KEY, Authorization: 'Bearer ' + auth.token } }).catch(() => {});
+    }
+  }
+  let extra = 0; for (const m of pool) extra += Math.max(0, (await participantCount(m.id)) - initial[m.id]);
+  check(S, 'restored to initial state', extra === 0, `${extra} extra participant(s) vs start`);
+}
+
 // ── Main ────────────────────────────────────────────────────────────────────
 (async () => {
   log('AmicSport E2E SCENARIOS  base=' + BASE + (RUN_PAID ? '  (+paid)' : ''));
   const browser = await chromium.launch({ headless: true });
   try {
-    if (!PAID_ONLY) {
-      await scGuests(browser);
-      await scFillMulti(browser);
-      await scMultiUser(browser);
+    if (process.argv.includes('--chaos')) {
+      await scChaos(browser);
+    } else {
+      if (!PAID_ONLY) {
+        await scGuests(browser);
+        await scFillMulti(browser);
+        await scMultiUser(browser);
+      }
+      if (RUN_PAID) await scPaid(browser);
     }
-    if (RUN_PAID) await scPaid(browser);
   } finally { await browser.close(); }
   const pass = results.filter(r => r.ok).length, fail = results.length - pass;
   console.log(`\nDONE  PASS:${pass}  FAIL:${fail}  (${results.length} checks)`);
