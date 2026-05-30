@@ -92,7 +92,7 @@ CREATE TABLE IF NOT EXISTS public.app_settings (
 
 INSERT INTO public.app_settings (key, value, description) VALUES
   ('daily_refund_count_limit',
-   '10'::jsonb,
+   '999'::jsonb,
    'Max number of automatic refunds per calendar day before requiring admin approval'),
   ('daily_refund_amount_limit_cents',
    '100000'::jsonb,
