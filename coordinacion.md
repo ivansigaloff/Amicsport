@@ -8,9 +8,8 @@ _Última actualización: 2026-05-30 — **Agent-Claude** (Claude Code / Opus 4.8
 ## Quién toca qué
 
 ### `scripts/e2e-scenarios.cjs` — COMPARTIDO ⚠️
-- **`payMonei`** → **otro agente**. Tiene la receta Bizum validada E2E (abajo); la integra él.
-  **Agent-Claude NO toca `payMonei`** (ahora mismo tiene un Bizum *best-effort* mío de `d8a1d79`
-  con teléfono `600000000` y sin esperar el async — sustitúyelo por el real).
+- **`payMonei`** → **Agent-Claude** — Bizum REAL **integrado + validado E2E** (cb5bf3a5 4€: `method=bizum`,
+  create-payment → MONEI Bizum → unión → cancelar/reembolso, 4/4 OK). Tarjeta + Bizum en una función.
 - **`scChaos` + helpers de caos** (random/REST/login-retry) → **Agent-Claude** (commit `d8a1d79`).
   Ajustes de Agent-Claude en este turno (solo dentro de `scChaos`, no en `payMonei`):
   - método de pago por precio: `bizum` solo si `match.price < 5`, si no `card`.
@@ -46,7 +45,10 @@ _Última actualización: 2026-05-30 — **Agent-Claude** (Claude Code / Opus 4.8
    auto-aprueba a los pocos segundos → **sondear hasta SUCCEEDED** (9s era poco).
 
 ## Pendiente / handoff
-- [ ] **Otro agente:** integrar el `payMonei` Bizum real (receta arriba) en `e2e-scenarios.cjs`.
+- [ ] **Limpiar cruft de pagos de test** (`paisa` PENDING + `edu` SUCCEEDED huérfano en `475bf27a`, de
+  validaciones): ejecutar o **programar `reconcile-payments`**. Necesita `RECONCILE_SECRET` (no está en
+  `.env` → Agent-Claude no pudo correrlo). Programarlo además cierra el TODO de cron.
+- [x] **Agent-Claude:** `payMonei` Bizum real integrado + validado E2E (4/4 en cb5bf3a5 4€).
 - [x] Agent-Claude: fix cancelación (`816108b`) + ajustes `scChaos` (este turno).
 - [x] **Desplegar** fix de cancelación a prod — ✅ live 2026-05-30 (`entry-382edd89…`, `expo export -p web` + `deploy-delta`).
 - [x] **`reserve_paid_slot` aplicada + `create-payment` redeployado** — ✅ Agent-Claude 2026-05-30:

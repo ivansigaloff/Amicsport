@@ -169,18 +169,44 @@ async function payMonei(page, redirectUrl, method = 'card') {
 
   let used = 'card';
   if (method === 'bizum') {
-    // Best-effort Bizum: select it + enter a test phone + submit. If it doesn't
-    // complete, fall back to card on the same page (avoids PENDING leftovers).
-    const sel = await clickAny(['button:has-text("Bizum")', 'div[role="button"]:has-text("Bizum")', '[data-method*="bizum" i]', '[aria-label*="bizum" i]']);
-    if (sel) {
-      await page.waitForTimeout(1500);
-      await fill(['input[type="tel"]', 'input[name*="phone" i]', 'input[autocomplete="tel"]', 'input[placeholder*="vil" i]', 'input[placeholder*="fono" i]'], '600000000');
-      await page.waitForTimeout(400);
-      await clickAny(['button[type="submit"]', 'button:has-text("Pagar")', 'button:has-text("Continuar")', 'button:has-text("Bizum")']);
-      await page.waitForTimeout(3500);
+    // Bizum (MONEI test). Recipe: the button is inside the inner-bizum-button
+    // iframe (click via frameLocator or by coords); the phone form is in the
+    // inner-bizum frame (input[name=phone] = 500000000); then an async RTP
+    // screen auto-approves in a few seconds → poll for the return URL. Only
+    // approves for amounts <5€ (caller restricts to those). Falls back to card.
+    let started = false;
+    try {
+      const btn = page.frameLocator('iframe[src*="inner-bizum-button"], iframe[src*="bizum"]').locator('button, [role="button"], a').first();
+      if (await btn.isVisible({ timeout: 4000 }).catch(() => false)) { await btn.click(); started = true; }
+    } catch {}
+    if (!started) {
+      try {
+        const fe = page.locator('iframe[src*="inner-bizum-button"], iframe[src*="bizum"]').first();
+        const box = await fe.boundingBox();
+        if (box) { await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2); started = true; }
+      } catch {}
+    }
+    if (started) {
+      await page.waitForTimeout(2500);
+      for (const f of page.frames()) {                          // phone form lives in the inner-bizum frame
+        if (!/inner-bizum/i.test(f.url())) continue;
+        try {
+          const inp = f.locator('input[name="phone"], input[type="tel"]').first();
+          if (await inp.isVisible({ timeout: 3000 }).catch(() => false)) {
+            await inp.fill('500000000');
+            await page.waitForTimeout(400);
+            const b = f.locator('button[type="submit"], button:has-text("Pagar"), button:has-text("Continuar"), button:has-text("Aceptar")').first();
+            if (await b.isVisible({ timeout: 2000 }).catch(() => false)) await b.click();
+            break;
+          }
+        } catch {}
+      }
+      // Async RTP: "complete in banking app" → auto-approves in a few seconds → redirect.
+      const deadline = Date.now() + 60000;
+      while (Date.now() < deadline && !reachedReturn()) await page.waitForTimeout(1500).catch(() => {});
     }
     if (reachedReturn()) used = 'bizum';
-    else { await fillCard(); used = sel ? 'bizum→card' : 'card(no-bizum-ui)'; }
+    else { await fillCard(); used = started ? 'bizum→card' : 'card(no-bizum-ui)'; }
   } else {
     await fillCard();
   }
@@ -525,12 +551,39 @@ async function scChaos(browser) {
   check(S, 'restored to initial state', extra === 0, `${extra} extra participant(s) vs start`);
 }
 
+// ── Scenario 6: Bizum payment (MONEI test) on a <5€ match ───────────────────
+// node scripts/e2e-scenarios.cjs --bizum [--users=delvis]
+async function scBizum(browser) {
+  const S = 'BIZUM(4e)';
+  const M = 'cb5bf3a5-204b-49d2-a60f-3e182d735578'; // F7 La Satalia, 4€ PAID (<5€ → Bizum test approves)
+  const user = u((arg('--users', 'delvis').split(',')[0]) || 'delvis');
+  log('> ' + S + ' user=' + user.name);
+  const { ctx, page } = await login(browser, user);
+  try {
+    await openMatch(page, M);
+    if (await isJoined(page)) { await cancelAll(page); await openMatch(page, M); }
+    const payResp = page.waitForResponse(r => r.url().includes('create-payment'), { timeout: 30000 }).catch(() => null);
+    await page.getByText(/PAGAR PLAZA/i).first().click({ timeout: 8000 });
+    const r = await payResp; let url = null; if (r) { try { url = (await r.json()).redirectUrl; } catch {} }
+    check(S, 'create-payment redirect', !!url, url ? '' : 'no MONEI URL');
+    const res = await payMonei(page, url, 'bizum');
+    check(S, 'bizum completed', res.ok && String(res.method).startsWith('bizum'), 'method=' + res.method);
+    await openMatch(page, M);
+    check(S, 'joined after bizum', await isJoined(page));
+    const cleaned = await cancelAll(page);
+    check(S, 'cancel+refund cleanup', cleaned);
+  } catch (e) { check(S, 'error', false, e.message.slice(0, 90)); await cancelAll(page).catch(() => {}); }
+  finally { await ctx.close().catch(() => {}); }
+}
+
 // ── Main ────────────────────────────────────────────────────────────────────
 (async () => {
   log('AmicSport E2E SCENARIOS  base=' + BASE + (RUN_PAID ? '  (+paid)' : ''));
   const browser = await chromium.launch({ headless: true });
   try {
-    if (process.argv.includes('--chaos')) {
+    if (process.argv.includes('--bizum')) {
+      await scBizum(browser);
+    } else if (process.argv.includes('--chaos')) {
       await scChaos(browser);
     } else {
       if (!PAID_ONLY) {
