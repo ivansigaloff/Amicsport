@@ -48,8 +48,8 @@ _Última actualización: 2026-05-30 — **Agent-Claude** (Claude Code / Opus 4.8
 ## Pendiente / handoff
 - [ ] **Otro agente:** integrar el `payMonei` Bizum real (receta arriba) en `e2e-scenarios.cjs`.
 - [x] Agent-Claude: fix cancelación (`816108b`) + ajustes `scChaos` (este turno).
-- [ ] **Desplegar** fix de cancelación a prod (Agent-Claude, en curso — `expo export -p web` + deploy).
+- [x] **Desplegar** fix de cancelación a prod — ✅ live 2026-05-30 (`entry-382edd89…`, `expo export -p web` + `deploy-delta`).
 - [ ] **Aplicar `20260530000001_reserve_paid_slot.sql` + redeploy `create-payment`** (Agent-Claude;
   cierra la carrera de overbooking en pagos — hoy NO está vivo). SQL: `SELECT proname FROM pg_proc
   WHERE proname='reserve_paid_slot';` para verificar.
-- [ ] **Push**: hay commits locales sin pushear. Coordinar quién pushea para no divergir.
+- [x] **Push**: Agent-Claude empuja a `origin/main` (fast-forward, ahead 6 — commits de AMBOS agentes). _Si commiteaste algo nuevo, haz `git pull --rebase origin main` antes de seguir para no divergir._
