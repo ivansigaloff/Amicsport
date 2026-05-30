@@ -74,6 +74,9 @@ export const useMatchActions = (matchDataHook: MatchDataHook, fromTable: (t: str
             .eq('user_id', userId)
             .eq('env', env === 'dev' ? 'dev' : 'prod')
             .eq('status', 'SUCCEEDED')
+            .eq('is_guest', false)            // only THIS user's own spot, not their paid guests —
+            .order('created_at', { ascending: false }) // otherwise multiple SUCCEEDED rows made
+            .limit(1)                          // .maybeSingle() error and the cancel silently failed.
             .maybeSingle();
 
           if (pmt) {
