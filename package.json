@@ -11,6 +11,9 @@
     "web:bg": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-web.ps1",
     "deploy": "node scripts/deploy-delta.js",
     "deploy:full": "node scripts/deploy-delta.js --full",
+    "e2e": "node scripts/e2e-suite.cjs",
+    "e2e:free": "node scripts/e2e-suite.cjs --free",
+    "e2e:paid": "node scripts/e2e-suite.cjs --paid",
     "lint": "expo lint"
   },
   "dependencies": {

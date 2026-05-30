@@ -15,6 +15,12 @@ Pendientes y mejoras. Última revisión: 2026-05-30.
   POST a `https://wdidrnqjcdhmultayvgq.supabase.co/functions/v1/reconcile-payments`,
   header `x-reconcile-secret: <RECONCILE_SECRET>` (ya está seteado), schedule `0 * * * *`.
 - [ ] Probar end-to-end el reembolso con cola de admin (`PENDING_REFUND_ADMIN`) — QA manual con un pago real.
+- [x] **Desplegar edge functions** *(✅ 2026-05-30: desplegadas con `--use-api` porque Docker no arrancaba; `verify_jwt=false` fijado en `config.toml` y verificado)* `verify-payment`, `monei-webhook`, `reconcile-payments` (`supabase functions deploy …`):
+  arreglado un bug — los invitados de PAGO se creaban con `created_by = NULL`, así que por la
+  RLS `participants_delete` **solo un admin** podía quitarlos (el host que pagó no podía cancelar
+  su propio invitado). Ahora se setea `created_by = user_id` del que paga. *(Encontrado en e2e.)*
+- [ ] Borrar el invitado de pago huérfano de pruebas en el partido PAID (solo admin):
+  `DELETE FROM match_participants WHERE id='a44fba0f-c228-483e-8da7-4604e0fe0d15';`
 
 ## C. Calidad / mantenibilidad
 
