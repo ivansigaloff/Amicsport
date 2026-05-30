@@ -406,3 +406,18 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 # declarative_schema_path = "./database"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+# Edge functions that authenticate THEMSELVES and must not require a platform
+# Supabase JWT (otherwise the platform 401s the request before it reaches the
+# function):
+#   - monei-webhook       — called by MONEI; verifies the MONEI signature itself
+#   - reconcile-payments  — called by cron; checks x-reconcile-secret itself
+#   - verify-payment      — validates the caller's Bearer JWT + payment ownership itself
+[functions.verify-payment]
+verify_jwt = false
+
+[functions.monei-webhook]
+verify_jwt = false
+
+[functions.reconcile-payments]
+verify_jwt = false

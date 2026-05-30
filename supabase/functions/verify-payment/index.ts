@@ -88,9 +88,13 @@ serve(async (req) => {
     // If SUCCEEDED but participant not yet created (webhook may have missed it)
     if (moneiPayment.status === 'SUCCEEDED' && !payment.participant_id) {
       const participantsTable = payment.env === 'dev' ? 'match_participants_dev' : 'match_participants';
+      // created_by must be the paying host even for guests (user_id stays null):
+      // the participants_delete RLS policy lets a host remove a null-user_id guest
+      // only when created_by = auth.uid(). Without it, paid guests were orphaned
+      // (only an admin could cancel them). Mirrors join_match's free-guest behavior.
       const participantRow = payment.is_guest
-        ? { match_id: payment.match_id, user_id: null,           user_name: payment.user_name }
-        : { match_id: payment.match_id, user_id: payment.user_id, user_name: payment.user_name };
+        ? { match_id: payment.match_id, user_id: null,           user_name: payment.user_name, created_by: payment.user_id }
+        : { match_id: payment.match_id, user_id: payment.user_id, user_name: payment.user_name, created_by: payment.user_id };
       const { data: participant } = await admin
         .from(participantsTable)
         .insert(participantRow)

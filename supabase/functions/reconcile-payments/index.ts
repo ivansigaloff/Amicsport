@@ -105,9 +105,11 @@ serve(async (req) => {
         const { data: existingRows } = await existingQuery.limit(1);
 
         if (!existingRows || existingRows.length === 0) {
+          // created_by = paying host so the host can later cancel the guest spot
+          // (participants_delete RLS requires created_by = auth.uid() for null-user_id rows).
           const participantRow = payment.is_guest
-            ? { match_id: payment.match_id, user_id: null,           user_name: payment.user_name }
-            : { match_id: payment.match_id, user_id: payment.user_id, user_name: payment.user_name };
+            ? { match_id: payment.match_id, user_id: null,           user_name: payment.user_name, created_by: payment.user_id }
+            : { match_id: payment.match_id, user_id: payment.user_id, user_name: payment.user_name, created_by: payment.user_id };
           const { data: participant } = await admin
             .from(participantsTable)
             .insert(participantRow)
