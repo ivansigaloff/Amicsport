@@ -123,27 +123,35 @@ serve(async (req) => {
     }
   }
 
-  // Capacity check: real participants + manual "external" counter + PENDING
-  // payments by OTHER users (each a soft hold on a spot). Prevents charging a
-  // user for a match that is already full / fully held. (Paid participants are
-  // inserted later by the webhook, hence the PENDING-aware count here.)
-  const participantsTable = env === 'dev' ? 'match_participants_dev' : 'match_participants';
-  const [{ count: partCount }, { count: pendingOthers }] = await Promise.all([
-    admin.from(participantsTable).select('*', { count: 'exact', head: true }).eq('match_id', match_id),
-    admin.from('payments').select('*', { count: 'exact', head: true })
-      .eq('match_id', match_id).eq('env', env).eq('status', 'PENDING').neq('user_id', user.id),
-  ]);
-  const taken = (partCount ?? 0) + (match.joined_players ?? 0) + (pendingOthers ?? 0);
-  if (taken >= match.max_players) {
-    return json({ error: 'match_full' }, 409);
-  }
-
   const amountCents = Math.round(match.price * 100);
   const orderId = crypto.randomUUID();
   const userEmail = user.email ?? '';
   const hostName = user.user_metadata?.full_name ?? user.user_metadata?.name ?? userEmail.split('@')[0];
   // For guest payments the displayed name is the guest's; billing details remain the host's.
   const userName = isGuest ? guest_name!.trim() : hostName;
+
+  // Atomically reserve the spot BEFORE charging. reserve_paid_slot locks the
+  // match row (SELECT ... FOR UPDATE), recounts capacity (participants + manual
+  // external counter + OTHER users' PENDING holds) and inserts THIS payment as
+  // the PENDING hold — all in one transaction. This serializes concurrent paid
+  // reservations, closing the check→hold TOCTOU that could overbook the last
+  // spot, and guarantees we never charge for a spot we cannot grant.
+  // monei_payment_id is attached after the Monei call below.
+  const { data: hold, error: reserveErr } = await admin.rpc('reserve_paid_slot', {
+    p_match_id:   match_id,
+    p_env:        env,
+    p_user_id:    user.id,
+    p_user_name:  userName,
+    p_user_email: userEmail,
+    p_is_guest:   isGuest,
+    p_order_id:   orderId,
+    p_amount:     amountCents,
+  });
+  if (reserveErr || !hold) {
+    if (String(reserveErr?.message || '').includes('match_full')) return json({ error: 'match_full' }, 409);
+    console.error('reserve_paid_slot failed:', reserveErr);
+    return json({ error: 'db_error', detail: reserveErr?.message }, 500);
+  }
 
   const completeUrl = `${baseUrl}/payment/return?order_id=${orderId}&status=SUCCEEDED`;
   const cancelUrl   = `${baseUrl}/payment/return?order_id=${orderId}&status=CANCELED`;
@@ -162,6 +170,8 @@ serve(async (req) => {
       callbackUrl,
     });
   } catch (e) {
+    // Monei failed → release the hold so it does not keep occupying a spot.
+    await admin.from('payments').delete().eq('id', hold.id);
     await auditLog({
       env, actor_id: user.id, actor_email: userEmail,
       action: 'PAYMENT_CREATE_FAILED',
@@ -172,22 +182,12 @@ serve(async (req) => {
     return json({ error: 'monei_error', detail: String(e) }, 502);
   }
 
-  // Save pending payment
-  const { error: insertErr } = await admin.from('payments').insert({
-    env,
-    match_id,
-    user_id:          user.id,
-    user_name:        userName,
-    user_email:       userEmail,
-    is_guest:         isGuest,
-    monei_payment_id: moneiPayment.id,
-    order_id:         orderId,
-    amount:           amountCents,
-    status:           'PENDING',
-  });
-
-  if (insertErr) {
-    console.error('Failed to save payment:', insertErr);
+  // Attach the Monei id to the hold we already reserved above.
+  const { error: updErr } = await admin.from('payments')
+    .update({ monei_payment_id: moneiPayment.id })
+    .eq('id', hold.id);
+  if (updErr) {
+    console.error('Failed to attach monei id:', updErr);
     return json({ error: 'db_error' }, 500);
   }
 
