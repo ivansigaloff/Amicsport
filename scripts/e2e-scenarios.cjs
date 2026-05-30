@@ -21,7 +21,8 @@ const PAID_ONLY = process.argv.includes('--paid-only');
 const RUN_PAID = process.argv.includes('--paid') || PAID_ONLY;
 const MATCH_FREE = '8175b53b-18e9-472f-9cf4-d5f6b5e6a81a'; // F7 La Satalia, 14 spots, free
 const MATCH_PAID = '475bf27a-4de4-4817-9c3a-c0457e91b174'; // F8 La Satalia, 16 spots, 6€
-const CARD = { number: '4444444444444422', expiry: '12/34', cvc: '123', name: 'TEST USER' };
+const CARD = { number: '4444444444444414', expiry: '12/34', cvc: '123', name: 'TEST USER' }; // 4414 = direct approval (no 3DS challenge)
+const CARDS = ['4444444444444414', '4444444444444422'].map(number => ({ number, expiry: '12/34', cvc: '123', name: 'TEST USER' })); // rotate: 4414 (no challenge) + 4422 (frictionless)
 
 const FILL_USERS = ['edu', 'paisa', 'felix', 'nico', 'ogdier', 'delvis', 'oussama', 'adam', 'alex', 'cristian', 'bony', 'bob'];
 const u = (name) => ({ name, email: name + '@testusers.com' });
@@ -158,11 +159,12 @@ async function payMonei(page, redirectUrl, method = 'card') {
   };
   const reachedReturn = () => /payment\/return/.test(page.url()) || (page.url().startsWith(BASE) && !/monei|secure\./.test(page.url()));
   const fillCard = async () => {
+    const c = pick(CARDS); // different cards across payments
     await page.waitForSelector('input[name="billingName"]', { timeout: 15000 }).catch(() => {});
-    await fill(['input[name="cardNumber"]', 'input[autocomplete="cc-number"]', 'input[placeholder*="0000"]', 'input[id*="card"]'], CARD.number);
-    await fill(['input[name*="expir" i]', 'input[autocomplete="cc-exp"]', 'input[placeholder*="MM"]'], CARD.expiry);
-    await fill(['input[name*="cvc" i]', 'input[name*="cvv" i]', 'input[autocomplete="cc-csc"]', 'input[placeholder*="CVC"]'], CARD.cvc);
-    await fill(['input[name="billingName"]', 'input[name*="holder" i]', 'input[autocomplete="cc-name"]', 'input[placeholder*="ombre" i]', 'input[placeholder*="name" i]'], CARD.name);
+    await fill(['input[name="cardNumber"]', 'input[autocomplete="cc-number"]', 'input[placeholder*="0000"]', 'input[id*="card"]'], c.number);
+    await fill(['input[name*="expir" i]', 'input[autocomplete="cc-exp"]', 'input[placeholder*="MM"]'], c.expiry);
+    await fill(['input[name*="cvc" i]', 'input[name*="cvv" i]', 'input[autocomplete="cc-csc"]', 'input[placeholder*="CVC"]'], c.cvc);
+    await fill(['input[name="billingName"]', 'input[name*="holder" i]', 'input[autocomplete="cc-name"]', 'input[placeholder*="ombre" i]', 'input[placeholder*="name" i]'], c.name);
     await page.waitForTimeout(700);
     await clickAny(['button[type="submit"]', 'button:has-text("Pagar")', 'button:has-text("Pay")', 'button:has-text("Confirmar")']);
   };
@@ -429,7 +431,7 @@ async function scChaos(browser) {
     try { return (await r.json()).redirectUrl; } catch { return null; }
   };
 
-  for (const usr of users) {
+  const oneUser = async (usr) => {
     for (let s = 0; s < SESSIONS; s++) {
       const winding = s >= Math.ceil(SESSIONS * 0.7); // last ~30%: wind down toward leaving
       let sess; try { sess = await login(browser, usr); } catch { check(S, `${usr.name} login s${s + 1}`, false, 'login failed'); continue; }
@@ -485,70 +487,68 @@ async function scChaos(browser) {
       finally { await ctx.close().catch(() => {}); }
       if (s < SESSIONS - 1) await sleep(waitMs());
     }
-  }
-
-  for (const m of pool) { if (await participantCount(m.id) >= m.max) filled.add(m.id); }
-  // "si hace falta añade invitados hasta llenar": if nothing filled naturally,
-  // top up the least-occupied FREE match with guests until it reaches capacity.
-  const fm = pool.filter(m => !m.paid).sort((a, b) => initial[a.id] - initial[b.id])[0];
-  if (filled.size === 0 && fm) {
-    let sess; try { sess = await login(browser, users[0]); } catch { sess = null; }
-    if (sess) {
-      try {
-        await openMatch(sess.page, fm.id);
-        if (!(await isJoined(sess.page))) await reserveFree(sess.page).catch(() => {});
-        if (await isJoined(sess.page)) joinedSet[users[0].name].add(fm.id);
-        let [n, max] = await joinedCount(sess.page), guard = 0;
-        while ((n == null || n < max) && guard++ < (max || 16) + 3) {
-          await addGuestBtn(sess.page).click({ timeout: 8000 }).catch(() => {});
-          await sess.page.waitForTimeout(2300);
-          [n, max] = await joinedCount(sess.page);
-        }
-        if (n != null && n >= max) filled.add(fm.id);
-        log(`  topped up ${fm.id.slice(0, 6)} with guests -> ${n}/${max}`);
-      } catch (e) { log('  guest-fill error: ' + e.message.slice(0, 60)); }
-      await sess.ctx.close().catch(() => {});
-    }
-  }
-  check(S, 'some matches filled', filled.size > 0, `${filled.size} match(es) reached capacity`);
-  check(S, 'payments executed', !RUN_PAID || payN > 0, `${payN} payments (${bizumN} Bizum best-effort)`);
-
-  // ── RESTORE: cancel every test-user spot (UI cancel refunds paid), then REST sweep for free ──
-  log('  CHAOS restore — leaving it as it was...');
-  const myRows = async (mid, uid) => {
-    const r = await fetch(SB_URL + '/rest/v1/match_participants?match_id=eq.' + mid + '&or=(user_id.eq.' + uid + ',created_by.eq.' + uid + ')&select=id', { headers: sbH });
-    const j = await r.json().catch(() => []); return Array.isArray(j) ? j.length : 0;
   };
-  for (const usr of users) {
-    const mids = [...joinedSet[usr.name]];
-    if (!mids.length) continue;
-    const auth = await authUser(usr.email);
-    let sess; try { sess = await login(browser, usr); } catch { continue; }
-    for (const mid of mids) {
-      // Retry: paid cancels are slow refund round-trips and can leave a row on
-      // the first pass. Re-cancel until this user's rows on the match are gone.
-      for (let r = 0; r < 3; r++) {
-        try { await openMatch(sess.page, mid); await cancelAll(sess.page, 25); } catch {}
-        if (!auth || (await myRows(mid, auth.uid)) === 0) break;
+
+  // Run users sequentially (default) or in a bounded concurrency pool (--parallel=N).
+  // Parallel is safe now that the paid overbooking race is closed (reserve_paid_slot).
+  const PAR = Math.max(1, parseInt(arg('--parallel', '1'), 10) || 1);
+  if (PAR > 1) {
+    log(`  running ${users.length} users with concurrency ${Math.min(PAR, users.length)}`);
+    let _i = 0;
+    await Promise.all(Array.from({ length: Math.min(PAR, users.length) }, async () => {
+      while (_i < users.length) {
+        const usr = users[_i++];
+        await sleep(randInt(0, 12000)); // stagger logins to avoid auth bursts
+        try { await oneUser(usr); } catch (e) { check(S, usr.name + ' crashed', false, String(e.message).slice(0, 60)); }
       }
-    }
+    }));
+  } else {
+    for (const usr of users) await oneUser(usr);
+  }
+
+  // ── FILL EVERYTHING (free): top up every not-full FREE match to capacity with
+  // guests (reliable, no payments). PAID matches fill via the random session
+  // activity above (real card/Bizum payments) — not force-filled here because
+  // card 3DS is flaky headless and PENDING holds don't show as participants. ──
+  for (const m of pool) { if (await participantCount(m.id) >= m.max) filled.add(m.id); }
+  for (const m of pool.filter(x => !x.paid)) {
+    if (await participantCount(m.id) >= m.max) { filled.add(m.id); continue; }
+    const organizer = pick(users);
+    let sess; try { sess = await login(browser, organizer); } catch { continue; }
+    try {
+      await openMatch(sess.page, m.id);
+      if (!(await isJoined(sess.page))) await reserveFree(sess.page).catch(() => {});
+      if (await isJoined(sess.page)) joinedSet[organizer.name].add(m.id);
+      let [n, max] = await joinedCount(sess.page), guard = 0;
+      while ((n == null || n < max) && guard++ < (max || 16) + 3) {
+        await addGuestBtn(sess.page).click({ timeout: 8000 }).catch(() => {});
+        await sess.page.waitForTimeout(2300);
+        [n, max] = await joinedCount(sess.page);
+      }
+      if (n != null && n >= max) filled.add(m.id);
+      log(`  filled FREE ${m.id.slice(0, 6)} -> ${n}/${max}`);
+    } catch (e) { log('  fill error ' + m.id.slice(0, 6) + ': ' + e.message.slice(0, 50)); }
     await sess.ctx.close().catch(() => {});
   }
-  // REST safety sweep — remove any remaining test-user rows (own + created guests)
-  // on ALL pool matches so the participant state is left exactly as it started.
-  // NOTE: deleting a PAID row this way does NOT refund the payment — the app's
-  // paid-cancel is buggy when a user has several SUCCEEDED payments (self + paid
-  // guests); see the bug report. reconcile is off so the row won't reappear.
+  const freePool = pool.filter(x => !x.paid);
+  check(S, 'all free matches filled', freePool.length > 0 && freePool.every(m => filled.has(m.id)), `${[...filled].length}/${pool.length} at capacity`);
+  check(S, 'payments executed', !RUN_PAID || payN > 0, `${payN} payments (${bizumN} via Bizum)`);
+
+  // ── RESTORE (relaxed): clean FREE only; LEAVE paid spots reserved (per spec:
+  // "no pasa nada porque la plaza se quede reservada pagada durante la prueba").
+  // Surgical: never delete rows that existed at start (real data). ──
+  log('  CHAOS restore — cleaning FREE spots (paid reservations left as-is)...');
   for (const usr of users) {
     const auth = await authUser(usr.email); if (!auth) continue;
-    for (const m of pool) {
+    for (const m of freePool) {
       const keep = [...(initialIds[m.id] || [])];
-      const notIn = keep.length ? '&id=not.in.(' + keep.join(',') + ')' : ''; // never delete pre-existing rows (real data)
+      const notIn = keep.length ? '&id=not.in.(' + keep.join(',') + ')' : '';
       await fetch(SB_URL + '/rest/v1/match_participants?match_id=eq.' + m.id + '&or=(user_id.eq.' + auth.uid + ',created_by.eq.' + auth.uid + ')' + notIn, { method: 'DELETE', headers: { apikey: SB_KEY, Authorization: 'Bearer ' + auth.token } }).catch(() => {});
     }
   }
-  let extra = 0; for (const m of pool) extra += Math.max(0, (await participantCount(m.id)) - initial[m.id]);
-  check(S, 'restored to initial state', extra === 0, `${extra} extra participant(s) vs start`);
+  let freeExtra = 0; for (const m of freePool) freeExtra += Math.max(0, (await participantCount(m.id)) - initial[m.id]);
+  let paidLeft = 0; for (const m of pool.filter(x => x.paid)) paidLeft += Math.max(0, (await participantCount(m.id)) - initial[m.id]);
+  check(S, 'free matches restored', freeExtra === 0, `${freeExtra} free extra; ${paidLeft} paid spot(s) left reserved (OK per spec)`);
 }
 
 // ── Scenario 6: Bizum payment (MONEI test) on a <5€ match ───────────────────

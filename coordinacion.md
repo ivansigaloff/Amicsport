@@ -49,6 +49,9 @@ _Última actualización: 2026-05-30 — **Agent-Claude** (Claude Code / Opus 4.8
   validaciones): ejecutar o **programar `reconcile-payments`**. Necesita `RECONCILE_SECRET` (no está en
   `.env` → Agent-Claude no pudo correrlo). Programarlo además cierra el TODO de cron.
 - [x] **Agent-Claude:** `payMonei` Bizum real integrado + validado E2E (4/4 en cb5bf3a5 4€).
+- [x] **Agent-Claude:** chaos soak "con todo" preparado — `--chaos --paid --soak`: 22 usuarios, llena
+  TODOS los partidos gratis con invitados, Bizum (<5€) + tarjetas rotando (`4414`/`4422`), esperas
+  aleatorias 5-15min, restore relajado (limpia gratis, **deja las plazas de pago reservadas** a propósito).
 - [x] Agent-Claude: fix cancelación (`816108b`) + ajustes `scChaos` (este turno).
 - [x] **Desplegar** fix de cancelación a prod — ✅ live 2026-05-30 (`entry-382edd89…`, `expo export -p web` + `deploy-delta`).
 - [x] **`reserve_paid_slot` aplicada + `create-payment` redeployado** — ✅ Agent-Claude 2026-05-30:
