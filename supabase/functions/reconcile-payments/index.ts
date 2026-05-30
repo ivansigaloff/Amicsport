@@ -21,6 +21,7 @@ import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { moneiRequest } from '../_shared/monei.ts';
 import { auditLog } from '../_shared/audit.ts';
+import { confirmSlotOrRefund } from '../_shared/confirmSlot.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -58,7 +59,7 @@ serve(async (req) => {
   }
 
   const results = { synced: 0, expired: 0, errors: 0, skipped: 0 };
-  const expiredThreshold = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const expiredThreshold = new Date(Date.now() - 60 * 60 * 1000); // 1h: a Monei-PENDING that old is dead (slot already freed by reserve_paid_slot's 10-min window)
 
   for (const payment of stalePending ?? []) {
     try {
@@ -95,26 +96,13 @@ serve(async (req) => {
       };
 
       if (moneiPayment.status === 'SUCCEEDED') {
-        const participantsTable = payment.env === 'dev' ? 'match_participants_dev' : 'match_participants';
-        // Check if participant already exists (webhook may have created it).
-        // Guest slots have user_id: null, so they must be matched by name.
-        let existingQuery = admin.from(participantsTable).select('id').eq('match_id', payment.match_id);
-        existingQuery = payment.is_guest
-          ? existingQuery.is('user_id', null).eq('user_name', payment.user_name)
-          : existingQuery.eq('user_id', payment.user_id);
-        const { data: existingRows } = await existingQuery.limit(1);
-
-        if (!existingRows || existingRows.length === 0) {
-          // created_by = paying host so the host can later cancel the guest spot
-          // (participants_delete RLS requires created_by = auth.uid() for null-user_id rows).
-          const participantRow = payment.is_guest
-            ? { match_id: payment.match_id, user_id: null,           user_name: payment.user_name, created_by: payment.user_id }
-            : { match_id: payment.match_id, user_id: payment.user_id, user_name: payment.user_name, created_by: payment.user_id };
-          const { data: participant } = await admin
-            .from(participantsTable)
-            .insert(participantRow)
-            .select('id').maybeSingle();
-          if (participant) updateData.participant_id = participant.id;
+        // Create the participant — or REFUND if the match filled while this hold
+        // aged out (reserve_paid_slot freshness window), to avoid overbooking.
+        const slot = await confirmSlotOrRefund(admin, payment);
+        if (slot.participant_id) updateData.participant_id = slot.participant_id;
+        if (slot.status) {
+          updateData.status = slot.status;
+          if (slot.refunded_amount != null) { updateData.refunded_amount = slot.refunded_amount; updateData.refunded_at = slot.refunded_at; }
         }
       }
 

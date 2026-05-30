@@ -12,6 +12,7 @@ import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { moneiRequest } from '../_shared/monei.ts';
 import { auditLog } from '../_shared/audit.ts';
+import { confirmSlotOrRefund } from '../_shared/confirmSlot.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -85,22 +86,16 @@ serve(async (req) => {
       error_message:  moneiPayment.statusMessage,
     };
 
-    // If SUCCEEDED but participant not yet created (webhook may have missed it)
+    // If SUCCEEDED but participant not yet created: create it — or REFUND if the
+    // match filled while the payment's hold aged out (reserve_paid_slot freshness
+    // window), so we never overbook nor keep money for a slot we can't grant.
     if (moneiPayment.status === 'SUCCEEDED' && !payment.participant_id) {
-      const participantsTable = payment.env === 'dev' ? 'match_participants_dev' : 'match_participants';
-      // created_by must be the paying host even for guests (user_id stays null):
-      // the participants_delete RLS policy lets a host remove a null-user_id guest
-      // only when created_by = auth.uid(). Without it, paid guests were orphaned
-      // (only an admin could cancel them). Mirrors join_match's free-guest behavior.
-      const participantRow = payment.is_guest
-        ? { match_id: payment.match_id, user_id: null,           user_name: payment.user_name, created_by: payment.user_id }
-        : { match_id: payment.match_id, user_id: payment.user_id, user_name: payment.user_name, created_by: payment.user_id };
-      const { data: participant } = await admin
-        .from(participantsTable)
-        .insert(participantRow)
-        .select('id')
-        .maybeSingle();
-      if (participant) updateData.participant_id = participant.id;
+      const slot = await confirmSlotOrRefund(admin, payment);
+      if (slot.participant_id) updateData.participant_id = slot.participant_id;
+      if (slot.status) {
+        updateData.status = slot.status;
+        if (slot.refunded_amount != null) { updateData.refunded_amount = slot.refunded_amount; updateData.refunded_at = slot.refunded_at; }
+      }
     }
 
     await admin.from('payments').update(updateData).eq('id', payment.id);
@@ -113,7 +108,7 @@ serve(async (req) => {
       source: 'app',
     });
 
-    return json({ status: moneiPayment.status, payment: { ...payment, ...updateData } });
+    return json({ status: updateData.status, payment: { ...payment, ...updateData } });
   }
 
   return json({ status: payment.status, payment });

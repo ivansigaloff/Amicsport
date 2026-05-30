@@ -15,6 +15,7 @@ import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { verifyMoneiSignature } from '../_shared/monei.ts';
 import { auditLog } from '../_shared/audit.ts';
+import { confirmSlotOrRefund } from '../_shared/confirmSlot.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -98,29 +99,13 @@ serve(async (req) => {
   };
 
   if (event.status === 'SUCCEEDED') {
-    const participantsTable = payment.env === 'dev' ? 'match_participants_dev' : 'match_participants';
-
-    // Add to match_participants — guest payments use user_id: null so the slot
-    // doesn't appear as the host's own joined entry.
-    // created_by = paying host even for guests (user_id stays null) so the host
-    // can later cancel the guest spot — participants_delete RLS requires
-    // created_by = auth.uid() for null-user_id rows. Without it, paid guests were
-    // orphaned (only an admin could remove them).
-    const participantRow = payment.is_guest
-      ? { match_id: payment.match_id, user_id: null,           user_name: payment.user_name, created_by: payment.user_id }
-      : { match_id: payment.match_id, user_id: payment.user_id, user_name: payment.user_name, created_by: payment.user_id };
-
-    const { data: participant, error: partErr } = await admin
-      .from(participantsTable)
-      .insert(participantRow)
-      .select('id')
-      .single();
-
-    if (partErr) {
-      console.error('Failed to create participant:', partErr);
-      // Don't fail the webhook — we still update payment status and reconcile can retry
-    } else if (participant) {
-      updateData.participant_id = participant.id;
+    // Create the participant — or REFUND if the match filled while the hold aged
+    // out (reserve_paid_slot freshness window), to avoid overbooking.
+    const slot = await confirmSlotOrRefund(admin, payment);
+    if (slot.participant_id) updateData.participant_id = slot.participant_id;
+    if (slot.status) {
+      updateData.status = slot.status;
+      if (slot.refunded_amount != null) { updateData.refunded_amount = slot.refunded_amount; updateData.refunded_at = slot.refunded_at; }
     }
 
     await auditLog({
