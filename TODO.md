@@ -21,6 +21,11 @@ Pendientes y mejoras. Última revisión: 2026-05-30.
   su propio invitado). Ahora se setea `created_by = user_id` del que paga. *(Encontrado en e2e.)*
 - [ ] Borrar el invitado de pago huérfano de pruebas en el partido PAID (solo admin):
   `DELETE FROM match_participants WHERE id='a44fba0f-c228-483e-8da7-4604e0fe0d15';`
+- [ ] **Aplicar `20260530000001_reserve_paid_slot.sql` + redeploy `create-payment`**: cierra la
+  carrera de overbooking en el flujo de pago (antes el "comprobar cupo" y el "crear hold PENDING"
+  no eran atómicos → dos pagos simultáneos por la última plaza podían sobre-reservar). Ahora se
+  reserva la plaza bajo `SELECT … FOR UPDATE` ANTES de cobrar (función `reserve_paid_slot`), y el
+  hold se libera si Monei falla. *(Código listo; falta aplicar migración y `supabase functions deploy create-payment`.)*
 
 ## C. Calidad / mantenibilidad
 

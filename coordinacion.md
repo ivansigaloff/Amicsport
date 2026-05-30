@@ -21,6 +21,15 @@ _Última actualización: 2026-05-30 — **Agent-Claude** (Claude Code / Opus 4.8
 - `hooks/match/useMatchActions.ts` — fix cancelación de pago con varios SUCCEEDED (`816108b`).
 - Edge fns `verify-payment` / `monei-webhook` / `reconcile-payments` — `created_by` en invitados de
   pago, **desplegadas** (`734840e`, deploy `--use-api`, `verify_jwt=false` en `config.toml`).
+- `create-payment` + `supabase/migrations/20260530000001_reserve_paid_slot.sql` — reserva de plaza
+  de PAGO **atómica** (`SELECT … FOR UPDATE`, como `join_match`) para cerrar la carrera de
+  overbooking en pagos. **Código listo, FALTA aplicar migración + redeploy `create-payment`**
+  (NO está vivo aún → con tests secuenciales no pasa nada).
+- `scripts/e2e-payments.cjs` + `docs/PAYMENTS_AUTOMATION.md` — referencia + guía de automatización de
+  pagos MONEI: **Tarjeta** (mecánica ok, pero el 3DS "Validating payment" se cuelga en headless con
+  alto volumen → `timeout 25s`/FAILED; usar `4444…4414`, reintentar, espaciar), **Bizum** ✅ (tel
+  `500000000`, partido `<5€`, frame `inner-bizum`, RTP async → sondear), **Google Pay** ❌ (login de
+  Google), **PayPal** ❌ (no habilitado en la cuenta MONEI).
 
 ## Contrato `scChaos` ↔ `payMonei`
 `scChaos` llama `await payMonei(page, redirectUrl, method)` con `method ∈ {'card','bizum'}` y espera
@@ -40,4 +49,7 @@ _Última actualización: 2026-05-30 — **Agent-Claude** (Claude Code / Opus 4.8
 - [ ] **Otro agente:** integrar el `payMonei` Bizum real (receta arriba) en `e2e-scenarios.cjs`.
 - [x] Agent-Claude: fix cancelación (`816108b`) + ajustes `scChaos` (este turno).
 - [ ] **Desplegar** fix de cancelación a prod (Agent-Claude, en curso — `expo export -p web` + deploy).
+- [ ] **Aplicar `20260530000001_reserve_paid_slot.sql` + redeploy `create-payment`** (Agent-Claude;
+  cierra la carrera de overbooking en pagos — hoy NO está vivo). SQL: `SELECT proname FROM pg_proc
+  WHERE proname='reserve_paid_slot';` para verificar.
 - [ ] **Push**: hay commits locales sin pushear. Coordinar quién pushea para no divergir.
