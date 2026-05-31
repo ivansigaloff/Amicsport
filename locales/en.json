@@ -141,6 +141,7 @@
       "section_black": "Black",
       "checkin": "Check-in",
       "paid": "Paid",
+      "not_paid": "Not paid",
       "remove": "Remove",
       "teams": "Teams"
     }

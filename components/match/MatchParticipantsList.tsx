@@ -5,7 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { COLORS, SHADOWS, FONTS } from '../../constants/theme';
 
 type SectionKey = 'unassigned' | 'white' | 'black';
-type Filters = { checkin: boolean; paid: boolean; white: boolean; black: boolean; unassigned: boolean };
+type Tri = 'all' | 'yes' | 'no';
+type Filters = { checkin: Tri; paid: Tri; white: boolean; black: boolean; unassigned: boolean };
 
 const DISABLED = COLORS.TEXT_LIGHT;
 
@@ -27,11 +28,13 @@ const SECTION_STYLES: Record<SectionKey, { bg: string; accent: string; text: str
 
 const colorOf = (p: any): SectionKey => (p.shirt_color === 'white' ? 'white' : p.shirt_color === 'black' ? 'black' : 'unassigned');
 
-// A header filter chip: icon + count. Tapping toggles the filter. The white /
-// black chips use a shirt icon (outline = white jersey, filled = black jersey).
-function FilterChip({ icon, iconColor, count, active, onPress, label }: any) {
+// A header filter chip: icon + count. `tone` drives the highlight — 'sel'
+// (selected color filter), 'on' (green = has attribute), 'neg' (red = lacks it),
+// or 'off' (inactive).
+function FilterChip({ icon, iconColor, count, tone = 'off', onPress, label }: any) {
+  const toneStyle = tone === 'on' ? styles.fchipOn : tone === 'neg' ? styles.fchipNeg : tone === 'sel' ? styles.fchipActive : null;
   return (
-    <TouchableOpacity onPress={onPress} style={[styles.fchip, active && styles.fchipActive]} accessibilityRole="button" accessibilityState={{ selected: active }} {...tip(label)}>
+    <TouchableOpacity onPress={onPress} style={[styles.fchip, toneStyle]} accessibilityRole="button" accessibilityState={{ selected: tone !== 'off' }} {...tip(label)}>
       <Ionicons name={icon} size={18} color={iconColor} />
       <Text style={styles.fchipCount}>{count}</Text>
     </TouchableOpacity>
@@ -83,7 +86,7 @@ function PlayerRow({ p, sty, userId, t, onRemove }: any) {
 
 export default function MatchParticipantsList({ match, participantsList, isFull, isAdmin, userId, removeParticipant, removeDummyPlayer, compact = true, setCompact }: any) {
   const { t } = useTranslation();
-  const [filters, setFilters] = useState<Filters>({ checkin: false, paid: false, white: false, black: false, unassigned: false });
+  const [filters, setFilters] = useState<Filters>({ checkin: 'all', paid: 'all', white: false, black: false, unassigned: false });
 
   if (!match) return null;
 
@@ -160,26 +163,29 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
   }
 
   // ---- Compact admin field view ----
-  // White and black are mutually exclusive (a player has one color); check-in
-  // and paid are independent. Active filters combine with AND.
-  const toggle = (key: keyof Filters) => setFilters((s) => {
+  // check-in and paid are tri-state (all → yes → no → all); white / black /
+  // unassigned are mutually exclusive color filters. Active filters combine (AND).
+  const nextTri = (v: Tri): Tri => (v === 'all' ? 'yes' : v === 'yes' ? 'no' : 'all');
+  const cycleTri = (key: 'checkin' | 'paid') => setFilters((s) => ({ ...s, [key]: nextTri(s[key]) }));
+  const toggle = (key: 'white' | 'black' | 'unassigned') => setFilters((s) => {
     if (key === 'white') return { ...s, white: !s.white, black: false, unassigned: false };
     if (key === 'black') return { ...s, black: !s.black, white: false, unassigned: false };
-    if (key === 'unassigned') return { ...s, unassigned: !s.unassigned, white: false, black: false };
-    return { ...s, [key]: !s[key] };
+    return { ...s, unassigned: !s.unassigned, white: false, black: false };
   });
 
   const passes = (p: any) => {
-    if (filters.checkin && !p.checked_in) return false;
-    if (filters.paid && !p.paid) return false;
+    if (filters.checkin === 'yes' && !p.checked_in) return false;
+    if (filters.checkin === 'no' && p.checked_in) return false;
+    if (filters.paid === 'yes' && !p.paid) return false;
+    if (filters.paid === 'no' && p.paid) return false;
     if (filters.white && p.shirt_color !== 'white') return false;
     if (filters.black && p.shirt_color !== 'black') return false;
     if (filters.unassigned && p.shirt_color) return false;
     return true;
   };
   // External web players are unassigned and never checked-in/paid → show them
-  // (on top) unless a check-in/paid/white/black filter would exclude them.
-  const showDummies = !filters.checkin && !filters.paid && !filters.white && !filters.black;
+  // (on top) unless a "yes" check-in/paid or a white/black filter excludes them.
+  const showDummies = filters.checkin !== 'yes' && filters.paid !== 'yes' && !filters.white && !filters.black;
 
   const visible = list.filter(passes);
   // Unassigned always on top, then white, then black — no section headers.
@@ -189,20 +195,24 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
     ...visible.filter((p: any) => colorOf(p) === 'black'),
   ];
 
+  const triTone = (s: Tri) => (s === 'yes' ? 'on' : s === 'no' ? 'neg' : 'off');
+  const triColor = (s: Tri) => (s === 'yes' ? COLORS.SUCCESS : s === 'no' ? COLORS.DANGER : '#94A3B8');
+  const checkinLabel = filters.checkin === 'yes' ? t('match_details.manage.filter_in') : filters.checkin === 'no' ? t('match_details.manage.filter_out') : t('match_details.manage.filter_all');
+  const paidLabel = filters.paid === 'yes' ? t('match_details.manage.paid') : filters.paid === 'no' ? t('match_details.manage.not_paid') : t('match_details.manage.filter_all');
+
   return (
     <View style={styles.section}>
       {header}
 
       <View style={styles.fchipRow}>
-        <FilterChip icon="checkmark-circle" iconColor={COLORS.SUCCESS} count={checkinCount} active={filters.checkin} onPress={() => toggle('checkin')} label={t('match_details.manage.checkin')} />
-        <FilterChip icon="cash" iconColor={COLORS.PRIMARY_DARK} count={paidCount} active={filters.paid} onPress={() => toggle('paid')} label={t('match_details.manage.paid')} />
-        <FilterChip icon="shirt-outline" iconColor="#334155" count={whiteCount} active={filters.white} onPress={() => toggle('white')} label={t('match_details.manage.section_white')} />
-        <FilterChip icon="shirt" iconColor="#0F172A" count={blackCount} active={filters.black} onPress={() => toggle('black')} label={t('match_details.manage.section_black')} />
-        <FilterChip icon="ellipse-outline" iconColor="#94A3B8" count={unassignedCount} active={filters.unassigned} onPress={() => toggle('unassigned')} label={t('match_details.manage.section_unassigned')} />
+        <FilterChip icon={filters.checkin === 'no' ? 'close-circle-outline' : 'checkmark-circle'} iconColor={triColor(filters.checkin)} count={checkinCount} tone={triTone(filters.checkin)} onPress={() => cycleTri('checkin')} label={checkinLabel} />
+        <FilterChip icon={filters.paid === 'no' ? 'cash-outline' : 'cash'} iconColor={triColor(filters.paid)} count={paidCount} tone={triTone(filters.paid)} onPress={() => cycleTri('paid')} label={paidLabel} />
+        <FilterChip icon="shirt-outline" iconColor="#334155" count={whiteCount} tone={filters.white ? 'sel' : 'off'} onPress={() => toggle('white')} label={t('match_details.manage.section_white')} />
+        <FilterChip icon="shirt" iconColor="#0F172A" count={blackCount} tone={filters.black ? 'sel' : 'off'} onPress={() => toggle('black')} label={t('match_details.manage.section_black')} />
+        <FilterChip icon="ellipse-outline" iconColor="#94A3B8" count={unassignedCount} tone={filters.unassigned ? 'sel' : 'off'} onPress={() => toggle('unassigned')} label={t('match_details.manage.section_unassigned')} />
       </View>
 
       <View style={styles.sectionsWrap}>
-        {/* External web players: unassigned, never checked-in/paid → only in the unfiltered view, on top */}
         {showDummies && Array.from({ length: dummyCount }).map((_, i) => {
           const sty = SECTION_STYLES.unassigned;
           return (
@@ -257,6 +267,8 @@ const styles = StyleSheet.create({
   fchipRow: { flexDirection: 'row', gap: 6, marginBottom: 12 },
   fchip: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 9, borderRadius: 12, backgroundColor: COLORS.CARD_BG, borderWidth: 1.5, borderColor: COLORS.BORDER },
   fchipActive: { backgroundColor: COLORS.PRIMARY_LIGHT, borderColor: COLORS.PRIMARY },
+  fchipOn: { backgroundColor: '#DCFCE7', borderColor: COLORS.SUCCESS },
+  fchipNeg: { backgroundColor: COLORS.DANGER_LIGHT, borderColor: COLORS.DANGER },
   fchipCount: { fontSize: 15, fontFamily: FONTS.BOLD, color: COLORS.TEXT_MAIN },
 
   // Compact admin view — continuous color-tinted rows (no section headers)
