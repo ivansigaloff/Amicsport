@@ -156,6 +156,13 @@ serve(async (req) => {
   const completeUrl = `${baseUrl}/payment/return?order_id=${orderId}&status=SUCCEEDED`;
   const cancelUrl   = `${baseUrl}/payment/return?order_id=${orderId}&status=CANCELED`;
   const callbackUrl = `${SUPABASE_URL}/functions/v1/monei-webhook`;
+  // Expire the Monei session after 5 min so an ABANDONED payment frees its
+  // reserved slot fast: Monei fires an EXPIRED webhook → monei-webhook marks the
+  // payment EXPIRED → reserve_paid_slot stops counting the hold. 5 min covers a
+  // genuine card-3DS / Bizum-RTP confirmation; past it Monei won't let the
+  // payment succeed, so the slot can be freed/re-sold safely. (reserve_paid_slot's
+  // 6-min freshness window is the backup if this webhook is ever missed.)
+  const expireAt = Math.floor(Date.now() / 1000) + 5 * 60;
 
   let moneiPayment: { id: string; nextAction?: { redirectUrl?: string } };
   try {
@@ -168,6 +175,7 @@ serve(async (req) => {
       completeUrl,
       cancelUrl,
       callbackUrl,
+      expireAt,
     });
   } catch (e) {
     // Monei failed → release the hold so it does not keep occupying a spot.

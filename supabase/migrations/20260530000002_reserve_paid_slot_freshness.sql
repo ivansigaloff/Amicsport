@@ -58,17 +58,18 @@ BEGIN
   FROM public.match_participants
   WHERE match_id = p_match_id;
 
-  -- Other users' in-flight holds — only those created in the last 10 minutes.
-  -- A genuine payment completes within that window; older PENDING rows are
-  -- abandoned holds and must NOT keep blocking the slot (they free up in real
-  -- time here, regardless of when the reconcile cron next runs).
+  -- Other users' in-flight holds — only those created in the last 6 minutes.
+  -- create-payment sets the Monei session to expire at 5 min (so Monei itself
+  -- frees abandoned sessions via an EXPIRED webhook); this 6-min window is the
+  -- backup that stops a stale hold from blocking the slot even if that webhook
+  -- is missed — in real time here, regardless of when the reconcile cron runs.
   SELECT count(*) INTO v_pending
   FROM public.payments
   WHERE match_id = p_match_id
     AND env = p_env
     AND status = 'PENDING'
     AND user_id <> p_user_id
-    AND created_at > now() - interval '10 minutes';
+    AND created_at > now() - interval '6 minutes';
 
   IF (v_parts + v_dummy + v_pending) >= v_max THEN
     RAISE EXCEPTION 'match_full';
