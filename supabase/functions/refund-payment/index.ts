@@ -68,6 +68,54 @@ serve(async (req) => {
     return json({ error: 'already_fully_refunded' }, 409);
   }
 
+  // ── Cancellation deadline (server-side enforcement) ─────────────────────
+  // The client (hooks/match/useMatchActions.ts) only blocks self-cancellation
+  // in the UI; without this check a user could call this function directly and
+  // get a refund AFTER the cutoff, costing us the (now unfillable) spot.
+  // Admins bypass. Mirrors the client's wall-clock-in-Madrid comparison:
+  // both "now" and the deadline are expressed as Madrid wall-clock instants so
+  // DST offsets cancel out (no UTC conversion needed on either side).
+  if (!isAdmin) {
+    const matchTable = payment.env === 'dev' ? 'matches_dev' : 'matches';
+    const { data: match } = await admin
+      .from(matchTable)
+      .select('match_date, time, cancellation_hours')
+      .eq('id', payment.match_id)
+      .maybeSingle();
+
+    // Only enforce when we can resolve a concrete start instant. Legacy matches
+    // with an unparseable date (match_date NULL) are left to the admin path.
+    if (match?.match_date && match.time) {
+      const [y, mo, d] = String(match.match_date).split('-').map(Number);
+      const [h, mi] = String(match.time).split(':').map(Number);
+      if (![y, mo, d, h, mi].some((n) => Number.isNaN(n))) {
+        const startWall = Date.UTC(y, mo - 1, d, h, mi);
+        const limitHours = match.cancellation_hours || 12;
+        const deadlineWall = startWall - limitHours * 60 * 60 * 1000;
+
+        // "Now" as Madrid wall-clock, encoded with Date.UTC for a frame match.
+        const p = new Intl.DateTimeFormat('en-US', {
+          timeZone: 'Europe/Madrid',
+          year: 'numeric', month: '2-digit', day: '2-digit',
+          hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+        }).formatToParts(new Date());
+        const get = (t: string) => Number(p.find((x) => x.type === t)?.value);
+        const nowWall = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second'));
+
+        if (nowWall > deadlineWall) {
+          await auditLog({
+            env: payment.env, actor_id: user.id, actor_email: user.email,
+            action: 'REFUND_BLOCKED_DEADLINE',
+            entity_type: 'payment', entity_id: payment.id,
+            payload: { match_id: payment.match_id, limit_hours: limitHours },
+            source: 'app',
+          });
+          return json({ error: 'cancellation_deadline_passed', limit_hours: limitHours }, 403);
+        }
+      }
+    }
+  }
+
   // ── Daily limit check (skipped for admins using force) ──────────────────
   let blockedByLimit = false;
 
