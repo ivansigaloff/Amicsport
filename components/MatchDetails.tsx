@@ -26,6 +26,7 @@ export default function MatchDetails({ matchId, asComponent = false, onDeleteSuc
   const prefix = env === 'dev' ? '/dev' : '';
 
   const [refreshing, setRefreshing] = useState(false);
+  const [compact, setCompact] = useState(true); // admin compact field view (hides the location card)
 
   const matchDataHook = useMatch(id, env, fromTable);
   const { match, loading, fetchData, participantsList, isFull, isAdmin, userId, isStarted, isOver, cancellationDeadline, formattedDate, joined } = matchDataHook;
@@ -86,8 +87,8 @@ export default function MatchDetails({ matchId, asComponent = false, onDeleteSuc
     >
       <MatchHeader match={match} formattedDate={formattedDate} asComponent={asComponent} router={router} isAdmin={isAdmin} prefix={prefix} id={id} />
       <View style={styles.content}>
-        <MatchLocationCard match={match} />
-        <MatchParticipantsList match={match} participantsList={participantsList} isFull={isFull} isAdmin={isAdmin} userId={userId} removeParticipant={removeParticipant} removeDummyPlayer={removeDummyPlayer} />
+        {!(isAdmin && compact) && <MatchLocationCard match={match} />}
+        <MatchParticipantsList match={match} participantsList={participantsList} isFull={isFull} isAdmin={isAdmin} userId={userId} removeParticipant={removeParticipant} removeDummyPlayer={removeDummyPlayer} compact={compact} setCompact={setCompact} />
         <MatchAdminPanel match={match} isAdmin={isAdmin} isStarted={isStarted} participantsList={participantsList} setParticipantsList={matchDataHook.setParticipantsList} executeDelete={() => executeDelete(asComponent, onDeleteSuccess)} fromTable={fromTable} showAlert={showAlert} />
       </View>
     </ScrollView>

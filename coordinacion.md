@@ -36,6 +36,7 @@ _Última actualización: 2026-05-31 — **Agent-Claude** (Claude Code / Opus 4.8
   check-in). **Fase A** = cáscara UI con botones desactivados; **Fase B** = columnas BD
   (`checked_in`/`shirt_color`/`paid`) + mutaciones admin (RLS `participants_update_admin` existente).
   `paid` manual solo en modo test. No-admin mantiene la lista simple. **Tocando ahora** — no editar.
+- `components/MatchDetails.tsx` — sube el estado `compact` y oculta `MatchLocationCard` en modo compacto admin (pasa `compact`/`setCompact` a la lista).
 - `locales/{es,en,ca}.json` — claves nuevas bajo `match_details.manage` (no tocar esa sub-clave).
 
 ## Contrato `scChaos` ↔ `payMonei`

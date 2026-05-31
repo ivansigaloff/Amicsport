@@ -4,31 +4,41 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { COLORS, SHADOWS, FONTS } from '../../constants/theme';
 
-type Filter = 'all' | 'in' | 'out';
 type SectionKey = 'unassigned' | 'white' | 'black';
+type Filters = { checkin: boolean; paid: boolean; white: boolean; black: boolean };
 
 const DISABLED = COLORS.TEXT_LIGHT;
 
-// Visual identity per color section: tinted background + left accent strip +
-// swatch + text colors (the "negro" team uses a dark bg so text flips to white).
-const SECTION_STYLES: Record<SectionKey, {
-  bg: string; accent: string; text: string; sub: string;
-  swatch: string; swatchBorder?: string; divider: string;
-}> = {
-  unassigned: { bg: '#F1F5F9', accent: '#94A3B8', text: COLORS.TEXT_MAIN, sub: COLORS.TEXT_MUTED, swatch: '#CBD5E1', divider: 'rgba(15,23,42,0.06)' },
-  white:      { bg: '#FFFFFF', accent: '#CBD5E1', text: COLORS.TEXT_MAIN, sub: COLORS.TEXT_MUTED, swatch: '#FFFFFF', swatchBorder: '#CBD5E1', divider: 'rgba(15,23,42,0.06)' },
-  black:      { bg: '#1E293B', accent: '#0F172A', text: '#FFFFFF', sub: '#94A3B8', swatch: '#0F172A', swatchBorder: '#475569', divider: 'rgba(255,255,255,0.08)' },
+// Visual identity per color: tinted row background + left accent strip + text
+// colors (the "negro" team uses a dark bg so text/icons flip to light).
+const SECTION_STYLES: Record<SectionKey, { bg: string; accent: string; text: string; sub: string; divider: string }> = {
+  unassigned: { bg: '#F1F5F9', accent: '#CBD5E1', text: COLORS.TEXT_MAIN, sub: COLORS.TEXT_MUTED, divider: 'rgba(15,23,42,0.06)' },
+  white:      { bg: '#FFFFFF', accent: '#94A3B8', text: COLORS.TEXT_MAIN, sub: COLORS.TEXT_MUTED, divider: 'rgba(15,23,42,0.06)' },
+  black:      { bg: '#1E293B', accent: '#0F172A', text: '#FFFFFF', sub: '#94A3B8', divider: 'rgba(255,255,255,0.08)' },
 };
 
-// One compact player row. The management controls (check-in / shirt color /
-// paid) are rendered but DISABLED in this phase — they are wired up next.
+const colorOf = (p: any): SectionKey => (p.shirt_color === 'white' ? 'white' : p.shirt_color === 'black' ? 'black' : 'unassigned');
+
+// A header filter chip: icon + count. Tapping toggles the filter. The white /
+// black chips use a shirt icon (outline = white jersey, filled = black jersey).
+function FilterChip({ icon, iconColor, count, active, onPress, label }: any) {
+  return (
+    <TouchableOpacity onPress={onPress} style={[styles.fchip, active && styles.fchipActive]} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected: active }}>
+      <Ionicons name={icon} size={18} color={iconColor} />
+      <Text style={styles.fchipCount}>{count}</Text>
+    </TouchableOpacity>
+  );
+}
+
+// One compact player row, tinted by its color group. The management controls
+// (check-in / shirt color / paid) are rendered but DISABLED in this phase.
 function PlayerRow({ p, sty, userId, t, onRemove }: any) {
   const checkedIn = !!p.checked_in;
   const paid = !!p.paid;
   const color = p.shirt_color;
   const isSelf = p.user_id === userId;
   return (
-    <View style={[styles.playerRow, { borderBottomColor: sty.divider }]}>
+    <View style={[styles.playerRow, { backgroundColor: sty.bg, borderLeftColor: sty.accent, borderBottomColor: sty.divider }]}>
       <TouchableOpacity disabled style={[styles.iconBtn, styles.disabledCtrl]}>
         <Ionicons name={checkedIn ? 'checkmark-circle' : 'ellipse-outline'} size={22} color={checkedIn ? COLORS.SUCCESS : DISABLED} />
       </TouchableOpacity>
@@ -63,21 +73,9 @@ function PlayerRow({ p, sty, userId, t, onRemove }: any) {
   );
 }
 
-function Counter({ swatch, swatchBorder, label, value }: any) {
-  return (
-    <View style={styles.counterItem}>
-      <View style={[styles.swatch, { backgroundColor: swatch, borderColor: swatchBorder || 'transparent', borderWidth: swatchBorder ? 1 : 0 }]} />
-      <Text style={styles.counterValue}>{value}</Text>
-      <Text style={styles.counterLabel} numberOfLines={1}>{label}</Text>
-    </View>
-  );
-}
-
-export default function MatchParticipantsList({ match, participantsList, isFull, isAdmin, userId, removeParticipant, removeDummyPlayer }: any) {
+export default function MatchParticipantsList({ match, participantsList, isFull, isAdmin, userId, removeParticipant, removeDummyPlayer, compact = true, setCompact }: any) {
   const { t } = useTranslation();
-  const [compact, setCompact] = useState(true);            // admins default to the compact field view
-  const [filter, setFilter] = useState<Filter>('all');
-  const [collapsed, setCollapsed] = useState<Record<SectionKey, boolean>>({ unassigned: false, white: false, black: false });
+  const [filters, setFilters] = useState<Filters>({ checkin: false, paid: false, white: false, black: false });
 
   if (!match) return null;
 
@@ -85,9 +83,10 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
   const dummyCount = match.joined_players || 0;
   const total = list.length + dummyCount;
 
+  const checkinCount = list.filter((p: any) => p.checked_in).length;
+  const paidCount = list.filter((p: any) => p.paid).length;
   const whiteCount = list.filter((p: any) => p.shirt_color === 'white').length;
   const blackCount = list.filter((p: any) => p.shirt_color === 'black').length;
-  const unassignedCount = list.filter((p: any) => !p.shirt_color).length + dummyCount;
 
   const useCompact = isAdmin && compact;
 
@@ -95,8 +94,8 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
     <View style={styles.sectionHeader}>
       <Text style={styles.sectionTitle}>{t('match_details.joined_list_title')}</Text>
       <View style={styles.headerRight}>
-        {isAdmin && (
-          <TouchableOpacity onPress={() => setCompact((c) => !c)} style={styles.modeToggle} accessibilityRole="button">
+        {isAdmin && setCompact && (
+          <TouchableOpacity onPress={() => setCompact((c: boolean) => !c)} style={styles.modeToggle} accessibilityRole="button">
             <Ionicons name={compact ? 'expand-outline' : 'contract-outline'} size={15} color={COLORS.TEXT_MUTED} />
             <Text style={styles.modeToggleText}>{compact ? t('match_details.manage.expanded') : t('match_details.manage.compact')}</Text>
           </TouchableOpacity>
@@ -108,7 +107,7 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
     </View>
   );
 
-  // Non-admin, or admin in expanded mode → keep the original simple list.
+  // Non-admin, or admin in expanded mode → original simple list.
   if (!useCompact) {
     return (
       <View style={styles.section}>
@@ -152,95 +151,70 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
   }
 
   // ---- Compact admin field view ----
-  const passesFilter = (p: any) => (filter === 'all' ? true : filter === 'in' ? !!p.checked_in : !p.checked_in);
+  // White and black are mutually exclusive (a player has one color); check-in
+  // and paid are independent. Active filters combine with AND.
+  const toggle = (key: keyof Filters) => setFilters((s) => {
+    if (key === 'white') return { ...s, white: !s.white, black: false };
+    if (key === 'black') return { ...s, black: !s.black, white: false };
+    return { ...s, [key]: !s[key] };
+  });
 
-  const sectionData: { key: SectionKey; label: string; count: number; rows: any[]; dummies: number }[] = [
-    {
-      key: 'unassigned',
-      label: t('match_details.manage.section_unassigned'),
-      count: unassignedCount,
-      rows: list.filter((p: any) => !p.shirt_color && passesFilter(p)),
-      dummies: filter === 'in' ? 0 : dummyCount, // external web players are never "checked in"
-    },
-    {
-      key: 'white',
-      label: t('match_details.manage.section_white'),
-      count: whiteCount,
-      rows: list.filter((p: any) => p.shirt_color === 'white' && passesFilter(p)),
-      dummies: 0,
-    },
-    {
-      key: 'black',
-      label: t('match_details.manage.section_black'),
-      count: blackCount,
-      rows: list.filter((p: any) => p.shirt_color === 'black' && passesFilter(p)),
-      dummies: 0,
-    },
-  ];
+  const passes = (p: any) => {
+    if (filters.checkin && !p.checked_in) return false;
+    if (filters.paid && !p.paid) return false;
+    if (filters.white && p.shirt_color !== 'white') return false;
+    if (filters.black && p.shirt_color !== 'black') return false;
+    return true;
+  };
+  const anyFilter = filters.checkin || filters.paid || filters.white || filters.black;
 
-  const FILTERS: { key: Filter; label: string }[] = [
-    { key: 'all', label: t('match_details.manage.filter_all') },
-    { key: 'in', label: t('match_details.manage.filter_in') },
-    { key: 'out', label: t('match_details.manage.filter_out') },
+  const visible = list.filter(passes);
+  // Unassigned always on top, then white, then black — no section headers.
+  const ordered = [
+    ...visible.filter((p: any) => colorOf(p) === 'unassigned'),
+    ...visible.filter((p: any) => colorOf(p) === 'white'),
+    ...visible.filter((p: any) => colorOf(p) === 'black'),
   ];
 
   return (
     <View style={styles.section}>
       {header}
 
-      <View style={styles.counters}>
-        <Counter swatch={SECTION_STYLES.white.swatch} swatchBorder={SECTION_STYLES.white.swatchBorder} label={t('match_details.manage.section_white')} value={whiteCount} />
-        <Counter swatch={SECTION_STYLES.black.swatch} swatchBorder={SECTION_STYLES.black.swatchBorder} label={t('match_details.manage.section_black')} value={blackCount} />
-        <Counter swatch={SECTION_STYLES.unassigned.swatch} label={t('match_details.manage.section_unassigned')} value={unassignedCount} />
-      </View>
-
-      <View style={styles.filterRow}>
-        {FILTERS.map((f) => (
-          <TouchableOpacity key={f.key} onPress={() => setFilter(f.key)} style={[styles.filterChip, filter === f.key && styles.filterChipActive]}>
-            <Text style={[styles.filterChipText, filter === f.key && styles.filterChipTextActive]}>{f.label}</Text>
-          </TouchableOpacity>
-        ))}
+      <View style={styles.fchipRow}>
+        <FilterChip icon="checkmark-circle" iconColor={COLORS.SUCCESS} count={checkinCount} active={filters.checkin} onPress={() => toggle('checkin')} label={t('match_details.manage.checkin')} />
+        <FilterChip icon="cash" iconColor={COLORS.PRIMARY_DARK} count={paidCount} active={filters.paid} onPress={() => toggle('paid')} label={t('match_details.manage.paid')} />
+        <FilterChip icon="shirt-outline" iconColor="#334155" count={whiteCount} active={filters.white} onPress={() => toggle('white')} label={t('match_details.manage.section_white')} />
+        <FilterChip icon="shirt" iconColor="#0F172A" count={blackCount} active={filters.black} onPress={() => toggle('black')} label={t('match_details.manage.section_black')} />
       </View>
 
       <View style={styles.sectionsWrap}>
-        {sectionData.map((sec) => {
-          const sty = SECTION_STYLES[sec.key];
-          const isCollapsed = collapsed[sec.key];
+        {/* External web players: unassigned, never checked-in/paid → only in the unfiltered view, on top */}
+        {!anyFilter && Array.from({ length: dummyCount }).map((_, i) => {
+          const sty = SECTION_STYLES.unassigned;
           return (
-            <View key={sec.key} style={[styles.colorSection, { backgroundColor: sty.bg, borderLeftColor: sty.accent }]}>
-              <TouchableOpacity style={styles.colorHeader} onPress={() => setCollapsed((c) => ({ ...c, [sec.key]: !c[sec.key] }))} activeOpacity={0.7}>
-                <View style={[styles.swatch, { backgroundColor: sty.swatch, borderColor: sty.swatchBorder || 'transparent', borderWidth: sty.swatchBorder ? 1 : 0 }]} />
-                <Text style={[styles.colorLabel, { color: sty.text }]} numberOfLines={1}>{sec.label}</Text>
-                <Text style={[styles.colorCount, { color: sty.sub }]}>{sec.count}</Text>
-                <Ionicons name={isCollapsed ? 'chevron-down' : 'chevron-up'} size={16} color={sty.sub} />
+            <View key={`dummy-${i}`} style={[styles.playerRow, { backgroundColor: sty.bg, borderLeftColor: sty.accent, borderBottomColor: sty.divider }]}>
+              <View style={styles.iconBtn} />
+              <View style={[styles.miniAvatar, { backgroundColor: COLORS.BORDER }]}>
+                <Ionicons name="person" size={14} color={COLORS.TEXT_LIGHT} />
+              </View>
+              <Text style={[styles.playerName, { color: sty.sub }]} numberOfLines={1}>{t('match_details.external_player')}</Text>
+              <TouchableOpacity onPress={removeDummyPlayer} style={styles.iconBtn}>
+                <Ionicons name="close" size={16} color={COLORS.DANGER} />
               </TouchableOpacity>
-
-              {!isCollapsed && sec.rows.map((p: any, idx: number) => (
-                <PlayerRow
-                  key={p.id || `${sec.key}-${idx}`}
-                  p={p}
-                  sty={sty}
-                  userId={userId}
-                  t={t}
-                  onRemove={p.user_id !== userId ? () => removeParticipant(p) : undefined}
-                />
-              ))}
-
-              {!isCollapsed && Array.from({ length: sec.dummies }).map((_, i) => (
-                <View key={`d-${sec.key}-${i}`} style={[styles.playerRow, { borderBottomColor: sty.divider }]}>
-                  <View style={styles.iconBtn} />
-                  <View style={[styles.miniAvatar, { backgroundColor: COLORS.BORDER }]}>
-                    <Ionicons name="person" size={14} color={COLORS.TEXT_LIGHT} />
-                  </View>
-                  <Text style={[styles.playerName, { color: sty.sub }]} numberOfLines={1}>{t('match_details.external_player')}</Text>
-                  <TouchableOpacity onPress={removeDummyPlayer} style={styles.iconBtn}>
-                    <Ionicons name="close" size={16} color={COLORS.DANGER} />
-                  </TouchableOpacity>
-                </View>
-              ))}
             </View>
           );
         })}
+
+        {ordered.map((p: any, idx: number) => (
+          <PlayerRow
+            key={p.id || idx}
+            p={p}
+            sty={SECTION_STYLES[colorOf(p)]}
+            userId={userId}
+            t={t}
+            onRemove={p.user_id !== userId ? () => removeParticipant(p) : undefined}
+          />
+        ))}
       </View>
     </View>
   );
@@ -265,28 +239,15 @@ const styles = StyleSheet.create({
   participantStatus: { fontSize: 12, fontFamily: FONTS.REGULAR, color: COLORS.SUCCESS },
   removeBtn: { padding: 8, backgroundColor: COLORS.DANGER_LIGHT, borderRadius: 8 },
 
-  // Compact admin view — counters
-  counters: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  counterItem: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: COLORS.CARD_BG, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 12, borderWidth: 1, borderColor: COLORS.BORDER },
-  counterValue: { fontSize: 16, fontFamily: FONTS.BOLD, color: COLORS.TEXT_MAIN },
-  counterLabel: { fontSize: 10, fontFamily: FONTS.MEDIUM, color: COLORS.TEXT_MUTED, flexShrink: 1 },
+  // Compact admin view — header filter chips (icon + count)
+  fchipRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  fchip: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 9, borderRadius: 12, backgroundColor: COLORS.CARD_BG, borderWidth: 1.5, borderColor: COLORS.BORDER },
+  fchipActive: { backgroundColor: COLORS.PRIMARY_LIGHT, borderColor: COLORS.PRIMARY },
+  fchipCount: { fontSize: 15, fontFamily: FONTS.BOLD, color: COLORS.TEXT_MAIN },
 
-  // Compact admin view — check-in filter
-  filterRow: { flexDirection: 'row', gap: 6, marginBottom: 12 },
-  filterChip: { flex: 1, paddingVertical: 7, borderRadius: 10, backgroundColor: COLORS.BORDER_LIGHT, alignItems: 'center' },
-  filterChipActive: { backgroundColor: COLORS.SECONDARY },
-  filterChipText: { fontSize: 12, fontFamily: FONTS.SEMI_BOLD, color: COLORS.TEXT_MUTED },
-  filterChipTextActive: { color: COLORS.TEXT_WHITE },
-
-  // Compact admin view — color sections (continuous, no gap)
+  // Compact admin view — continuous color-tinted rows (no section headers)
   sectionsWrap: { borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: COLORS.BORDER },
-  colorSection: { borderLeftWidth: 4 },
-  colorHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 9 },
-  swatch: { width: 14, height: 14, borderRadius: 4 },
-  colorLabel: { flex: 1, fontSize: 13, fontFamily: FONTS.BOLD, textTransform: 'uppercase', letterSpacing: 0.5 },
-  colorCount: { fontSize: 13, fontFamily: FONTS.BOLD },
-
-  playerRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 7, borderBottomWidth: StyleSheet.hairlineWidth },
+  playerRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 7, borderLeftWidth: 4, borderBottomWidth: StyleSheet.hairlineWidth },
   miniAvatar: { width: 28, height: 28, borderRadius: 14, backgroundColor: COLORS.PRIMARY_LIGHT, justifyContent: 'center', alignItems: 'center' },
   miniAvatarText: { fontSize: 13, fontFamily: FONTS.BOLD, color: COLORS.PRIMARY },
   playerName: { flex: 1, fontSize: 14, fontFamily: FONTS.SEMI_BOLD },
