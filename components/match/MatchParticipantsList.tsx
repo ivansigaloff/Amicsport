@@ -22,6 +22,15 @@ const tip = (label: string): any =>
     ? { accessibilityLabel: label, ref: (el: any) => { try { if (el && el.setAttribute) el.setAttribute('title', label); } catch {} } }
     : { accessibilityLabel: label };
 
+// Unassigned rows get light diagonal grey stripes. react-native-web doesn't
+// support `backgroundImage` in StyleSheet, so set it on the DOM node via ref on
+// web (and clear it when the row is no longer unassigned). No-op on native.
+const UNASSIGNED_STRIPES = 'repeating-linear-gradient(45deg, rgba(100,116,139,0.14) 0, rgba(100,116,139,0.14) 6px, transparent 6px, transparent 12px)';
+const stripeRef = (on: boolean): any =>
+  Platform.OS === 'web'
+    ? { ref: (el: any) => { try { if (el && el.style) el.style.backgroundImage = on ? UNASSIGNED_STRIPES : 'none'; } catch {} } }
+    : {};
+
 // Visual identity per color: tinted row background + left accent strip + text
 // colors (the "negro" team uses a dark bg so text/icons flip to light).
 const SECTION_STYLES: Record<SectionKey, { bg: string; accent: string; text: string; sub: string; divider: string }> = {
@@ -47,13 +56,13 @@ function FilterChip({ icon, iconColor, count, tone = 'off', onPress, label }: an
 
 // One compact player row, tinted by its color group. The management controls
 // (check-in / shirt color / paid) are rendered but DISABLED in this phase.
-function PlayerRow({ p, sty, userId, t, onRemove, setCheckin, setShirtColor, setPaid }: any) {
+function PlayerRow({ p, sty, striped, userId, t, onRemove, setCheckin, setShirtColor, setPaid }: any) {
   const checkedIn = !!p.checked_in;
   const paid = !!p.paid;
   const color = p.shirt_color;
   const isSelf = p.user_id === userId;
   return (
-    <View style={[styles.playerRow, { backgroundColor: sty.bg, borderLeftColor: sty.accent, borderBottomColor: sty.divider }]}>
+    <View style={[styles.playerRow, { backgroundColor: sty.bg, borderLeftColor: sty.accent, borderBottomColor: sty.divider }]} {...stripeRef(striped)}>
       <TouchableOpacity onPress={() => setCheckin(p, !checkedIn)} style={styles.iconBtn} {...tip(t('match_details.manage.checkin'))}>
         <Ionicons name={checkedIn ? 'checkmark-circle' : 'ellipse-outline'} size={22} color={checkedIn ? COLORS.SUCCESS : DISABLED} />
       </TouchableOpacity>
@@ -108,6 +117,15 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
 
   const useCompact = isAdmin && compact;
 
+  // Player counter badge: light green normally, amber > 80%, red "Lleno" when full
+  // (same palette as the match list).
+  const maxP = match.max_players || 0;
+  const ratio = maxP > 0 ? total / maxP : 0;
+  const badgeFull = maxP > 0 && total >= maxP;
+  const badgeWarn = !badgeFull && ratio > 0.8;
+  const badgeBg = badgeFull ? COLORS.DANGER_LIGHT : badgeWarn ? COLORS.WARNING_LIGHT : '#DCFCE7';
+  const badgeFg = badgeFull ? COLORS.DANGER : badgeWarn ? '#B45309' : COLORS.SUCCESS;
+
   const header = (
     <View style={styles.sectionHeader}>
       <Text style={styles.sectionTitle}>{t('match_details.joined_list_title')}</Text>
@@ -118,8 +136,8 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
             <Text style={styles.modeToggleText}>{compact ? t('match_details.manage.expanded') : t('match_details.manage.compact')}</Text>
           </TouchableOpacity>
         )}
-        <View style={[styles.countBadge, { backgroundColor: isFull ? COLORS.DANGER : COLORS.SUCCESS }]}>
-          <Text style={styles.countBadgeText}>{total}/{match.max_players}</Text>
+        <View style={[styles.countBadge, { backgroundColor: badgeBg }]}>
+          <Text style={[styles.countBadgeText, { color: badgeFg }]}>{badgeFull ? t('match_details.manage.full') : `${total}/${maxP}`}</Text>
         </View>
       </View>
     </View>
@@ -224,7 +242,7 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
         {showDummies && Array.from({ length: dummyCount }).map((_, i) => {
           const sty = SECTION_STYLES.unassigned;
           return (
-            <View key={`dummy-${i}`} style={[styles.playerRow, { backgroundColor: sty.bg, borderLeftColor: sty.accent, borderBottomColor: sty.divider }]}>
+            <View key={`dummy-${i}`} style={[styles.playerRow, { backgroundColor: sty.bg, borderLeftColor: sty.accent, borderBottomColor: sty.divider }]} {...stripeRef(true)}>
               <View style={styles.iconBtn} />
               <View style={[styles.miniAvatar, { backgroundColor: COLORS.BORDER }]}>
                 <Ionicons name="person" size={14} color={COLORS.TEXT_LIGHT} />
@@ -242,6 +260,7 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
             key={p.id || idx}
             p={p}
             sty={SECTION_STYLES[colorOf(p)]}
+            striped={colorOf(p) === 'unassigned'}
             userId={userId}
             t={t}
             onRemove={p.user_id !== userId ? () => removeParticipant(p) : undefined}
