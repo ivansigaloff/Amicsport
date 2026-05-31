@@ -1,13 +1,21 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { COLORS, SHADOWS, FONTS } from '../../constants/theme';
 
 type SectionKey = 'unassigned' | 'white' | 'black';
-type Filters = { checkin: boolean; paid: boolean; white: boolean; black: boolean };
+type Filters = { checkin: boolean; paid: boolean; white: boolean; black: boolean; unassigned: boolean };
 
 const DISABLED = COLORS.TEXT_LIGHT;
+
+// Tooltip + a11y label. react-native-web (0.21) does not forward `title`, so set
+// the native browser tooltip on the DOM node via ref on web; aria-label applies
+// on every platform. Native gets no ref (no-op).
+const tip = (label: string): any =>
+  Platform.OS === 'web'
+    ? { accessibilityLabel: label, ref: (el: any) => { try { if (el && el.setAttribute) el.setAttribute('title', label); } catch {} } }
+    : { accessibilityLabel: label };
 
 // Visual identity per color: tinted row background + left accent strip + text
 // colors (the "negro" team uses a dark bg so text/icons flip to light).
@@ -23,7 +31,7 @@ const colorOf = (p: any): SectionKey => (p.shirt_color === 'white' ? 'white' : p
 // black chips use a shirt icon (outline = white jersey, filled = black jersey).
 function FilterChip({ icon, iconColor, count, active, onPress, label }: any) {
   return (
-    <TouchableOpacity onPress={onPress} style={[styles.fchip, active && styles.fchipActive]} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected: active }}>
+    <TouchableOpacity onPress={onPress} style={[styles.fchip, active && styles.fchipActive]} accessibilityRole="button" accessibilityState={{ selected: active }} {...tip(label)}>
       <Ionicons name={icon} size={18} color={iconColor} />
       <Text style={styles.fchipCount}>{count}</Text>
     </TouchableOpacity>
@@ -39,7 +47,7 @@ function PlayerRow({ p, sty, userId, t, onRemove }: any) {
   const isSelf = p.user_id === userId;
   return (
     <View style={[styles.playerRow, { backgroundColor: sty.bg, borderLeftColor: sty.accent, borderBottomColor: sty.divider }]}>
-      <TouchableOpacity disabled style={[styles.iconBtn, styles.disabledCtrl]}>
+      <TouchableOpacity disabled style={[styles.iconBtn, styles.disabledCtrl]} {...tip(t('match_details.manage.checkin'))}>
         <Ionicons name={checkedIn ? 'checkmark-circle' : 'ellipse-outline'} size={22} color={checkedIn ? COLORS.SUCCESS : DISABLED} />
       </TouchableOpacity>
 
@@ -52,20 +60,20 @@ function PlayerRow({ p, sty, userId, t, onRemove }: any) {
       </Text>
 
       <View style={[styles.colorPick, styles.disabledCtrl]}>
-        <TouchableOpacity disabled style={[styles.colorChip, styles.colorChipWhite, color === 'white' && styles.colorChipActive]}>
+        <TouchableOpacity disabled style={[styles.colorChip, styles.colorChipWhite, color === 'white' && styles.colorChipActive]} {...tip(t('match_details.manage.section_white'))}>
           <Text style={[styles.colorChipText, { color: '#0F172A' }]}>B</Text>
         </TouchableOpacity>
-        <TouchableOpacity disabled style={[styles.colorChip, styles.colorChipBlack, color === 'black' && styles.colorChipActive]}>
+        <TouchableOpacity disabled style={[styles.colorChip, styles.colorChipBlack, color === 'black' && styles.colorChipActive]} {...tip(t('match_details.manage.section_black'))}>
           <Text style={[styles.colorChipText, { color: '#FFFFFF' }]}>N</Text>
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity disabled style={[styles.iconBtn, styles.disabledCtrl]}>
+      <TouchableOpacity disabled style={[styles.iconBtn, styles.disabledCtrl]} {...tip(t('match_details.manage.paid'))}>
         <Ionicons name={paid ? 'cash' : 'cash-outline'} size={20} color={paid ? COLORS.SUCCESS : DISABLED} />
       </TouchableOpacity>
 
       {onRemove && (
-        <TouchableOpacity onPress={onRemove} style={styles.iconBtn}>
+        <TouchableOpacity onPress={onRemove} style={styles.iconBtn} {...tip(t('match_details.manage.remove'))}>
           <Ionicons name="trash-outline" size={16} color={COLORS.DANGER} />
         </TouchableOpacity>
       )}
@@ -75,7 +83,7 @@ function PlayerRow({ p, sty, userId, t, onRemove }: any) {
 
 export default function MatchParticipantsList({ match, participantsList, isFull, isAdmin, userId, removeParticipant, removeDummyPlayer, compact = true, setCompact }: any) {
   const { t } = useTranslation();
-  const [filters, setFilters] = useState<Filters>({ checkin: false, paid: false, white: false, black: false });
+  const [filters, setFilters] = useState<Filters>({ checkin: false, paid: false, white: false, black: false, unassigned: false });
 
   if (!match) return null;
 
@@ -87,6 +95,7 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
   const paidCount = list.filter((p: any) => p.paid).length;
   const whiteCount = list.filter((p: any) => p.shirt_color === 'white').length;
   const blackCount = list.filter((p: any) => p.shirt_color === 'black').length;
+  const unassignedCount = list.filter((p: any) => !p.shirt_color).length + dummyCount;
 
   const useCompact = isAdmin && compact;
 
@@ -95,7 +104,7 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
       <Text style={styles.sectionTitle}>{t('match_details.joined_list_title')}</Text>
       <View style={styles.headerRight}>
         {isAdmin && setCompact && (
-          <TouchableOpacity onPress={() => setCompact((c: boolean) => !c)} style={styles.modeToggle} accessibilityRole="button">
+          <TouchableOpacity onPress={() => setCompact((c: boolean) => !c)} style={styles.modeToggle} accessibilityRole="button" {...tip(compact ? t('match_details.manage.expanded') : t('match_details.manage.compact'))}>
             <Ionicons name={compact ? 'expand-outline' : 'contract-outline'} size={15} color={COLORS.TEXT_MUTED} />
             <Text style={styles.modeToggleText}>{compact ? t('match_details.manage.expanded') : t('match_details.manage.compact')}</Text>
           </TouchableOpacity>
@@ -154,8 +163,9 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
   // White and black are mutually exclusive (a player has one color); check-in
   // and paid are independent. Active filters combine with AND.
   const toggle = (key: keyof Filters) => setFilters((s) => {
-    if (key === 'white') return { ...s, white: !s.white, black: false };
-    if (key === 'black') return { ...s, black: !s.black, white: false };
+    if (key === 'white') return { ...s, white: !s.white, black: false, unassigned: false };
+    if (key === 'black') return { ...s, black: !s.black, white: false, unassigned: false };
+    if (key === 'unassigned') return { ...s, unassigned: !s.unassigned, white: false, black: false };
     return { ...s, [key]: !s[key] };
   });
 
@@ -164,9 +174,12 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
     if (filters.paid && !p.paid) return false;
     if (filters.white && p.shirt_color !== 'white') return false;
     if (filters.black && p.shirt_color !== 'black') return false;
+    if (filters.unassigned && p.shirt_color) return false;
     return true;
   };
-  const anyFilter = filters.checkin || filters.paid || filters.white || filters.black;
+  // External web players are unassigned and never checked-in/paid → show them
+  // (on top) unless a check-in/paid/white/black filter would exclude them.
+  const showDummies = !filters.checkin && !filters.paid && !filters.white && !filters.black;
 
   const visible = list.filter(passes);
   // Unassigned always on top, then white, then black — no section headers.
@@ -185,11 +198,12 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
         <FilterChip icon="cash" iconColor={COLORS.PRIMARY_DARK} count={paidCount} active={filters.paid} onPress={() => toggle('paid')} label={t('match_details.manage.paid')} />
         <FilterChip icon="shirt-outline" iconColor="#334155" count={whiteCount} active={filters.white} onPress={() => toggle('white')} label={t('match_details.manage.section_white')} />
         <FilterChip icon="shirt" iconColor="#0F172A" count={blackCount} active={filters.black} onPress={() => toggle('black')} label={t('match_details.manage.section_black')} />
+        <FilterChip icon="ellipse-outline" iconColor="#94A3B8" count={unassignedCount} active={filters.unassigned} onPress={() => toggle('unassigned')} label={t('match_details.manage.section_unassigned')} />
       </View>
 
       <View style={styles.sectionsWrap}>
         {/* External web players: unassigned, never checked-in/paid → only in the unfiltered view, on top */}
-        {!anyFilter && Array.from({ length: dummyCount }).map((_, i) => {
+        {showDummies && Array.from({ length: dummyCount }).map((_, i) => {
           const sty = SECTION_STYLES.unassigned;
           return (
             <View key={`dummy-${i}`} style={[styles.playerRow, { backgroundColor: sty.bg, borderLeftColor: sty.accent, borderBottomColor: sty.divider }]}>
@@ -198,7 +212,7 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
                 <Ionicons name="person" size={14} color={COLORS.TEXT_LIGHT} />
               </View>
               <Text style={[styles.playerName, { color: sty.sub }]} numberOfLines={1}>{t('match_details.external_player')}</Text>
-              <TouchableOpacity onPress={removeDummyPlayer} style={styles.iconBtn}>
+              <TouchableOpacity onPress={removeDummyPlayer} style={styles.iconBtn} {...tip(t('match_details.manage.remove'))}>
                 <Ionicons name="close" size={16} color={COLORS.DANGER} />
               </TouchableOpacity>
             </View>
@@ -240,8 +254,8 @@ const styles = StyleSheet.create({
   removeBtn: { padding: 8, backgroundColor: COLORS.DANGER_LIGHT, borderRadius: 8 },
 
   // Compact admin view — header filter chips (icon + count)
-  fchipRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  fchip: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 9, borderRadius: 12, backgroundColor: COLORS.CARD_BG, borderWidth: 1.5, borderColor: COLORS.BORDER },
+  fchipRow: { flexDirection: 'row', gap: 6, marginBottom: 12 },
+  fchip: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 9, borderRadius: 12, backgroundColor: COLORS.CARD_BG, borderWidth: 1.5, borderColor: COLORS.BORDER },
   fchipActive: { backgroundColor: COLORS.PRIMARY_LIGHT, borderColor: COLORS.PRIMARY },
   fchipCount: { fontSize: 15, fontFamily: FONTS.BOLD, color: COLORS.TEXT_MAIN },
 

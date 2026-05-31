@@ -78,9 +78,13 @@ Pendientes y mejoras. Última revisión: 2026-05-31.
   al sitio en producción.
 
 **2026-05-31**
-- Check-in / gestión de partido (Fase A): vista compacta admin en `MatchParticipantsList` —
-  3 secciones colapsables (sin asignar / blanco / negro) identificadas por color de fondo +
-  etiqueta a la izquierda (sin separación), contadores por color, filtro de check-in
-  (todos/con/sin) y toggle compacto↔ampliado. Botones de check-in, color (B/N) y pagado
-  visibles pero DESACTIVADOS (se cablean en Fase B). El no-admin mantiene la lista simple.
-  i18n es/en/ca (`match_details.manage.*`). `tsc --noEmit` limpio.
+- Check-in / gestión de partido (Fase A): vista compacta admin en `MatchParticipantsList`,
+  optimizada para móvil de campo. Cabecera = 5 chips icono+número que **filtran** la lista
+  (check-in, pagado, blanco, negro, sin asignar; blanco/negro/sin-asignar mutuamente
+  excluyentes, check-in/pagado independientes). Filas tintadas por color de equipo, **sin
+  cabeceras de sección**, no asignados arriba. Toggle compacto↔ampliada; en compacto se oculta
+  la tarjeta de sede/distancia (`MatchLocationCard`; estado `compact` subido a `MatchDetails`).
+  **Tooltips** en todos los iconos (`title` vía ref en web — RN-web 0.21 no reenvía `title` — +
+  `aria-label`). Botones de check-in / color (B/N) / pagado visibles pero DESACTIVADOS (se
+  cablean en Fase B). No-admin mantiene la lista simple. i18n es/en/ca (`match_details.manage.*`).
+  `tsc` limpio + desplegado.
