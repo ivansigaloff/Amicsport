@@ -1,21 +1,25 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, FlatList } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, FlatList, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { fetchAdminDirectory } from '../../lib/services/participantService';
 import { addGuestParticipant } from '../../lib/services/participantService';
 import { sendEmailNotification } from '../../lib/services/notificationService';
 import { COLORS, FONTS } from '../../constants/theme';
+import { supabase } from '../../lib/supabase';
 
 export default function MatchAdminPanel({ match, isAdmin, isStarted, participantsList, setParticipantsList, executeDelete, fromTable, showAlert }: any) {
   const { t } = useTranslation();
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [adminDirectory, setAdminDirectory] = useState<any[]>([]);
+  const [search, setSearch] = useState('');
+  const [creating, setCreating] = useState(false);
 
   if (!isAdmin || !match) return null;
 
   const openDirectory = async () => {
+    setSearch('');
     setShowAdminModal(true);
     try {
       const data = await fetchAdminDirectory(fromTable);
@@ -47,6 +51,29 @@ export default function MatchAdminPanel({ match, isAdmin, isStarted, participant
     }
   };
 
+  const filteredDirectory = adminDirectory.filter((p: any) =>
+    (p.name || '').toLowerCase().includes(search.trim().toLowerCase())
+  );
+
+  const closeDirectory = () => { setShowAdminModal(false); setSearch(''); };
+
+  // No directory match for the typed name → create the player and inscribe in one tap.
+  const createAndInscribe = async () => {
+    const clean = search.trim();
+    if (!clean || creating) return;
+    setCreating(true);
+    try {
+      const { data: created, error } = await supabase
+        .from(fromTable('admin_players')).insert({ name: clean }).select().single();
+      if (error || !created) throw error || new Error('no_data');
+      setAdminDirectory((prev) => [...prev, created].sort((a, b) => (a.name || '').localeCompare(b.name || '')));
+      await confirmAddManualPlayer(created); // inscribes + closes the modal + toast
+    } catch (err) {
+      showAlert('Error', 'No se pudo crear el jugador.');
+    }
+    setCreating(false);
+  };
+
   return (
     <>
       <View style={[styles.section, styles.adminSection]}>
@@ -76,13 +103,32 @@ export default function MatchAdminPanel({ match, isAdmin, isStarted, participant
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{t('match_details.inscribe_modal_title')}</Text>
-              <TouchableOpacity onPress={() => setShowAdminModal(false)}>
+              <TouchableOpacity onPress={closeDirectory}>
                 <Ionicons name="close" size={28} color={COLORS.TEXT_LIGHT} />
               </TouchableOpacity>
             </View>
+
+            <View style={styles.searchBox}>
+              <Ionicons name="search" size={18} color={COLORS.TEXT_LIGHT} />
+              <TextInput
+                style={styles.searchInput}
+                value={search}
+                onChangeText={setSearch}
+                placeholder={t('match_details.search_player')}
+                placeholderTextColor={COLORS.TEXT_LIGHT}
+                autoCapitalize="words"
+              />
+              {search.length > 0 && (
+                <TouchableOpacity onPress={() => setSearch('')}>
+                  <Ionicons name="close-circle" size={18} color={COLORS.TEXT_LIGHT} />
+                </TouchableOpacity>
+              )}
+            </View>
+
             <FlatList
-              data={adminDirectory}
+              data={filteredDirectory}
               keyExtractor={item => item.id.toString()}
+              keyboardShouldPersistTaps="handled"
               renderItem={({item}) => (
                 <TouchableOpacity style={styles.dirPlayerCard} onPress={() => confirmAddManualPlayer(item)}>
                   <View style={styles.avatarSmall}><Text style={styles.avatarTextSmall}>{item.name.charAt(0)}</Text></View>
@@ -90,6 +136,19 @@ export default function MatchAdminPanel({ match, isAdmin, isStarted, participant
                   <Ionicons name="add-circle" size={24} color={COLORS.PRIMARY} />
                 </TouchableOpacity>
               )}
+              ListEmptyComponent={
+                search.trim().length > 0 ? (
+                  <TouchableOpacity style={styles.dirPlayerCard} onPress={createAndInscribe} disabled={creating}>
+                    <View style={[styles.avatarSmall, { backgroundColor: COLORS.PRIMARY }]}>
+                      <Ionicons name="add" size={18} color="#FFF" />
+                    </View>
+                    <Text style={styles.dirPlayerName} numberOfLines={1}>{t('match_details.create_player')}: «{search.trim()}»</Text>
+                    <Ionicons name="person-add" size={24} color={COLORS.PRIMARY} />
+                  </TouchableOpacity>
+                ) : (
+                  <Text style={styles.emptyHint}>{t('match_details.no_directory_players')}</Text>
+                )
+              }
             />
           </View>
         </View>
@@ -136,6 +195,9 @@ const styles = StyleSheet.create({
   avatarSmall: { width: 32, height: 32, borderRadius: 16, backgroundColor: COLORS.PRIMARY_LIGHT, justifyContent: 'center', alignItems: 'center' },
   avatarTextSmall: { fontSize: 14, fontFamily: FONTS.BOLD, color: COLORS.PRIMARY },
   dirPlayerName: { flex: 1, marginLeft: 12, fontSize: 16, fontFamily: FONTS.SEMI_BOLD, color: COLORS.TEXT_MAIN },
+  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: COLORS.CARD_BG, borderRadius: 12, borderWidth: 1, borderColor: COLORS.BORDER, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12 },
+  searchInput: { flex: 1, fontSize: 16, fontFamily: FONTS.REGULAR, color: COLORS.TEXT_MAIN, padding: 0 },
+  emptyHint: { textAlign: 'center', color: COLORS.TEXT_MUTED, fontFamily: FONTS.REGULAR, fontSize: 14, marginTop: 24 },
   modalBtnSecondary: { padding: 16, borderRadius: 12, backgroundColor: COLORS.BORDER, alignItems: 'center' },
   modalBtnSecondaryText: { color: COLORS.TEXT_MAIN, fontFamily: FONTS.BOLD, fontSize: 16 },
   modalBtnPrimary: { padding: 16, borderRadius: 12, backgroundColor: COLORS.PRIMARY, alignItems: 'center' },

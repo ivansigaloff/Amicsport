@@ -125,6 +125,8 @@
     "match_started": "Partido en curso",
     "inscribe_modal_title": "Inscribir Jugador",
     "no_directory_players": "Aún no tienes jugadores en la agenda.",
+    "search_player": "Buscar jugador…",
+    "create_player": "Crear jugador",
     "go_to_directory": "Ir a gestionar Agenda",
     "guest_badge": "Invitado",
     "confirmed_badge": "Confirmado",
