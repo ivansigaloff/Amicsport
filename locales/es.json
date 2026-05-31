@@ -131,7 +131,20 @@
     "guest_directory_badge": "Invidado Agenda",
     "registered_app_badge": "Registrado App",
     "frequent_guest": "Invitado Frecuente",
-    "match_finished": "Partido finalizado"
+    "match_finished": "Partido finalizado",
+    "manage": {
+      "compact": "Compacta",
+      "expanded": "Ampliada",
+      "filter_all": "Todos",
+      "filter_in": "Con check-in",
+      "filter_out": "Sin check-in",
+      "section_unassigned": "Sin asignar",
+      "section_white": "Blanco",
+      "section_black": "Negro",
+      "checkin": "Check-in",
+      "paid": "Pagado",
+      "teams": "Equipos"
+    }
   },
   "menu": {
     "title": "Menú y Ajustes",

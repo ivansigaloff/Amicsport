@@ -129,7 +129,20 @@
     "guest_directory_badge": "Directory Guest",
     "registered_app_badge": "App Registered",
     "frequent_guest": "Frequent Guest",
-    "match_finished": "Match finished"
+    "match_finished": "Match finished",
+    "manage": {
+      "compact": "Compact",
+      "expanded": "Expanded",
+      "filter_all": "All",
+      "filter_in": "Checked in",
+      "filter_out": "Not checked in",
+      "section_unassigned": "Unassigned",
+      "section_white": "White",
+      "section_black": "Black",
+      "checkin": "Check-in",
+      "paid": "Paid",
+      "teams": "Teams"
+    }
   },
   "menu": {
     "title": "Menu & Settings",

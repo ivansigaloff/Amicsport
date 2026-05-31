@@ -131,7 +131,20 @@
     "guest_directory_badge": "Convidat Agenda",
     "registered_app_badge": "Registrat App",
     "frequent_guest": "Convidat Freqüent",
-    "match_finished": "Partit finalitzat"
+    "match_finished": "Partit finalitzat",
+    "manage": {
+      "compact": "Compacta",
+      "expanded": "Ampliada",
+      "filter_all": "Tots",
+      "filter_in": "Amb check-in",
+      "filter_out": "Sense check-in",
+      "section_unassigned": "Sense assignar",
+      "section_white": "Blanc",
+      "section_black": "Negre",
+      "checkin": "Check-in",
+      "paid": "Pagat",
+      "teams": "Equips"
+    }
   },
   "menu": {
     "title": "Menú i opcions",

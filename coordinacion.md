@@ -3,7 +3,7 @@
 Doc para agentes que trabajan en el MISMO repo/working-tree, para no pisarnos.
 **Convención:** antes de editar un archivo compartido, decláralo aquí (quién/qué).
 
-_Última actualización: 2026-05-30 — **Agent-Claude** (Claude Code / Opus 4.8)._
+_Última actualización: 2026-05-31 — **Agent-Claude** (Claude Code / Opus 4.8)._
 
 ## Quién toca qué
 
@@ -29,6 +29,14 @@ _Última actualización: 2026-05-30 — **Agent-Claude** (Claude Code / Opus 4.8
   alto volumen → `timeout 25s`/FAILED; usar `4444…4414`, reintentar, espaciar), **Bizum** ✅ (tel
   `500000000`, partido `<5€`, frame `inner-bizum`, RTP async → sondear), **Google Pay** ❌ (login de
   Google), **PayPal** ❌ (no habilitado en la cuenta MONEI).
+
+### App / UI → Agent-Claude ⚠️ EN CURSO
+- `components/match/MatchParticipantsList.tsx` — **rework gestión de partido en campo (móvil)**:
+  vista compacta admin (3 secciones colapsables blanco/negro/sin-asignar, contadores, filtro de
+  check-in). **Fase A** = cáscara UI con botones desactivados; **Fase B** = columnas BD
+  (`checked_in`/`shirt_color`/`paid`) + mutaciones admin (RLS `participants_update_admin` existente).
+  `paid` manual solo en modo test. No-admin mantiene la lista simple. **Tocando ahora** — no editar.
+- `locales/{es,en,ca}.json` — claves nuevas bajo `match_details.manage` (no tocar esa sub-clave).
 
 ## Contrato `scChaos` ↔ `payMonei`
 `scChaos` llama `await payMonei(page, redirectUrl, method)` con `method ∈ {'card','bizum'}` y espera

@@ -1,6 +1,6 @@
 # TODO — AmicSport
 
-Pendientes y mejoras. Última revisión: 2026-05-30.
+Pendientes y mejoras. Última revisión: 2026-05-31.
 
 ## A. Bloqueantes / acción requerida
 
@@ -39,6 +39,11 @@ Pendientes y mejoras. Última revisión: 2026-05-30.
 ## D. Producto / siguientes fases
 
 - [ ] Notificaciones: WhatsApp y push (el plan era email primero, luego estos).
+- [ ] **Check-in / gestión de partido en campo — Fase B (cableado)**: migración con columnas
+  `checked_in`/`shirt_color`/`paid` en `match_participants` (la aplica el usuario), tipos en
+  `lib/types.ts`, mutaciones admin `setCheckin`/`setShirtColor`/`setPaid` (RLS
+  `participants_update_admin` ya existe, no hace falta nueva) y activar los botones de la vista
+  compacta. `paid` manual solo en modo test (flag `EXPO_PUBLIC_PAYMENTS_TEST_MODE`, oculto en prod).
 
 ## Hecho recientemente
 
@@ -71,3 +76,11 @@ Pendientes y mejoras. Última revisión: 2026-05-30.
   (móvil) y al panel inline de desktop.
 - Pendiente de desplegar: requiere `npx expo export -p web` + deploy para que llegue
   al sitio en producción.
+
+**2026-05-31**
+- Check-in / gestión de partido (Fase A): vista compacta admin en `MatchParticipantsList` —
+  3 secciones colapsables (sin asignar / blanco / negro) identificadas por color de fondo +
+  etiqueta a la izquierda (sin separación), contadores por color, filtro de check-in
+  (todos/con/sin) y toggle compacto↔ampliado. Botones de check-in, color (B/N) y pagado
+  visibles pero DESACTIVADOS (se cablean en Fase B). El no-admin mantiene la lista simple.
+  i18n es/en/ca (`match_details.manage.*`). `tsc --noEmit` limpio.
