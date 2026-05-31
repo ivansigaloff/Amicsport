@@ -96,3 +96,5 @@ Pendientes y mejoras. Última revisión: 2026-05-31.
   que crea en `admin_players` e inscribe en un toque; **checkboxes de multi-selección** (la selección
   persiste entre búsquedas) con **botón flotante "Añadir (N)"** que inscribe a todos a la vez
   (`MatchAdminPanel`). i18n es/en/ca.
+- Crear partido: el formato se deriva de las plazas (14 → "7 vs 7", solo lectura) y se guarda también
+  al editar; el campo "Enlace Google Maps" pasó a estar debajo de Nivel/Formato (`crear-partido.tsx`).

@@ -62,7 +62,6 @@ export default function CreateMatchScreen() {
   const [time, setTime] = useState('');
   const [showDateModal, setShowDateModal] = useState(false);
   const [showTimeModal, setShowTimeModal] = useState(false);
-  const [showFormatModal, setShowFormatModal] = useState(false);
   
   const [price, setPrice] = useState('5.00');
   const [maxPlayers, setMaxPlayers] = useState('14');
@@ -135,6 +134,12 @@ export default function CreateMatchScreen() {
       setLocationUrl(link);
     }
   }, [venue]);
+
+  // The number of spots determines the format: 14 → "7 vs 7", 16 → "8 vs 8", etc.
+  useEffect(() => {
+    const n = parseInt(maxPlayers);
+    if (!isNaN(n) && n > 1) setDistance(`${Math.floor(n / 2)} vs ${Math.ceil(n / 2)}`);
+  }, [maxPlayers]);
 
   const { isLoaded: isMapsLoaded } = useJsApiLoader({
     id: 'google-map-script',
@@ -301,7 +306,6 @@ export default function CreateMatchScreen() {
 
   const UPCOMING_DAYS = generateUpcomingDays();
   const TIMES = generateTimes();
-  const FORMATS = ['5v5', '6v6', '7v7', '8v8', '9v9', '10v10', '11v11'];
 
   const handleCreate = async () => {
     setFormError('');
@@ -338,6 +342,7 @@ export default function CreateMatchScreen() {
       price: parseFloat(price) || 0,
       max_players: parseInt(maxPlayers) || 10,
       level,
+      distance: distance || 'Apto', // game format (e.g. "7 vs 7"), derived from spots
       location_url: locationUrl,
       image_url: venueImageUrl || 'https://images.unsplash.com/photo-1543351611-58f69d7c1781?q=80&w=600&auto=format&fit=crop',
       is_private: isPrivate,
@@ -356,7 +361,6 @@ export default function CreateMatchScreen() {
       const res = await supabase.from(fromTable('matches')).insert({
         ...matchData,
         joined_players: 0,
-        distance: distance || 'Apto' // Using distance field for format 
       });
 
   // Auto-fill Google Maps link moved to top-level hook (see below)
@@ -452,22 +456,6 @@ export default function CreateMatchScreen() {
               </TouchableOpacity>
             </View>
           ) : null}
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Enlace Google Maps (Opcional)</Text>
-          <TextInput
-            style={styles.input}
-            value={locationUrl}
-            onChangeText={setLocationUrl}
-            placeholder="https://maps.google.com/..."
-            placeholderTextColor="#94A3B8"
-            keyboardType="url"
-            autoCapitalize="none"
-          />
-          <Text style={{color: '#C05E5E', fontSize: 12, marginTop: 6, fontWeight: '500'}}>
-            Para mejor geolocalización, pega el enlace largo completo que contiene las coordenadas.
-          </Text>
         </View>
 
         {/* Modal for selecting saved locations */}
@@ -608,14 +596,30 @@ export default function CreateMatchScreen() {
           </View>
           
           <View style={[styles.formGroup, { flex: 1, marginLeft: 10 }]}>
-            <Text style={styles.label}>Formato <Text style={{color: '#EF4444'}}>*</Text></Text>
-            <TouchableOpacity style={styles.pickerBox} onPress={() => setShowFormatModal(true)}>
+            <Text style={styles.label}>Formato</Text>
+            <View style={styles.pickerBox}>
               <Ionicons name="people-outline" size={20} color={distance ? "#FFB81C" : "#94A3B8"} style={{marginRight: 8}} />
               <Text style={{color: distance ? '#0F172A' : '#94A3B8', flex: 1, fontWeight: '500'}} numberOfLines={1}>
-                {distance || 'Elegir formato'}
+                {distance || '—'}
               </Text>
-            </TouchableOpacity>
+            </View>
           </View>
+        </View>
+
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Enlace Google Maps (Opcional)</Text>
+          <TextInput
+            style={styles.input}
+            value={locationUrl}
+            onChangeText={setLocationUrl}
+            placeholder="https://maps.google.com/..."
+            placeholderTextColor="#94A3B8"
+            keyboardType="url"
+            autoCapitalize="none"
+          />
+          <Text style={{color: '#C05E5E', fontSize: 12, marginTop: 6, fontWeight: '500'}}>
+            Para mejor geolocalización, pega el enlace largo completo que contiene las coordenadas.
+          </Text>
         </View>
 
         <View style={styles.categoriesContainer}>
@@ -728,38 +732,6 @@ export default function CreateMatchScreen() {
         </View>
       </Modal>
 
-      {/* Modal Personalizado para Formato */}
-      <Modal visible={showFormatModal} transparent={true} animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Formato del Partido</Text>
-              <TouchableOpacity onPress={() => setShowFormatModal(false)}>
-                <Ionicons name="close" size={28} color="#94A3B8" />
-              </TouchableOpacity>
-            </View>
-            <View style={{ marginBottom: 16 }}>
-              <TextInput 
-                style={styles.input} 
-                value={distance} 
-                onChangeText={setDistance} 
-                placeholder="Introducir formato libre (ej. 5v5 rotando)" 
-                placeholderTextColor="#94A3B8"
-              />
-            </View>
-            <FlatList
-              data={FORMATS}
-              keyExtractor={(i) => i}
-              renderItem={({item}) => (
-                <TouchableOpacity style={[styles.modalOption, distance === item && styles.modalOptionActive]} onPress={() => { setDistance(item); setShowFormatModal(false); }}>
-                  <Text style={[styles.modalOptionText, distance === item && {color: '#FFF'}]}>{item}</Text>
-                  {distance === item && <Ionicons name="checkmark-circle" size={24} color="#FF4757" />}
-                </TouchableOpacity>
-              )}
-            />
-          </View>
-        </View>
-      </Modal>
 
     </SafeAreaView>
   );
