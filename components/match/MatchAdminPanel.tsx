@@ -32,45 +32,30 @@ export default function MatchAdminPanel({ match, isAdmin, isStarted, participant
     }
   };
 
-  const confirmAddManualPlayer = async (player: any) => {
-    const baseName = player.name;
-    const isMainUserAdded = participantsList.some((p: any) => p.user_name === baseName || p.user_name === `${baseName} (Directorio)`);
-    
-    let nameToUse = baseName;
-    if (isMainUserAdded) {
-      const guestCount = participantsList.filter((p: any) => p.user_name && p.user_name.toLowerCase().startsWith(`${baseName.toLowerCase()} (invitado`)).length;
-      const guestSuffix = guestCount > 0 ? ` (invitado ${guestCount + 1})` : ` (invitado)`;
-      nameToUse = `${baseName}${guestSuffix}`;
-    }
-
-    try {
-      const data = await addGuestParticipant(match.id, nameToUse, fromTable);
-      setParticipantsList((prev: any[]) => [...prev, data]);
-      setShowAdminModal(false);
-      sendEmailNotification(match, 'join', nameToUse, participantsList.length + 1, match.id);
-      showAlert('Inscrito', `${nameToUse} añadido al partido.`);
-    } catch (err) {
-      showAlert('Error', 'No se pudo añadir al jugador.');
-    }
-  };
-
   const filteredDirectory = adminDirectory.filter((p: any) =>
     (p.name || '').toLowerCase().includes(search.trim().toLowerCase())
   );
 
   const closeDirectory = () => { setShowAdminModal(false); setSearch(''); setSelected(new Set()); };
 
-  // No directory match for the typed name → create the player and inscribe in one tap.
-  const createAndInscribe = async () => {
+  // Capacity: never let the admin select beyond the free spots (max - participants - external).
+  const freeSpots = Math.max(0, (match.max_players || 0) - participantsList.length - (match.joined_players || 0));
+  const canSelectMore = selected.size < freeSpots;
+
+  // No directory match → create the player, add it to the directory and SELECT it,
+  // keeping the modal open so the prior selections + the new one stay checked.
+  const createAndSelect = async () => {
     const clean = search.trim();
     if (!clean || creating) return;
+    if (!canSelectMore) { showAlert('Completo', 'No quedan plazas libres en este partido.'); return; }
     setCreating(true);
     try {
       const { data: created, error } = await supabase
         .from(fromTable('admin_players')).insert({ name: clean }).select().single();
       if (error || !created) throw error || new Error('no_data');
       setAdminDirectory((prev) => [...prev, created].sort((a, b) => (a.name || '').localeCompare(b.name || '')));
-      await confirmAddManualPlayer(created); // inscribes + closes the modal + toast
+      setSelected((prev) => new Set(prev).add(created.id));
+      setSearch('');
     } catch (err) {
       showAlert('Error', 'No se pudo crear el jugador.');
     }
@@ -87,7 +72,8 @@ export default function MatchAdminPanel({ match, isAdmin, isStarted, participant
 
   const toggleSelect = (id: string) => setSelected((prev) => {
     const next = new Set(prev);
-    if (next.has(id)) next.delete(id); else next.add(id);
+    if (next.has(id)) next.delete(id);
+    else if (next.size < freeSpots) next.add(id); // respect remaining spots
     return next;
   });
 
@@ -165,6 +151,8 @@ export default function MatchAdminPanel({ match, isAdmin, isStarted, participant
               )}
             </View>
 
+            <Text style={styles.freeHint}>{freeSpots > 0 ? `${freeSpots} plaza(s) libre(s)` : 'Partido completo'}</Text>
+
             <FlatList
               data={filteredDirectory}
               keyExtractor={item => item.id.toString()}
@@ -172,8 +160,9 @@ export default function MatchAdminPanel({ match, isAdmin, isStarted, participant
               contentContainerStyle={{ paddingBottom: 90 }}
               renderItem={({item}) => {
                 const isSel = selected.has(item.id);
+                const blocked = !isSel && !canSelectMore;
                 return (
-                  <TouchableOpacity style={[styles.dirPlayerCard, isSel && styles.dirPlayerCardSel]} onPress={() => toggleSelect(item.id)}>
+                  <TouchableOpacity style={[styles.dirPlayerCard, isSel && styles.dirPlayerCardSel, blocked && { opacity: 0.4 }]} onPress={() => toggleSelect(item.id)} disabled={blocked}>
                     <View style={styles.avatarSmall}><Text style={styles.avatarTextSmall}>{item.name.charAt(0)}</Text></View>
                     <Text style={styles.dirPlayerName}>{item.name}</Text>
                     <Ionicons name={isSel ? 'checkbox' : 'square-outline'} size={24} color={isSel ? COLORS.PRIMARY : COLORS.TEXT_LIGHT} />
@@ -182,7 +171,7 @@ export default function MatchAdminPanel({ match, isAdmin, isStarted, participant
               }}
               ListEmptyComponent={
                 search.trim().length > 0 ? (
-                  <TouchableOpacity style={styles.dirPlayerCard} onPress={createAndInscribe} disabled={creating}>
+                  <TouchableOpacity style={styles.dirPlayerCard} onPress={createAndSelect} disabled={creating || !canSelectMore}>
                     <View style={[styles.avatarSmall, { backgroundColor: COLORS.PRIMARY }]}>
                       <Ionicons name="add" size={18} color="#FFF" />
                     </View>
@@ -256,6 +245,7 @@ const styles = StyleSheet.create({
   dirPlayerCardSel: { backgroundColor: COLORS.WARNING_LIGHT },
   fab: { position: 'absolute', left: 24, right: 24, bottom: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: COLORS.PRIMARY, paddingVertical: 16, borderRadius: 16, ...(SHADOWS.MEDIUM as any) },
   fabText: { color: '#FFF', fontFamily: FONTS.BOLD, fontSize: 16 },
+  freeHint: { color: COLORS.TEXT_MUTED, fontFamily: FONTS.SEMI_BOLD, fontSize: 12, marginBottom: 8, marginLeft: 4 },
   modalBtnSecondary: { padding: 16, borderRadius: 12, backgroundColor: COLORS.BORDER, alignItems: 'center' },
   modalBtnSecondaryText: { color: COLORS.TEXT_MAIN, fontFamily: FONTS.BOLD, fontSize: 16 },
   modalBtnPrimary: { padding: 16, borderRadius: 12, backgroundColor: COLORS.PRIMARY, alignItems: 'center' },
