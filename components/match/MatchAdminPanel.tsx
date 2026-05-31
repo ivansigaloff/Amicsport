@@ -35,6 +35,12 @@ export default function MatchAdminPanel({ match, isAdmin, isStarted, participant
   const filteredDirectory = adminDirectory.filter((p: any) =>
     (p.name || '').toLowerCase().includes(search.trim().toLowerCase())
   );
+  // Checked players float to the top of the list.
+  const sortedDirectory = [...filteredDirectory].sort((a: any, b: any) => {
+    const aSel = selected.has(a.id) ? 0 : 1;
+    const bSel = selected.has(b.id) ? 0 : 1;
+    return aSel !== bSel ? aSel - bSel : (a.name || '').localeCompare(b.name || '');
+  });
 
   const closeDirectory = () => { setShowAdminModal(false); setSearch(''); setSelected(new Set()); };
 
@@ -70,12 +76,16 @@ export default function MatchAdminPanel({ match, isAdmin, isStarted, participant
     return `${baseName}${guestCount > 0 ? ` (invitado ${guestCount + 1})` : ' (invitado)'}`;
   };
 
-  const toggleSelect = (id: string) => setSelected((prev) => {
-    const next = new Set(prev);
-    if (next.has(id)) next.delete(id);
-    else if (next.size < freeSpots) next.add(id); // respect remaining spots
-    return next;
-  });
+  const toggleSelect = (id: string) => {
+    const adding = !selected.has(id);
+    if (adding && selected.size >= freeSpots) return; // no free spots left
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+    if (adding) setSearch(''); // clear the search so the whole list (selected on top) shows again
+  };
 
   // Inscribe all checked directory players in one go.
   const addSelected = async () => {
@@ -154,7 +164,7 @@ export default function MatchAdminPanel({ match, isAdmin, isStarted, participant
             <Text style={styles.freeHint}>{freeSpots > 0 ? `${freeSpots} plaza(s) libre(s)` : 'Partido completo'}</Text>
 
             <FlatList
-              data={filteredDirectory}
+              data={sortedDirectory}
               keyExtractor={item => item.id.toString()}
               keyboardShouldPersistTaps="handled"
               contentContainerStyle={{ paddingBottom: 90 }}
