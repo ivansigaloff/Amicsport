@@ -66,6 +66,7 @@ export default function CreateMatchScreen() {
   const [price, setPrice] = useState('5.00');
   const [maxPlayers, setMaxPlayers] = useState('14');
   const [distance, setDistance] = useState(''); // Will be used to store game format (5v5 etc.)
+  const [formatEdited, setFormatEdited] = useState(false); // true once the admin overrides the auto format
   const [level, setLevel] = useState('Nivel Amateur/Medio');
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState('');
@@ -111,6 +112,7 @@ export default function CreateMatchScreen() {
           setPrice(data.price.toString());
           setMaxPlayers(data.max_players.toString());
           setDistance(data.distance || ''); // Using distance for format
+          setFormatEdited(true); // keep the stored format on edit (don't auto-derive over it)
           setLevel(data.level);
           setLocationUrl(data.location_url || '');
           setVenueImageUrl(data.image_url || '');
@@ -135,11 +137,12 @@ export default function CreateMatchScreen() {
     }
   }, [venue]);
 
-  // The number of spots determines the format: 14 → "7 vs 7", 16 → "8 vs 8", etc.
+  // Spots suggest the default format (14 → "7 vs 7", 16 → "8 vs 8"); the admin can still override it.
   useEffect(() => {
+    if (formatEdited) return;
     const n = parseInt(maxPlayers);
     if (!isNaN(n) && n > 1) setDistance(`${Math.floor(n / 2)} vs ${Math.ceil(n / 2)}`);
-  }, [maxPlayers]);
+  }, [maxPlayers, formatEdited]);
 
   const { isLoaded: isMapsLoaded } = useJsApiLoader({
     id: 'google-map-script',
@@ -597,12 +600,13 @@ export default function CreateMatchScreen() {
           
           <View style={[styles.formGroup, { flex: 1, marginLeft: 10 }]}>
             <Text style={styles.label}>Formato</Text>
-            <View style={styles.pickerBox}>
-              <Ionicons name="people-outline" size={20} color={distance ? "#FFB81C" : "#94A3B8"} style={{marginRight: 8}} />
-              <Text style={{color: distance ? '#0F172A' : '#94A3B8', flex: 1, fontWeight: '500'}} numberOfLines={1}>
-                {distance || '—'}
-              </Text>
-            </View>
+            <TextInput
+              style={styles.input}
+              value={distance}
+              onChangeText={(v) => { setDistance(v); setFormatEdited(true); }}
+              placeholder="7 vs 7"
+              placeholderTextColor="#94A3B8"
+            />
           </View>
         </View>
 
