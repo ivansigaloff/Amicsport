@@ -10,6 +10,10 @@ type Filters = { checkin: Tri; paid: Tri; white: boolean; black: boolean; unassi
 
 const DISABLED = COLORS.TEXT_LIGHT;
 
+// Manual "paid" is only available while payments are in test mode (in production
+// Monei is the source of truth). Flip via EXPO_PUBLIC_PAYMENTS_TEST_MODE=false.
+const PAYMENTS_TEST_MODE = process.env.EXPO_PUBLIC_PAYMENTS_TEST_MODE !== 'false';
+
 // Tooltip + a11y label. react-native-web (0.21) does not forward `title`, so set
 // the native browser tooltip on the DOM node via ref on web; aria-label applies
 // on every platform. Native gets no ref (no-op).
@@ -43,14 +47,14 @@ function FilterChip({ icon, iconColor, count, tone = 'off', onPress, label }: an
 
 // One compact player row, tinted by its color group. The management controls
 // (check-in / shirt color / paid) are rendered but DISABLED in this phase.
-function PlayerRow({ p, sty, userId, t, onRemove }: any) {
+function PlayerRow({ p, sty, userId, t, onRemove, setCheckin, setShirtColor, setPaid }: any) {
   const checkedIn = !!p.checked_in;
   const paid = !!p.paid;
   const color = p.shirt_color;
   const isSelf = p.user_id === userId;
   return (
     <View style={[styles.playerRow, { backgroundColor: sty.bg, borderLeftColor: sty.accent, borderBottomColor: sty.divider }]}>
-      <TouchableOpacity disabled style={[styles.iconBtn, styles.disabledCtrl]} {...tip(t('match_details.manage.checkin'))}>
+      <TouchableOpacity onPress={() => setCheckin(p, !checkedIn)} style={styles.iconBtn} {...tip(t('match_details.manage.checkin'))}>
         <Ionicons name={checkedIn ? 'checkmark-circle' : 'ellipse-outline'} size={22} color={checkedIn ? COLORS.SUCCESS : DISABLED} />
       </TouchableOpacity>
 
@@ -62,18 +66,20 @@ function PlayerRow({ p, sty, userId, t, onRemove }: any) {
         {p.user_name}{isSelf ? ` (${t('match_details.self_joined')})` : ''}
       </Text>
 
-      <View style={[styles.colorPick, styles.disabledCtrl]}>
-        <TouchableOpacity disabled style={[styles.colorChip, styles.colorChipWhite, color === 'white' && styles.colorChipActive]} {...tip(t('match_details.manage.section_white'))}>
+      <View style={styles.colorPick}>
+        <TouchableOpacity onPress={() => setShirtColor(p, color === 'white' ? null : 'white')} style={[styles.colorChip, styles.colorChipWhite, color === 'white' && styles.colorChipActive]} {...tip(t('match_details.manage.section_white'))}>
           <Text style={[styles.colorChipText, { color: '#0F172A' }]}>B</Text>
         </TouchableOpacity>
-        <TouchableOpacity disabled style={[styles.colorChip, styles.colorChipBlack, color === 'black' && styles.colorChipActive]} {...tip(t('match_details.manage.section_black'))}>
+        <TouchableOpacity onPress={() => setShirtColor(p, color === 'black' ? null : 'black')} style={[styles.colorChip, styles.colorChipBlack, color === 'black' && styles.colorChipActive]} {...tip(t('match_details.manage.section_black'))}>
           <Text style={[styles.colorChipText, { color: '#FFFFFF' }]}>N</Text>
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity disabled style={[styles.iconBtn, styles.disabledCtrl]} {...tip(t('match_details.manage.paid'))}>
-        <Ionicons name={paid ? 'cash' : 'cash-outline'} size={20} color={paid ? COLORS.SUCCESS : DISABLED} />
-      </TouchableOpacity>
+      {PAYMENTS_TEST_MODE && (
+        <TouchableOpacity onPress={() => setPaid(p, !paid)} style={styles.iconBtn} {...tip(t('match_details.manage.paid'))}>
+          <Ionicons name={paid ? 'cash' : 'cash-outline'} size={20} color={paid ? COLORS.SUCCESS : DISABLED} />
+        </TouchableOpacity>
+      )}
 
       {onRemove && (
         <TouchableOpacity onPress={onRemove} style={styles.iconBtn} {...tip(t('match_details.manage.remove'))}>
@@ -84,7 +90,7 @@ function PlayerRow({ p, sty, userId, t, onRemove }: any) {
   );
 }
 
-export default function MatchParticipantsList({ match, participantsList, isFull, isAdmin, userId, removeParticipant, removeDummyPlayer, compact = true, setCompact }: any) {
+export default function MatchParticipantsList({ match, participantsList, isFull, isAdmin, userId, removeParticipant, removeDummyPlayer, setCheckin, setShirtColor, setPaid, compact = true, setCompact }: any) {
   const { t } = useTranslation();
   const [filters, setFilters] = useState<Filters>({ checkin: 'all', paid: 'all', white: false, black: false, unassigned: false });
 
@@ -206,7 +212,9 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
 
       <View style={styles.fchipRow}>
         <FilterChip icon={filters.checkin === 'no' ? 'close-circle-outline' : 'checkmark-circle'} iconColor={triColor(filters.checkin)} count={checkinCount} tone={triTone(filters.checkin)} onPress={() => cycleTri('checkin')} label={checkinLabel} />
-        <FilterChip icon={filters.paid === 'no' ? 'cash-outline' : 'cash'} iconColor={triColor(filters.paid)} count={paidCount} tone={triTone(filters.paid)} onPress={() => cycleTri('paid')} label={paidLabel} />
+        {PAYMENTS_TEST_MODE && (
+          <FilterChip icon={filters.paid === 'no' ? 'cash-outline' : 'cash'} iconColor={triColor(filters.paid)} count={paidCount} tone={triTone(filters.paid)} onPress={() => cycleTri('paid')} label={paidLabel} />
+        )}
         <FilterChip icon="shirt-outline" iconColor="#334155" count={whiteCount} tone={filters.white ? 'sel' : 'off'} onPress={() => toggle('white')} label={t('match_details.manage.section_white')} />
         <FilterChip icon="shirt" iconColor="#0F172A" count={blackCount} tone={filters.black ? 'sel' : 'off'} onPress={() => toggle('black')} label={t('match_details.manage.section_black')} />
         <FilterChip icon="ellipse-outline" iconColor="#94A3B8" count={unassignedCount} tone={filters.unassigned ? 'sel' : 'off'} onPress={() => toggle('unassigned')} label={t('match_details.manage.section_unassigned')} />
@@ -237,6 +245,9 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
             userId={userId}
             t={t}
             onRemove={p.user_id !== userId ? () => removeParticipant(p) : undefined}
+            setCheckin={setCheckin}
+            setShirtColor={setShirtColor}
+            setPaid={setPaid}
           />
         ))}
       </View>

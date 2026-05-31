@@ -2,7 +2,7 @@ import { useState, Dispatch, SetStateAction } from 'react';
 import { Alert, Platform, Linking } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
-import { joinMatch, leaveMatch, addGuestParticipant, removeParticipantById, removeParticipantByName } from '../../lib/services/participantService';
+import { joinMatch, leaveMatch, addGuestParticipant, removeParticipantById, removeParticipantByName, updateParticipant } from '../../lib/services/participantService';
 import { fetchLatestMatchJoinedPlayers, updateMatchJoinedPlayers, deleteMatchTransaction } from '../../lib/services/matchService';
 import { sendEmailNotification } from '../../lib/services/notificationService';
 import { createPayment, refundPayment } from '../../lib/services/paymentService';
@@ -196,6 +196,23 @@ export const useMatchActions = (matchDataHook: MatchDataHook, fromTable: (t: str
     setActing(false);
   };
 
+  // Admin field-management mutations (check-in / shirt color / paid). Optimistic
+  // update with revert on failure. Only participants with a real id (not the
+  // external "joined_players" counter) can be updated.
+  const setParticipantField = async (p: Participant, patch: Partial<Participant>) => {
+    if (!p.id) return;
+    setParticipantsList((prev) => prev.map((it) => (it.id === p.id ? { ...it, ...patch } : it)));
+    try {
+      await updateParticipant(p.id, patch, fromTable);
+    } catch (err: any) {
+      setParticipantsList((prev) => prev.map((it) => (it.id === p.id ? p : it)));
+      showAlert('Error', err?.message || 'No se pudo actualizar al jugador.');
+    }
+  };
+  const setCheckin = (p: Participant, value: boolean) => setParticipantField(p, { checked_in: value });
+  const setShirtColor = (p: Participant, color: 'white' | 'black' | null) => setParticipantField(p, { shirt_color: color });
+  const setPaid = (p: Participant, value: boolean) => setParticipantField(p, { paid: value });
+
   const executeDelete = async (asComponent?: boolean, onDeleteSuccess?: () => void) => {
     setActing(true);
     try {
@@ -230,5 +247,5 @@ export const useMatchActions = (matchDataHook: MatchDataHook, fromTable: (t: str
     }
   };
 
-  return { toggleJoin, addGuest, removeParticipant, removeDummyPlayer, executeDelete, acting, setActing, showAlert, initiatePayment };
+  return { toggleJoin, addGuest, removeParticipant, removeDummyPlayer, setCheckin, setShirtColor, setPaid, executeDelete, acting, setActing, showAlert, initiatePayment };
 };

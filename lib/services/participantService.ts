@@ -50,6 +50,17 @@ export const addGuestParticipant = async (matchId: string, guestName: string, _f
   return data as Participant;
 };
 
+// Admin-only field-management update (check-in / shirt color / paid). Allowed by
+// the existing `participants_update_admin` RLS policy.
+export const updateParticipant = async (
+  participantId: string,
+  patch: Partial<Pick<Participant, 'checked_in' | 'shirt_color' | 'paid'>>,
+  fromTable: (t: string) => string
+): Promise<void> => {
+  const { error } = await supabase.from(fromTable('match_participants')).update(patch).eq('id', participantId);
+  if (error) throw error;
+};
+
 export const removeParticipantById = async (participantId: string, fromTable: (t: string) => string) => {
   const { error } = await supabase.from(fromTable('match_participants')).delete().eq('id', participantId);
   if (error) throw error;

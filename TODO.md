@@ -39,11 +39,11 @@ Pendientes y mejoras. Última revisión: 2026-05-31.
 ## D. Producto / siguientes fases
 
 - [ ] Notificaciones: WhatsApp y push (el plan era email primero, luego estos).
-- [ ] **Check-in / gestión de partido en campo — Fase B (cableado)**: migración con columnas
-  `checked_in`/`shirt_color`/`paid` en `match_participants` (la aplica el usuario), tipos en
-  `lib/types.ts`, mutaciones admin `setCheckin`/`setShirtColor`/`setPaid` (RLS
-  `participants_update_admin` ya existe, no hace falta nueva) y activar los botones de la vista
-  compacta. `paid` manual solo en modo test (flag `EXPO_PUBLIC_PAYMENTS_TEST_MODE`, oculto en prod).
+- [ ] **Aplicar migración Fase B** `supabase/migrations/20260531000000_participant_match_management.sql`
+  (`checked_in`/`shirt_color`/`paid` en `match_participants`). El código (tipos, `updateParticipant`,
+  `setCheckin`/`setShirtColor`/`setPaid`, botones activos) ya está cableado y commiteado. **NO desplegar
+  la Fase B hasta aplicar la migración** (si no, los toggles de check-in/color/pagado darán error por
+  columna inexistente). `paid` solo en modo test (`EXPO_PUBLIC_PAYMENTS_TEST_MODE`).
 
 ## Hecho recientemente
 
@@ -88,3 +88,9 @@ Pendientes y mejoras. Última revisión: 2026-05-31.
   `aria-label`). Botones de check-in / color (B/N) / pagado visibles pero DESACTIVADOS (se
   cablean en Fase B). No-admin mantiene la lista simple. i18n es/en/ca (`match_details.manage.*`).
   `tsc` limpio + desplegado.
+- Check-in / gestión (Fase B, cableado — **pendiente aplicar migración + desplegar**): columnas
+  `checked_in`/`shirt_color`/`paid` (migración `20260531000000`), `Participant` ampliado,
+  `updateParticipant` en el servicio, `setCheckin`/`setShirtColor`/`setPaid` (update optimista) y
+  botones de la vista compacta **activos** (check-in, color B/N con toggle, pagado solo en modo test).
+- Inscribir de Agenda: buscador en el modal + si no hay coincidencias, fila "Crear jugador: «nombre»"
+  que crea en `admin_players` e inscribe en un toque (`MatchAdminPanel`). i18n es/en/ca.

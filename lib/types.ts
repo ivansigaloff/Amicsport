@@ -63,6 +63,11 @@ export interface Participant {
   user_id: string | null;
   user_name: string;
   created_at?: string;
+  // On-field match-management fields (admin compact view). See migration
+  // 20260531000000_participant_match_management.sql.
+  checked_in?: boolean;
+  shirt_color?: 'white' | 'black' | null;
+  paid?: boolean;
 }
 
 export interface AdminPlayer {

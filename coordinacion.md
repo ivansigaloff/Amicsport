@@ -30,14 +30,19 @@ _Última actualización: 2026-05-31 — **Agent-Claude** (Claude Code / Opus 4.8
   `500000000`, partido `<5€`, frame `inner-bizum`, RTP async → sondear), **Google Pay** ❌ (login de
   Google), **PayPal** ❌ (no habilitado en la cuenta MONEI).
 
-### App / UI → Agent-Claude ⚠️ EN CURSO
-- `components/match/MatchParticipantsList.tsx` — **rework gestión de partido en campo (móvil)**:
-  vista compacta admin (3 secciones colapsables blanco/negro/sin-asignar, contadores, filtro de
-  check-in). **Fase A** = cáscara UI con botones desactivados; **Fase B** = columnas BD
-  (`checked_in`/`shirt_color`/`paid`) + mutaciones admin (RLS `participants_update_admin` existente).
-  `paid` manual solo en modo test. No-admin mantiene la lista simple. **Tocando ahora** — no editar.
-- `components/MatchDetails.tsx` — sube el estado `compact` y oculta `MatchLocationCard` en modo compacto admin (pasa `compact`/`setCompact` a la lista).
-- `locales/{es,en,ca}.json` — claves nuevas bajo `match_details.manage` (no tocar esa sub-clave).
+### App / UI + gestión de partido → Agent-Claude
+- **Check-in/gestión (Fase A+B)** — `components/match/MatchParticipantsList.tsx` (vista compacta admin:
+  chips filtro icono+número, check-in/pagado **tri-estado**, blanco/negro/sin-asignar, filas tintadas,
+  tooltips) + `components/MatchDetails.tsx` (estado `compact`, oculta `MatchLocationCard`). **Fase B
+  cableada**: `lib/types.ts` (+`checked_in`/`shirt_color`/`paid`), `lib/services/participantService.ts`
+  (`updateParticipant`), `hooks/match/useMatchActions.ts` (`setCheckin`/`setShirtColor`/`setPaid`).
+  `pagado` solo en modo test (`EXPO_PUBLIC_PAYMENTS_TEST_MODE`).
+- **Migración** `supabase/migrations/20260531000000_participant_match_management.sql` —
+  **PENDIENTE de aplicar por el usuario**. ⚠️ NO desplegar la Fase B hasta aplicarla (los botones
+  darían error por columna inexistente).
+- **Inscribir de Agenda** — `components/match/MatchAdminPanel.tsx`: buscador + crear-jugador inline
+  (insert en `admin_players` + inscribe). Claves i18n `match_details.search_player`/`create_player`.
+- `locales/{es,en,ca}.json` — claves bajo `match_details.manage.*` + `search_player`/`create_player`.
 
 ## Contrato `scChaos` ↔ `payMonei`
 `scChaos` llama `await payMonei(page, redirectUrl, method)` con `method ∈ {'card','bizum'}` y espera

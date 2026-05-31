@@ -32,7 +32,7 @@ export default function MatchDetails({ matchId, asComponent = false, onDeleteSuc
   const { match, loading, fetchData, participantsList, isFull, isAdmin, userId, isStarted, isOver, cancellationDeadline, formattedDate, joined } = matchDataHook;
   
   const actionsHook = useMatchActions(matchDataHook, fromTable, prefix, env);
-  const { toggleJoin, addGuest, removeParticipant, removeDummyPlayer, executeDelete, acting, showAlert, initiatePayment } = actionsHook;
+  const { toggleJoin, addGuest, removeParticipant, removeDummyPlayer, setCheckin, setShirtColor, setPaid, executeDelete, acting, showAlert, initiatePayment } = actionsHook;
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -88,7 +88,7 @@ export default function MatchDetails({ matchId, asComponent = false, onDeleteSuc
       <MatchHeader match={match} formattedDate={formattedDate} asComponent={asComponent} router={router} isAdmin={isAdmin} prefix={prefix} id={id} />
       <View style={styles.content}>
         {!(isAdmin && compact) && <MatchLocationCard match={match} />}
-        <MatchParticipantsList match={match} participantsList={participantsList} isFull={isFull} isAdmin={isAdmin} userId={userId} removeParticipant={removeParticipant} removeDummyPlayer={removeDummyPlayer} compact={compact} setCompact={setCompact} />
+        <MatchParticipantsList match={match} participantsList={participantsList} isFull={isFull} isAdmin={isAdmin} userId={userId} removeParticipant={removeParticipant} removeDummyPlayer={removeDummyPlayer} setCheckin={setCheckin} setShirtColor={setShirtColor} setPaid={setPaid} compact={compact} setCompact={setCompact} />
         <MatchAdminPanel match={match} isAdmin={isAdmin} isStarted={isStarted} participantsList={participantsList} setParticipantsList={matchDataHook.setParticipantsList} executeDelete={() => executeDelete(asComponent, onDeleteSuccess)} fromTable={fromTable} showAlert={showAlert} />
       </View>
     </ScrollView>
