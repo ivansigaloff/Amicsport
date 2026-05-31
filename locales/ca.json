@@ -127,6 +127,7 @@
     "no_directory_players": "Encara no tens jugadors a l'agenda.",
     "search_player": "Cercar jugador…",
     "create_player": "Crear jugador",
+    "add_selected": "Afegir ({{count}})",
     "go_to_directory": "Anar a gestionar Agenda",
     "guest_badge": "Convidat",
     "confirmed_badge": "Confirmat",

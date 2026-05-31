@@ -125,6 +125,7 @@
     "no_directory_players": "You don't have players in your directory yet.",
     "search_player": "Search player…",
     "create_player": "Create player",
+    "add_selected": "Add ({{count}})",
     "go_to_directory": "Go to manage Directory",
     "guest_badge": "Guest",
     "confirmed_badge": "Confirmed",

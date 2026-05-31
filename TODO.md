@@ -93,4 +93,6 @@ Pendientes y mejoras. Última revisión: 2026-05-31.
   `updateParticipant` en el servicio, `setCheckin`/`setShirtColor`/`setPaid` (update optimista) y
   botones de la vista compacta **activos** (check-in, color B/N con toggle, pagado solo en modo test).
 - Inscribir de Agenda: buscador en el modal + si no hay coincidencias, fila "Crear jugador: «nombre»"
-  que crea en `admin_players` e inscribe en un toque (`MatchAdminPanel`). i18n es/en/ca.
+  que crea en `admin_players` e inscribe en un toque; **checkboxes de multi-selección** (la selección
+  persiste entre búsquedas) con **botón flotante "Añadir (N)"** que inscribe a todos a la vez
+  (`MatchAdminPanel`). i18n es/en/ca.
