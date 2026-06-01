@@ -30,14 +30,16 @@ const isMatchInPast = (dateISO: string, timeStr: string) => {
   return matchDate < bcnDate;
 };
 
-// Helper local para generar próximas fechas
+// Helper local para generar próximas fechas. Cada opción lleva su ISO REAL
+// (con año) además del string de display — así match_date se guarda sin adivinar
+// el año (R2: match_date autoritativo, date es solo display).
 const generateUpcomingDays = () => {
-  const days = [];
+  const days: { iso: string; label: string }[] = [];
   const options = { weekday: 'short', day: 'numeric', month: 'short' } as const;
   for (let i = 0; i < 14; i++) {
     const d = new Date();
     d.setDate(d.getDate() + i);
-    days.push(d.toLocaleDateString('es-ES', options));
+    days.push({ iso: toISODate(d)!, label: d.toLocaleDateString('es-ES', options) });
   }
   return days;
 };
@@ -59,7 +61,8 @@ export default function CreateMatchScreen() {
   const [venue, setVenue] = useState('');
   const [locationUrl, setLocationUrl] = useState('');
   const [venueImageUrl, setVenueImageUrl] = useState('');
-  const [date, setDate] = useState('');
+  const [date, setDate] = useState('');         // display string (e.g. "lun, 12 abr")
+  const [selectedISO, setSelectedISO] = useState(''); // authoritative real date (YYYY-MM-DD)
   const [time, setTime] = useState('');
   const [showDateModal, setShowDateModal] = useState(false);
   const [showTimeModal, setShowTimeModal] = useState(false);
@@ -118,6 +121,7 @@ export default function CreateMatchScreen() {
           setTitle(data.title);
           setVenue(data.venue);
           setDate(data.date);
+          setSelectedISO(data.match_date || toISODate(parseMatchDate(data.date)) || '');
           setTime(data.time);
           setPrice(data.price.toString());
           setMaxPlayers(data.max_players.toString());
@@ -328,8 +332,9 @@ export default function CreateMatchScreen() {
       return Alert.alert('Aviso', 'Por favor, rellena todos los campos marcados con *');
     }
 
-    const matchDateObj = parseMatchDate(date);
-    const dateISO = toISODate(matchDateObj);
+    // match_date is authoritative: use the real ISO captured at selection (no
+    // year guess). Fall back to parsing the display string for legacy edits.
+    const dateISO = selectedISO || toISODate(parseMatchDate(date));
     if (dateISO && isMatchInPast(dateISO, time)) {
       setFormError('No se puede guardar un partido en el pasado.');
       return Alert.alert('Aviso', 'La fecha y hora especificadas ya han pasado.');
@@ -350,7 +355,7 @@ export default function CreateMatchScreen() {
       title,
       venue,
       date,
-      match_date: dateISO, // real sortable date (ISO), derived from the display string above
+      match_date: dateISO, // authoritative real date (ISO with year), captured at selection
       time,
       price: parseFloat(price) || 0,
       max_players: parseInt(maxPlayers) || 10,
@@ -725,11 +730,11 @@ export default function CreateMatchScreen() {
             </View>
             <FlatList
               data={UPCOMING_DAYS}
-              keyExtractor={(i) => i}
+              keyExtractor={(i) => i.iso}
               renderItem={({item}) => (
-                <TouchableOpacity style={[styles.modalOption, date === item && styles.modalOptionActive]} onPress={() => { setDate(item); setShowDateModal(false); }}>
-                  <Text style={[styles.modalOptionText, date === item && {color: '#FFF'}]}>{item}</Text>
-                  {date === item && <Ionicons name="checkmark-circle" size={24} color="#FF4757" />}
+                <TouchableOpacity style={[styles.modalOption, date === item.label && styles.modalOptionActive]} onPress={() => { setDate(item.label); setSelectedISO(item.iso); setShowDateModal(false); }}>
+                  <Text style={[styles.modalOptionText, date === item.label && {color: '#FFF'}]}>{item.label}</Text>
+                  {date === item.label && <Ionicons name="checkmark-circle" size={24} color="#FF4757" />}
                 </TouchableOpacity>
               )}
             />

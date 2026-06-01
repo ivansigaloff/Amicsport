@@ -70,26 +70,6 @@ const parseDateString = (dateStr: string) => {
   return toISODate(parseMatchDate(dateStr));
 };
 
-const addDaysToDateString = (dateStr: string, daysToAdd: number = 7) => {
-  const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-  const parts = dateStr.toLowerCase().replace('.', '').split(' ');
-  if (parts.length >= 3) {
-    const day = parseInt(parts[1], 10);
-    const monthStr = parts[2];
-    const monthIdx = months.findIndex(m => monthStr.includes(m));
-    if (monthIdx !== -1 && !isNaN(day)) {
-      const d = new Date();
-      d.setMonth(monthIdx);
-      d.setDate(day);
-      if (d < new Date(new Date().setMonth(new Date().getMonth() - 2))) {
-         d.setFullYear(d.getFullYear() + 1);
-      }
-      d.setDate(d.getDate() + daysToAdd);
-      return d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
-    }
-  }
-  return dateStr;
-};
 
 const AVAIL_COLORS = { GREEN: '#10B981', YELLOW: '#F59E0B', RED: '#EF4444', INDIGO: '#FFB81C' };
 
@@ -130,11 +110,19 @@ const MatchCard = memo(({ item, fetchMatches, onSelectMatch, isDesktop, isSelect
 
   const handleDuplicate = async () => {
     setDuplicating(true);
-    let newDate = item.date;
-    if (add7Days) {
-      newDate = addDaysToDateString(item.date, 7);
+    // Compute from the authoritative match_date (real ISO with year), not the
+    // lossy display string — so +7 across a year boundary stays correct (R2).
+    const baseISO = item.match_date || toISODate(parseMatchDate(item.date));
+    let newISO = baseISO;
+    if (add7Days && baseISO) {
+      const d = new Date(baseISO + 'T12:00:00');
+      d.setDate(d.getDate() + 7);
+      newISO = toISODate(d);
     }
-    
+    const newDate = newISO
+      ? new Date(newISO + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })
+      : item.date;
+
     // image_url is not loaded in the list query (kept lean); fetch it on demand.
     const { data: src } = await supabase.from(fromTable('matches')).select('image_url').eq('id', item.id).single();
     const { error } = await supabase.from(fromTable('matches')).insert({
@@ -142,7 +130,7 @@ const MatchCard = memo(({ item, fetchMatches, onSelectMatch, isDesktop, isSelect
       venue: item.venue,
       location_url: item.location_url,
       date: newDate,
-      match_date: toISODate(parseMatchDate(newDate)),
+      match_date: newISO,
       time: item.time,
       price: item.price,
       max_players: item.max_players,
