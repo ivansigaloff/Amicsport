@@ -78,6 +78,7 @@
     "matches_deleted": "match(es) deleted.",
     "your_matches": "Your Matches:",
     "map_title": "Venue Map",
+    "matches_truncated": "Showing the first matches. Refine the filters to see more.",
     "create_match": "Create Match",
     "player_agenda": "Player Directory",
     "select_match_placeholder": "Select a match",

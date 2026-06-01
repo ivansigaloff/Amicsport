@@ -78,6 +78,7 @@
     "matches_deleted": "partido(s) eliminado(s).",
     "your_matches": "Tus Partidos:",
     "map_title": "Mapa de Recintos",
+    "matches_truncated": "Mostrando los primeros partidos. Afina los filtros para ver más.",
     "create_match": "Crear Partido",
     "player_agenda": "Agenda Jugadores",
     "select_match_placeholder": "Selecciona un partido",

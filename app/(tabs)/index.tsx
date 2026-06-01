@@ -32,6 +32,11 @@ const MapFallback = () => (
 // remount (Expo Router can unmount/remount tab screens) and on tab focus.
 // Pull-to-refresh and post-mutation calls (duplicate / bulk delete) bypass it.
 const MATCHES_CACHE_TTL_MS = 5 * 60 * 1000;
+// Upper bound on upcoming matches fetched per load. Raised from 200 for headroom;
+// if a load returns exactly this many, the list is likely truncated (the farthest
+// matches are dropped — see listTruncated banner). Proper date-windowed pagination
+// is a follow-up (the calendar + map consume the full array). (review R1)
+const UPCOMING_LIMIT = 500;
 let matchesCache: {
   matches: any[];
   participations: Record<string, { venue: string; time: string }[]>;
@@ -284,6 +289,7 @@ export default function MatchesScreen() {
   const [matches, setMatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [listTruncated, setListTruncated] = useState(false);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [selectedDateFilter, setSelectedDateFilter] = useState<string | null>(null);
   const [selectedVenueFilter, setSelectedVenueFilter] = useState<string | null>(null);
@@ -473,7 +479,7 @@ export default function MatchesScreen() {
         .gte('match_date', today)
         .order('match_date', { ascending: true })
         .order('time', { ascending: true })
-        .limit(200);
+        .limit(UPCOMING_LIMIT);
     }
     const matchesPromise = matchesQuery;
 
@@ -538,6 +544,9 @@ export default function MatchesScreen() {
         return (a.time || '').localeCompare(b.time || '');
       });
 
+      // Flag truncation (the query hit the cap → farthest matches dropped).
+      setListTruncated((data as any[]).length >= (includePast ? 500 : UPCOMING_LIMIT));
+
       // Single setState — one render instead of two.
       setUserParticipationMap(pMap);
       setMatches(processed);
@@ -554,6 +563,7 @@ export default function MatchesScreen() {
     // Use cached data if it is still fresh; otherwise fetch.
     if (matchesCache && Date.now() - matchesCache.ts < MATCHES_CACHE_TTL_MS) {
       setMatches(matchesCache.matches);
+      setListTruncated(matchesCache.matches.length >= UPCOMING_LIMIT);
       cacheMatchList(matchesCache.matches);
       setUserParticipationMap(matchesCache.participations);
       setLoading(false);
@@ -966,6 +976,12 @@ export default function MatchesScreen() {
               )}
               ListHeaderComponent={
                 <View>
+                  {listTruncated && (
+                    <View style={styles.truncationBanner}>
+                      <Ionicons name="information-circle-outline" size={16} color="#92400E" />
+                      <Text style={styles.truncationText}>{t('matches.matches_truncated')}</Text>
+                    </View>
+                  )}
                   {!isDesktop && (
                     <View style={{ marginTop: 0 }}>
                       <View style={[styles.sectionHeaderCompact, { marginBottom: 4 }]}>
@@ -1226,7 +1242,20 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5
   },
   listContent: { paddingBottom: 100, overflow: 'visible' },
-  
+  truncationBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FEF3C7',
+    borderColor: '#FDE68A',
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: 12,
+  },
+  truncationText: { flex: 1, color: '#92400E', fontSize: 12, fontFamily: FONTS.MEDIUM },
+
   // MATCH CARD MINIMAL
   card: {
     backgroundColor: '#FFFFFF',

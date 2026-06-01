@@ -78,6 +78,7 @@
     "matches_deleted": "partit(s) eliminat(s).",
     "your_matches": "Els teus Partits:",
     "map_title": "Mapa de Recintes",
+    "matches_truncated": "Mostrant els primers partits. Afina els filtres per veure'n més.",
     "create_match": "Crear Partit",
     "player_agenda": "Agenda de Jugadors",
     "select_match_placeholder": "Selecciona un partit",
