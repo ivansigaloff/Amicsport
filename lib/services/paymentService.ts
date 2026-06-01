@@ -33,6 +33,7 @@ function mapEdgeError(code?: string): string | undefined {
     case 'invalid_price':
     case 'match_does_not_require_payment': return 'Este partido no admite pago.';
     case 'cancellation_deadline_passed': return 'Ya ha pasado el plazo de cancelación para este partido.';
+    case 'not_validated': return 'Tu cuenta necesita un código de invitación válido.';
     default: return code;
   }
 }

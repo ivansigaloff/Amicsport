@@ -95,11 +95,14 @@ export default function LoginScreen() {
         body: { code },
       });
       if (validateErr || !validation?.ok) {
-        // El usuario quedó creado sin role asignado → sin permisos de admin.
-        // Borrarlo desde el cliente no es posible (necesita service role); le
-        // pedimos contactar al admin para escalarlo manualmente.
+        // Invite-only: the account got created (enable_confirmations=false) but the
+        // code was invalid → no role. Sign OUT so the orphan session can't access
+        // the app (the server also blocks roleless accounts from joining/paying,
+        // and the _layout gate blocks roleless sessions from the UI).
+        await supabase.auth.signOut();
         const detail = (validateErr as any)?.message || validation?.error || 'invalid_invite';
         Alert.alert(t('login.access_denied'), `${t('login.invalid_invite')} (${detail})`);
+        setIsLoginMode(true);
         setLoading(false);
         return;
       }

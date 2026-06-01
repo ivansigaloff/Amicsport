@@ -64,10 +64,14 @@ export default function RootLayout() {
     const inAuthGroup = segments[0] === 'login';
     const isResetPage = segments[0] === 'reset-password';
 
-    if (!session && !inAuthGroup && !isResetPage) {
+    // Invite-only: a session without a validated role (app_metadata.role, set by
+    // validate-invite) is NOT granted access — e.g. a signup whose invite code
+    // failed. All legitimate users have a role, so this only blocks orphans.
+    const validated = !!session?.user?.app_metadata?.role;
+
+    if (!validated && !inAuthGroup && !isResetPage) {
       router.replace('/login');
-    } else if (session) {
-      
+    } else if (validated) {
       // La validación de subdirectorio fue eliminada ya que /Kickerzbcn es ahora producción.
       if (isResetPage) {
         return;

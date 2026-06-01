@@ -52,6 +52,9 @@ serve(async (req) => {
   });
   const { data: { user }, error: authErr } = await userClient.auth.getUser();
   if (authErr || !user) return json({ error: 'invalid_jwt' }, 401);
+  // Invite-only: only validated accounts (app_metadata.role set by
+  // validate-invite) may pay-join. Blocks fake-invite-code orphan accounts.
+  if (!user.app_metadata?.role) return json({ error: 'not_validated' }, 403);
 
   // Body
   let body: { match_id?: string; env?: string; return_base_url?: string; guest_name?: string };
