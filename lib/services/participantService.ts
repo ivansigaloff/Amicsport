@@ -19,6 +19,7 @@ const mapJoinError = (message: string): string => {
   if (message.includes('already_joined')) return 'Ya estás apuntado a este partido.';
   if (message.includes('not_a_participant')) return 'Debes estar apuntado para añadir invitados.';
   if (message.includes('match_not_found')) return 'El partido ya no existe.';
+  if (message.includes('payment_required')) return 'Este partido requiere pago para apuntarse.';
   return message;
 };
 

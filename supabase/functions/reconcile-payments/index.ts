@@ -42,9 +42,13 @@ serve(async (req) => {
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
   const startedAt = new Date();
-  const staleThreshold = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+  // 5 min, just UNDER reserve_paid_slot's 6-min freshness window: a paid hold
+  // whose webhook was missed gets confirmed here BEFORE the freshness window
+  // stops counting it, so its spot is never silently exposed (review case G).
+  // Requires the cron to run frequently (every 1-2 min) to actually close the gap.
+  const staleThreshold = new Date(Date.now() - 5 * 60 * 1000).toISOString();
 
-  // Load all PENDING payments older than 15 minutes that have a Monei ID
+  // Load PENDING payments older than the threshold that have a Monei ID
   const { data: stalePending, error } = await admin
     .from('payments')
     .select('id, match_id, user_id, user_name, env, monei_payment_id, created_at, is_guest')
@@ -58,7 +62,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: 'db_error' }), { status: 500 });
   }
 
-  const results = { synced: 0, expired: 0, errors: 0, skipped: 0 };
+  const results = { synced: 0, expired: 0, errors: 0, skipped: 0, repaired: 0 };
   const expiredThreshold = new Date(Date.now() - 60 * 60 * 1000); // 1h: a Monei-PENDING that old is dead (slot already freed by reserve_paid_slot's 10-min window)
 
   for (const payment of stalePending ?? []) {
@@ -115,6 +119,37 @@ serve(async (req) => {
 
     } catch (e) {
       console.error(`reconcile: error processing payment ${payment.id}:`, e);
+      results.errors++;
+    }
+  }
+
+  // ── Repair SUCCEEDED-without-participant (review gap H) ──────────────────
+  // A transient confirm failure can leave a payment SUCCEEDED with no
+  // participant, and no other path retries it (webhook/verify treat SUCCEEDED
+  // as resolved; the loop above only scans PENDING). Re-run the locked confirm.
+  // Bounded to the last 24h: a transient failure is caught long before that, and
+  // we must never auto-confirm/refund a historical payment for a past match.
+  const repairSince = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data: unconfirmed } = await admin
+    .from('payments')
+    .select('id, env, match_id, user_id, user_name, is_guest, participant_id')
+    .eq('status', 'SUCCEEDED')
+    .is('participant_id', null)
+    .gte('created_at', repairSince)
+    .limit(50);
+
+  for (const payment of unconfirmed ?? []) {
+    try {
+      const slot = await confirmSlotOrRefund(admin, payment);
+      const upd: Record<string, unknown> = {};
+      if (slot.participant_id) upd.participant_id = slot.participant_id;
+      if (slot.status) upd.status = slot.status;  // 'PENDING_RETURN' when full
+      if (Object.keys(upd).length) {
+        await admin.from('payments').update(upd).eq('id', payment.id);
+        results.repaired++;
+      }
+    } catch (e) {
+      console.error(`reconcile: repair failed for payment ${payment.id}:`, e);
       results.errors++;
     }
   }
