@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useEnv } from '../../hooks/use-env';
+import { computeIsAdmin } from '../../lib/auth';
 
 export default function ManagePlayersScreen() {
   const router = useRouter();
@@ -15,6 +16,7 @@ export default function ManagePlayersScreen() {
   const [saving, setSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [playerToDelete, setPlayerToDelete] = useState<{id: string, name: string} | null>(null);
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
   const { fromTable, env } = useEnv();
 
   const fetchPlayers = async () => {
@@ -31,7 +33,13 @@ export default function ManagePlayersScreen() {
   };
 
   useEffect(() => {
-    fetchPlayers();
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const isAdmin = computeIsAdmin(user, env as 'prod' | 'dev');
+      setAuthorized(isAdmin);
+      if (isAdmin) await fetchPlayers();
+      else setLoading(false);
+    })();
   }, [env]);
 
   const handleAddPlayer = async () => {
@@ -93,6 +101,22 @@ export default function ManagePlayersScreen() {
       ]);
     }
   };
+
+  // Admin-only route guard (RLS already protects the data; this blocks the UI).
+  if (authorized === null || (authorized && loading)) {
+    return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color="#0F172A" /></View>;
+  }
+  if (authorized === false) {
+    return (
+      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 }}>
+        <Ionicons name="lock-closed-outline" size={48} color="#94A3B8" />
+        <Text style={{ color: '#64748B', fontSize: 16, textAlign: 'center' }}>Solo accesible para administradores</Text>
+        <TouchableOpacity onPress={() => router.replace('/(tabs)' as any)}>
+          <Text style={{ color: '#0F172A', fontWeight: '700' }}>Volver</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>

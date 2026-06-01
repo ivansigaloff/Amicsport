@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase';
 import { useJsApiLoader } from '@react-google-maps/api';
 import { Image } from 'expo-image';
 import { useEnv } from '../../hooks/use-env';
+import { computeIsAdmin } from '../../lib/auth';
 import { parseMatchDate, toISODate } from '../../lib/date';
 
 type SavedLocation = { id?: number; name: string; location_url: string; image_url?: string };
@@ -69,6 +70,7 @@ export default function CreateMatchScreen() {
   const [formatEdited, setFormatEdited] = useState(false); // true once the admin overrides the auto format
   const [level, setLevel] = useState('Nivel Amateur/Medio');
   const [loading, setLoading] = useState(false);
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
   const [formError, setFormError] = useState('');
   const [loadingLocations, setLoadingLocations] = useState(false);
   const [savedLocations, setSavedLocations] = useState<SavedLocation[]>([]);
@@ -93,6 +95,14 @@ export default function CreateMatchScreen() {
     if (!error && data) setSavedLocations(data as SavedLocation[]);
     setLoadingLocations(false);
   };
+
+  useEffect(() => {
+    // Admin-only route guard (RLS already blocks the writes; this gates the UI).
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setAuthorized(computeIsAdmin(user, env as 'prod' | 'dev'));
+    })();
+  }, [env]);
 
   useEffect(() => {
     // Fetch saved locations on mount
@@ -391,6 +401,21 @@ export default function CreateMatchScreen() {
       }
     }
   };
+
+  if (authorized === null) {
+    return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color="#0F172A" /></View>;
+  }
+  if (authorized === false) {
+    return (
+      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 }}>
+        <Ionicons name="lock-closed-outline" size={48} color="#94A3B8" />
+        <Text style={{ color: '#64748B', fontSize: 16, textAlign: 'center' }}>Solo accesible para administradores</Text>
+        <TouchableOpacity onPress={() => router.replace('/(tabs)' as any)}>
+          <Text style={{ color: '#0F172A', fontWeight: '700' }}>Volver</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
