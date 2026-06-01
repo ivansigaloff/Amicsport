@@ -12,6 +12,11 @@
 -- It only fills when match_date IS NULL, so the app's explicit writes (which set
 -- both) are never overridden. Genuinely unparseable dates stay NULL (admin-only
 -- "show past" view), same as before.
+--
+-- PROD ONLY: match_date lives only on `matches` (the original column migration
+-- never added it to matches_dev). The dev split is dormant — like
+-- reserve_paid_slot / join_match, this targets prod only. (The defensive drop
+-- below clears any matches_dev trigger left by an earlier failed attempt.)
 
 -- ── 1. Derivation function (mirrors lib/date.ts parseMatchDate / the backfill) ─
 CREATE OR REPLACE FUNCTION public.set_match_date_from_date()
@@ -63,17 +68,15 @@ BEGIN
 END;
 $$;
 
--- ── 2. Triggers (prod + dormant dev) ───────────────────────────────────────
+-- ── 2. Trigger on prod matches ─────────────────────────────────────────────
 DROP TRIGGER IF EXISTS matches_set_match_date ON public.matches;
 CREATE TRIGGER matches_set_match_date
   BEFORE INSERT OR UPDATE ON public.matches
   FOR EACH ROW EXECUTE FUNCTION public.set_match_date_from_date();
 
+-- Defensive: remove any matches_dev trigger created by an earlier failed run
+-- (matches_dev has no match_date column, so such a trigger would error on write).
 DROP TRIGGER IF EXISTS matches_dev_set_match_date ON public.matches_dev;
-CREATE TRIGGER matches_dev_set_match_date
-  BEFORE INSERT OR UPDATE ON public.matches_dev
-  FOR EACH ROW EXECUTE FUNCTION public.set_match_date_from_date();
 
 -- ── 3. Backfill existing parseable NULLs by firing the trigger (no-op update) ─
-UPDATE public.matches     SET date = date WHERE match_date IS NULL AND date IS NOT NULL AND btrim(date) <> '';
-UPDATE public.matches_dev SET date = date WHERE match_date IS NULL AND date IS NOT NULL AND btrim(date) <> '';
+UPDATE public.matches SET date = date WHERE match_date IS NULL AND date IS NOT NULL AND btrim(date) <> '';
