@@ -131,7 +131,7 @@ serve(async (req) => {
   const userEmail = user.email ?? '';
   const hostName = user.user_metadata?.full_name ?? user.user_metadata?.name ?? userEmail.split('@')[0];
   // For guest payments the displayed name is the guest's; billing details remain the host's.
-  const userName = isGuest ? guest_name!.trim() : hostName;
+  const userName = isGuest ? guest_name!.trim().slice(0, 80) : hostName;
 
   // Atomically reserve the spot BEFORE charging. reserve_paid_slot locks the
   // match row (SELECT ... FOR UPDATE), recounts capacity (participants + manual
@@ -153,7 +153,7 @@ serve(async (req) => {
   if (reserveErr || !hold) {
     if (String(reserveErr?.message || '').includes('match_full')) return json({ error: 'match_full' }, 409);
     console.error('reserve_paid_slot failed:', reserveErr);
-    return json({ error: 'db_error', detail: reserveErr?.message }, 500);
+    return json({ error: 'db_error' }, 500);
   }
 
   const completeUrl = `${baseUrl}/payment/return?order_id=${orderId}&status=SUCCEEDED`;
@@ -190,7 +190,7 @@ serve(async (req) => {
       payload: { error: String(e), match_id },
       source: 'app',
     });
-    return json({ error: 'monei_error', detail: String(e) }, 502);
+    return json({ error: 'monei_error' }, 502);
   }
 
   // Attach the Monei id to the hold we already reserved above.

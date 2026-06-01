@@ -1,3 +1,5 @@
+import { timingSafeEqual } from './timingSafeEqual.ts';
+
 const MONEI_API_KEY = Deno.env.get('MONEI_API_KEY')!;
 const MONEI_BASE = 'https://api.monei.com/v1';
 
@@ -32,7 +34,7 @@ export async function verifyMoneiSignature(rawBody: string, signature: string): 
     );
     const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(`${timestamp}.${rawBody}`));
     const computed = [...new Uint8Array(sig)].map(b => b.toString(16).padStart(2, '0')).join('');
-    return computed === v1;
+    return timingSafeEqual(computed, v1);
   } catch {
     return false;
   }

@@ -110,11 +110,12 @@ serve(async (req) => {
       }),
     });
     if (!res.ok) {
-      const text = await res.text();
-      return json({ error: 'upstream_failed', status: res.status, detail: text.slice(0, 200) }, 502);
+      console.error('notification upstream failed:', res.status, (await res.text()).slice(0, 200));
+      return json({ error: 'upstream_failed', status: res.status }, 502);
     }
     return json({ ok: true });
   } catch (e) {
-    return json({ error: 'upstream_unreachable', detail: String(e) }, 502);
+    console.error('notification upstream unreachable:', String(e));
+    return json({ error: 'upstream_unreachable' }, 502);
   }
 });

@@ -22,6 +22,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { moneiRequest } from '../_shared/monei.ts';
 import { auditLog } from '../_shared/audit.ts';
 import { confirmSlotOrRefund } from '../_shared/confirmSlot.ts';
+import { timingSafeEqual } from '../_shared/timingSafeEqual.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -36,7 +37,7 @@ serve(async (req) => {
   // Fail-closed: if RECONCILE_SECRET is unset, deny ALL requests rather than
   // letting the endpoint become public.
   const providedSecret = req.headers.get('x-reconcile-secret') ?? '';
-  if (!RECONCILE_SECRET || providedSecret !== RECONCILE_SECRET) {
+  if (!RECONCILE_SECRET || !timingSafeEqual(providedSecret, RECONCILE_SECRET)) {
     return new Response('unauthorized', { status: 401 });
   }
 

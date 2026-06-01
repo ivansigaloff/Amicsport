@@ -74,7 +74,7 @@ serve(async (req) => {
     });
     const { data: userData, error: userErr } = await userClient.auth.getUser();
     if (userErr || !userData.user) {
-        return jsonResponse({ error: 'invalid_jwt', detail: userErr?.message }, 401);
+        return jsonResponse({ error: 'invalid_jwt' }, 401);
     }
     const userId = userData.user.id;
 
@@ -104,7 +104,8 @@ serve(async (req) => {
         user_metadata: newUserMeta,
     });
     if (updErr) {
-        return jsonResponse({ error: 'update_failed', detail: updErr.message }, 500);
+        console.error('validate-invite update failed:', updErr.message);
+        return jsonResponse({ error: 'update_failed' }, 500);
     }
 
     return jsonResponse({ ok: true, role: resolved.role, is_dev: resolved.is_dev });
