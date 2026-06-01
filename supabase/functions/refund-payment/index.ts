@@ -61,6 +61,10 @@ serve(async (req) => {
   const { data: payment, error: pmtErr } = await query.maybeSingle();
 
   if (pmtErr || !payment) return json({ error: 'payment_not_found' }, 404);
+  if (payment.status === 'REFUNDING') {
+    // A concurrent refund already claimed this payment (see claim_refund).
+    return json({ error: 'refund_in_progress' }, 409);
+  }
   if (payment.status !== 'SUCCEEDED') {
     return json({ error: 'only_succeeded_payments_can_be_refunded', current_status: payment.status }, 409);
   }
@@ -116,55 +120,56 @@ serve(async (req) => {
     }
   }
 
-  // ── Daily limit check (skipped for admins using force) ──────────────────
-  let blockedByLimit = false;
-
-  if (!isAdmin || !force) {
-    const [countRow, amountRow] = await Promise.all([
-      admin.from('app_settings').select('value').eq('key', 'daily_refund_count_limit').single(),
-      admin.from('app_settings').select('value').eq('key', 'daily_refund_amount_limit_cents').single(),
-    ]);
-
-    const countLimit  = Number(countRow.data?.value  ?? 10);
-    const amountLimit = Number(amountRow.data?.value ?? 100000);
-
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-
-    const { data: todayRefunds } = await admin
-      .from('payments')
-      .select('refunded_amount')
-      .gte('refunded_at', todayStart.toISOString())
-      .in('status', ['REFUNDED', 'PARTIALLY_REFUNDED']);
-
-    const todayCount  = todayRefunds?.length ?? 0;
-    const todayAmount = todayRefunds?.reduce((s, r) => s + (r.refunded_amount ?? 0), 0) ?? 0;
-
-    if (todayCount >= countLimit || todayAmount + payment.amount > amountLimit) {
-      blockedByLimit = true;
-    }
+  // ── Atomically claim the refund (closes the double-refund race) ─────────
+  // claim_refund locks the payment row, re-checks status + the daily limit
+  // under a global advisory lock, and flips SUCCEEDED -> REFUNDING so only ONE
+  // caller proceeds to Monei. Everything below runs with the claim held, so no
+  // concurrent request can refund this payment again.
+  // See migration 20260601000000_refund_claim_lock.sql.
+  const { data: claim, error: claimErr } = await admin.rpc('claim_refund', {
+    p_payment_id: payment_id,
+    p_user_id:    user.id,
+    p_is_admin:   isAdmin,
+    p_force:      force,
+  });
+  if (claimErr || !claim) {
+    console.error('claim_refund failed:', claimErr);
+    return json({ error: 'db_error' }, 500);
   }
 
-  if (blockedByLimit) {
-    await admin.from('payments').update({ status: 'PENDING_REFUND_ADMIN' }).eq('id', payment.id);
-    await auditLog({
-      env: payment.env, actor_id: user.id, actor_email: user.email,
-      action: 'REFUND_QUEUED_ADMIN',
-      entity_type: 'payment', entity_id: payment.id,
-      payload: { match_id: payment.match_id, amount: payment.amount, reason: 'daily_limit_exceeded' },
-      source: isAdmin ? 'admin' : 'app',
-    });
-    return json({ status: 'PENDING_REFUND_ADMIN', message: 'Daily refund limit reached. An admin will process this refund.' });
+  switch (claim.outcome) {
+    case 'not_found':
+      return json({ error: 'payment_not_found' }, 404);
+    case 'already_refunded':
+      return json({ error: 'already_fully_refunded' }, 409);
+    case 'not_succeeded':
+      return claim.status === 'REFUNDING'
+        ? json({ error: 'refund_in_progress' }, 409)
+        : json({ error: 'only_succeeded_payments_can_be_refunded', current_status: claim.status }, 409);
+    case 'blocked_limit':
+      await auditLog({
+        env: payment.env, actor_id: user.id, actor_email: user.email,
+        action: 'REFUND_QUEUED_ADMIN',
+        entity_type: 'payment', entity_id: payment.id,
+        payload: { match_id: payment.match_id, amount: payment.amount, reason: 'daily_limit_exceeded' },
+        source: isAdmin ? 'admin' : 'app',
+      });
+      return json({ status: 'PENDING_REFUND_ADMIN', message: 'Daily refund limit reached. An admin will process this refund.' });
+    case 'claimed':
+      break;  // proceed to Monei below
+    default:
+      console.error('claim_refund unknown outcome:', claim);
+      return json({ error: 'db_error' }, 500);
   }
 
-  // ── Process refund via Monei ────────────────────────────────────────────
-  const refundAmount = payment.amount - payment.refunded_amount;
-  let moneiRefund: { status?: string };
+  // ── Process refund via Monei (claim held; payment is REFUNDING) ─────────
+  const refundAmount: number = claim.refund_amount;
   try {
-    moneiRefund = await moneiRequest(`/payments/${payment.monei_payment_id}/refund`, 'POST', {
-      refundAmount,
-    });
+    await moneiRequest(`/payments/${claim.monei_payment_id}/refund`, 'POST', { refundAmount });
   } catch (e) {
+    // Monei failed → release the claim (REFUNDING -> SUCCEEDED) so it can be
+    // retried, and stop it counting against the daily cap.
+    await admin.from('payments').update({ status: 'SUCCEEDED' }).eq('id', payment.id);
     await auditLog({
       env: payment.env, actor_id: user.id, actor_email: user.email,
       action: 'REFUND_FAILED',
@@ -172,22 +177,30 @@ serve(async (req) => {
       payload: { error: String(e), amount: refundAmount },
       source: isAdmin ? 'admin' : 'app',
     });
-    return json({ error: 'monei_refund_failed', detail: String(e) }, 502);
+    return json({ error: 'monei_refund_failed' }, 502);  // detail kept server-side only
   }
 
-  // Remove from match_participants
-  if (payment.participant_id) {
-    const participantsTable = payment.env === 'dev' ? 'match_participants_dev' : 'match_participants';
-    await admin.from(participantsTable).delete().eq('id', payment.participant_id);
+  // Remove from match_participants (best-effort; log but don't fail the refund —
+  // Monei already paid out).
+  if (claim.participant_id) {
+    const participantsTable = claim.env === 'dev' ? 'match_participants_dev' : 'match_participants';
+    const { error: delErr } = await admin.from(participantsTable).delete().eq('id', claim.participant_id);
+    if (delErr) console.error('refund: participant delete failed:', delErr);
   }
 
-  // Update payment record
-  const newStatus = (payment.refunded_amount + refundAmount >= payment.amount) ? 'REFUNDED' : 'PARTIALLY_REFUNDED';
-  await admin.from('payments').update({
+  // Finalize REFUNDING -> REFUNDED / PARTIALLY_REFUNDED.
+  const newRefunded = claim.refunded_amount + refundAmount;
+  const newStatus = newRefunded >= claim.amount ? 'REFUNDED' : 'PARTIALLY_REFUNDED';
+  const { error: finErr } = await admin.from('payments').update({
     status:          newStatus,
-    refunded_amount: payment.refunded_amount + refundAmount,
+    refunded_amount: newRefunded,
     refunded_at:     new Date().toISOString(),
   }).eq('id', payment.id);
+  if (finErr) {
+    // Monei already refunded but the DB write failed: leave the row REFUNDING
+    // for reconcile/admin to finalize rather than risk a wrong terminal state.
+    console.error('refund: finalize update failed (Monei already refunded):', finErr);
+  }
 
   await auditLog({
     env: payment.env, actor_id: user.id, actor_email: user.email,

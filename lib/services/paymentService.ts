@@ -33,6 +33,7 @@ function mapEdgeError(code?: string): string | undefined {
     case 'invalid_price':
     case 'match_does_not_require_payment': return 'Este partido no admite pago.';
     case 'cancellation_deadline_passed': return 'Ya ha pasado el plazo de cancelación para este partido.';
+    case 'refund_in_progress': return 'Ya hay un reembolso en curso para este pago.';
     default: return code;
   }
 }
