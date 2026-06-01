@@ -462,13 +462,13 @@ export default function MatchesScreen() {
     // payload stays bounded as history grows (was: fetch the entire table every load).
     // The admin "show past" toggle keeps the legacy fetch (rare, capped at 500).
     const includePast = showPastRef.current;
+    const today = new Date().toISOString().split('T')[0];
     let matchesQuery = supabase
       .from(fromTable('matches'))
       .select(`${matchCols}, ${fromTable('match_participants')}(count)`);
     if (includePast) {
       matchesQuery = matchesQuery.order('created_at', { ascending: false }).limit(500);
     } else {
-      const today = new Date().toISOString().split('T')[0];
       matchesQuery = matchesQuery
         .gte('match_date', today)
         .order('match_date', { ascending: true })
@@ -477,11 +477,17 @@ export default function MatchesScreen() {
     }
     const matchesPromise = matchesQuery;
 
+    // Bound to UPCOMING (match_date >= today) via an inner join so this doesn't
+    // grow unbounded with the user's full participation history — it only feeds
+    // the calendar "your matches" indicator + per-match joined status, both of
+    // which concern the upcoming window shown in the list.
+    const matchesTbl = fromTable('matches');
     const partsPromise = user
       ? supabase
           .from(fromTable('match_participants'))
-          .select(`match_id, user_id, user_name, ${fromTable('matches')}(id, date, match_date, venue, time)`)
+          .select(`match_id, user_id, user_name, ${matchesTbl}!inner(id, date, match_date, venue, time)`)
           .or(`user_id.eq.${user.id},user_name.ilike.${safeUserName} (invitado%`)
+          .gte(`${matchesTbl}.match_date`, today)
       : Promise.resolve({ data: null });
 
     const [{ data }, { data: pData }] = await Promise.all([matchesPromise, partsPromise]);
