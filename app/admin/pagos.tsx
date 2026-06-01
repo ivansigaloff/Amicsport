@@ -101,10 +101,10 @@ export default function AdminPaymentsScreen() {
 
     setActing(payment.id);
     try {
-      const result = await refundPayment(payment.id, true);
+      const result = await refundPayment(payment.id);
       const msg = result.status === 'PENDING_REFUND_ADMIN'
         ? 'Reembolso en cola (límite diario alcanzado).'
-        : `Reembolsado: €${(result.refunded_amount / 100).toFixed(2)}`;
+        : 'Reembolso solicitado. Se procesará en breve.';
       showMsg('Reembolso', msg);
       await loadPayments();
     } catch (err: any) {

@@ -96,14 +96,12 @@ serve(async (req) => {
       };
 
       if (moneiPayment.status === 'SUCCEEDED') {
-        // Create the participant — or REFUND if the match filled while this hold
-        // aged out (reserve_paid_slot freshness window), to avoid overbooking.
+        // Create the participant under the match lock — or QUEUE a return if the
+        // match filled while this hold aged out, to avoid overbooking. The refund
+        // worker below does the Monei call.
         const slot = await confirmSlotOrRefund(admin, payment);
         if (slot.participant_id) updateData.participant_id = slot.participant_id;
-        if (slot.status) {
-          updateData.status = slot.status;
-          if (slot.refunded_amount != null) { updateData.refunded_amount = slot.refunded_amount; updateData.refunded_at = slot.refunded_at; }
-        }
+        if (slot.status) updateData.status = slot.status;  // 'PENDING_RETURN' when full
       }
 
       await admin.from('payments').update(updateData).eq('id', payment.id);
@@ -121,14 +119,118 @@ serve(async (req) => {
     }
   }
 
+  // ── Refund worker: the SINGLE owner of Monei /refund ────────────────────
+  // Processes the async return queue. claim_returns atomically flips a batch
+  // PENDING_RETURN -> RETURNING (FOR UPDATE SKIP LOCKED), so overlapping
+  // reconcile runs never refund the same payment twice.
+  const returns = { refunded: 0, requeued: 0, queued_admin: 0, errors: 0 };
+
+  // (a) Recover RETURNING rows orphaned by a crashed run: ask Monei whether the
+  //     refund actually went through, then finalize or requeue. Money-safe.
+  const staleReturning = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const { data: orphans } = await admin
+    .from('payments')
+    .select('id, env, user_id, match_id, monei_payment_id, amount')
+    .eq('status', 'RETURNING')
+    .lt('updated_at', staleReturning)
+    .limit(50);
+
+  for (const pay of orphans ?? []) {
+    if (!pay.monei_payment_id) {
+      await admin.from('payments').update({ status: 'PENDING_RETURN' }).eq('id', pay.id);
+      returns.requeued++;
+      continue;
+    }
+    try {
+      const m = await moneiRequest(`/payments/${pay.monei_payment_id}`);
+      if (m.status === 'REFUNDED' || m.status === 'PARTIALLY_REFUNDED') {
+        await admin.from('payments').update({
+          status: m.status, refunded_amount: pay.amount, refunded_at: new Date().toISOString(),
+        }).eq('id', pay.id);
+        returns.refunded++;
+      } else {
+        await admin.from('payments').update({ status: 'PENDING_RETURN' }).eq('id', pay.id);
+        returns.requeued++;
+      }
+    } catch {
+      returns.errors++;  // leave RETURNING; next run retries
+    }
+  }
+
+  // (b) Daily cap (this is now the only place refunds are issued).
+  const [countRow, amountRow] = await Promise.all([
+    admin.from('app_settings').select('value').eq('key', 'daily_refund_count_limit').single(),
+    admin.from('app_settings').select('value').eq('key', 'daily_refund_amount_limit_cents').single(),
+  ]);
+  const countLimit  = Number(countRow.data?.value  ?? 10);
+  const amountLimit = Number(amountRow.data?.value ?? 100000);
+  const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+  const { data: todayRefunds } = await admin
+    .from('payments').select('refunded_amount')
+    .gte('refunded_at', dayStart.toISOString())
+    .in('status', ['REFUNDED', 'PARTIALLY_REFUNDED']);
+  let dayCount  = todayRefunds?.length ?? 0;
+  let dayAmount = todayRefunds?.reduce((s, r) => s + (r.refunded_amount ?? 0), 0) ?? 0;
+
+  // (c) Claim and process the queue.
+  const { data: claimed, error: claimErr } = await admin.rpc('claim_returns', { p_limit: 50 });
+  if (claimErr) console.error('claim_returns failed:', claimErr);
+
+  for (const pay of claimed ?? []) {
+    const amount = pay.amount - (pay.refunded_amount ?? 0);
+
+    // Admin-requested returns bypass the daily cap (old "force" semantics).
+    if (!pay.return_admin && (dayCount >= countLimit || dayAmount + amount > amountLimit)) {
+      await admin.from('payments').update({ status: 'PENDING_REFUND_ADMIN' }).eq('id', pay.id);
+      await auditLog({
+        env: pay.env, actor_id: pay.user_id, action: 'REFUND_QUEUED_ADMIN',
+        entity_type: 'payment', entity_id: pay.id,
+        payload: { match_id: pay.match_id, amount, reason: 'daily_limit_exceeded' }, source: 'reconcile',
+      });
+      returns.queued_admin++;
+      continue;
+    }
+
+    if (!pay.monei_payment_id) {
+      await admin.from('payments').update({ status: 'PENDING_REFUND_ADMIN' }).eq('id', pay.id);
+      returns.queued_admin++;
+      continue;
+    }
+
+    try {
+      await moneiRequest(`/payments/${pay.monei_payment_id}/refund`, 'POST', { refundAmount: amount });
+    } catch (e) {
+      // Transient (e.g. Monei down) → back to the queue for the next run.
+      await admin.from('payments').update({ status: 'PENDING_RETURN' }).eq('id', pay.id);
+      await auditLog({
+        env: pay.env, actor_id: pay.user_id, action: 'REFUND_FAILED',
+        entity_type: 'payment', entity_id: pay.id,
+        payload: { error: String(e), amount }, source: 'reconcile',
+      });
+      returns.errors++;
+      continue;
+    }
+
+    await admin.from('payments').update({
+      status: 'REFUNDED', refunded_amount: (pay.refunded_amount ?? 0) + amount, refunded_at: new Date().toISOString(),
+    }).eq('id', pay.id);
+    await auditLog({
+      env: pay.env, actor_id: pay.user_id, action: 'REFUND_ISSUED',
+      entity_type: 'payment', entity_id: pay.id,
+      payload: { match_id: pay.match_id, refund_amount: amount }, source: 'reconcile',
+    });
+    dayCount++; dayAmount += amount;
+    returns.refunded++;
+  }
+
   const durationMs = Date.now() - startedAt.getTime();
   await auditLog({
     action: 'RECONCILE_RUN',
-    payload: { ...results, total: stalePending?.length ?? 0, duration_ms: durationMs },
+    payload: { ...results, returns, total: stalePending?.length ?? 0, duration_ms: durationMs },
     source: 'reconcile',
   });
 
-  return new Response(JSON.stringify({ ok: true, ...results, duration_ms: durationMs }), {
+  return new Response(JSON.stringify({ ok: true, ...results, returns, duration_ms: durationMs }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' },
   });

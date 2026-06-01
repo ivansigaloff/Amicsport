@@ -3,54 +3,44 @@
 // reserve_paid_slot reserves a PENDING "hold" that only blocks capacity for ~10
 // min (freshness window). If a payment completes LATE (after its hold aged out),
 // the slot may already have been re-sold. Creating the participant blindly would
-// OVERBOOK. So: re-check capacity and either create the participant (room) or
-// REFUND the payment (full) — never charge for a slot we can't grant.
+// OVERBOOK.
 //
-// Side effects performed here: participant insert OR Monei refund. The CALLER
-// persists the resulting payment status from the returned fields (so each
-// function keeps its single payments UPDATE).
-
-import { moneiRequest } from './monei.ts';
+// The decision is made by the confirm_paid_slot SQL function, which LOCKS the
+// match row so the three confirm paths (webhook / verify-payment / reconcile)
+// serialize: it re-checks idempotency + capacity and inserts the participant
+// under the lock, or signals 'queued_return' when the match filled. We never
+// call Monei here — a queued return is picked up by the single refund worker in
+// reconcile-payments, so a refund can't be issued twice.
+//
+// The CALLER persists the returned status (PENDING_RETURN) on the payment so the
+// worker sees it; on 'confirmed' it persists participant_id. Each function keeps
+// its single payments UPDATE.
 
 interface SlotResult {
   participant_id?: string;
-  status?: string;          // set for refund outcomes → caller must persist it
-  refunded_amount?: number;
-  refunded_at?: string;
+  status?: string;          // 'PENDING_RETURN' when the match was full → caller persists it
 }
 
 export async function confirmSlotOrRefund(admin: any, payment: any): Promise<SlotResult> {
-  const table = payment.env === 'dev' ? 'match_participants_dev' : 'match_participants';
+  const { data: result, error } = await admin.rpc('confirm_paid_slot', { p_payment_id: payment.id });
 
-  // Already created (webhook/verify/reconcile race)? Reuse it.
-  let q = admin.from(table).select('id').eq('match_id', payment.match_id);
-  q = payment.is_guest
-    ? q.is('user_id', null).eq('user_name', payment.user_name)
-    : q.eq('user_id', payment.user_id);
-  const { data: existing } = await q.limit(1);
-  if (existing && existing.length) return { participant_id: existing[0].id };
-
-  // Still room? real participants + manual counter vs capacity.
-  const { data: match } = await admin
-    .from('matches').select('max_players, joined_players').eq('id', payment.match_id).maybeSingle();
-  const { count } = await admin
-    .from(table).select('id', { count: 'exact', head: true }).eq('match_id', payment.match_id);
-  const used = (count ?? 0) + (match?.joined_players ?? 0);
-
-  if (match && used >= match.max_players) {
-    // FULL → refund instead of overbooking. On Monei failure, queue for admin.
-    try {
-      await moneiRequest(`/payments/${payment.monei_payment_id}/refund`, 'POST', { refundAmount: payment.amount });
-      return { status: 'REFUNDED', refunded_amount: payment.amount, refunded_at: new Date().toISOString() };
-    } catch (_e) {
-      return { status: 'PENDING_REFUND_ADMIN' };
-    }
+  if (error || !result) {
+    // Don't fabricate a participant or a refund on an unknown DB error; let the
+    // caller keep the payment as-is so reconcile retries it later.
+    console.error('confirm_paid_slot failed:', error);
+    return {};
   }
 
-  // Room → create the participant (created_by = paying host, even for guests).
-  const row = payment.is_guest
-    ? { match_id: payment.match_id, user_id: null,            user_name: payment.user_name, created_by: payment.user_id }
-    : { match_id: payment.match_id, user_id: payment.user_id, user_name: payment.user_name, created_by: payment.user_id };
-  const { data: participant } = await admin.from(table).insert(row).select('id').maybeSingle();
-  return { participant_id: participant?.id };
+  switch (result.outcome) {
+    case 'confirmed':
+      return { participant_id: result.participant_id };
+    case 'queued_return':
+      // Match filled while the hold aged out → owe a refund. Queue it; the
+      // worker in reconcile-payments will call Monei.
+      return { status: 'PENDING_RETURN' };
+    default:
+      // payment_not_found / match_not_found — leave the payment untouched.
+      console.error('confirm_paid_slot outcome:', result.outcome);
+      return {};
+  }
 }

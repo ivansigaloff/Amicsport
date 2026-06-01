@@ -33,7 +33,6 @@ function mapEdgeError(code?: string): string | undefined {
     case 'invalid_price':
     case 'match_does_not_require_payment': return 'Este partido no admite pago.';
     case 'cancellation_deadline_passed': return 'Ya ha pasado el plazo de cancelación para este partido.';
-    case 'refund_in_progress': return 'Ya hay un reembolso en curso para este pago.';
     default: return code;
   }
 }
@@ -58,6 +57,10 @@ export async function verifyPayment(orderId: string): Promise<{ status: string; 
   return callEdgeFn('verify-payment', { order_id: orderId });
 }
 
-export async function refundPayment(paymentId: string, force = false): Promise<{ status: string; refunded_amount: number }> {
-  return callEdgeFn('refund-payment', { payment_id: paymentId, force });
+// Requests an asynchronous refund ("return"). Returns immediately with status
+// PENDING_RETURN; the reconcile-payments worker issues the actual Monei refund.
+// Admin vs user is derived server-side from the JWT (admins bypass the deadline
+// and the daily cap), so no client flag is needed.
+export async function refundPayment(paymentId: string): Promise<{ status: string; message?: string }> {
+  return callEdgeFn('refund-payment', { payment_id: paymentId });
 }

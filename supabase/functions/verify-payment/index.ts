@@ -59,9 +59,13 @@ serve(async (req) => {
 
   if (pmtErr || !payment) return json({ error: 'payment_not_found' }, 404);
 
-  // If already in terminal state, return current DB state (webhook already processed it)
-  const TERMINAL = new Set(['SUCCEEDED', 'FAILED', 'CANCELED', 'EXPIRED', 'REFUNDED']);
-  if (TERMINAL.has(payment.status)) {
+  // If already resolved (terminal, or in the async-return pipeline), return the
+  // current DB state — don't re-sync a payment the user has cancelled.
+  const RESOLVED = new Set([
+    'SUCCEEDED', 'FAILED', 'CANCELED', 'EXPIRED', 'REFUNDED', 'PARTIALLY_REFUNDED',
+    'PENDING_RETURN', 'RETURNING', 'PENDING_REFUND_ADMIN',
+  ]);
+  if (RESOLVED.has(payment.status)) {
     return json({ status: payment.status, payment });
   }
 
@@ -86,16 +90,14 @@ serve(async (req) => {
       error_message:  moneiPayment.statusMessage,
     };
 
-    // If SUCCEEDED but participant not yet created: create it — or REFUND if the
-    // match filled while the payment's hold aged out (reserve_paid_slot freshness
-    // window), so we never overbook nor keep money for a slot we can't grant.
+    // If SUCCEEDED but participant not yet created: create it under the match
+    // lock — or QUEUE a return if the match filled while the hold aged out, so
+    // we never overbook. The refund worker (reconcile-payments) does the Monei
+    // call; here we just persist PENDING_RETURN.
     if (moneiPayment.status === 'SUCCEEDED' && !payment.participant_id) {
       const slot = await confirmSlotOrRefund(admin, payment);
       if (slot.participant_id) updateData.participant_id = slot.participant_id;
-      if (slot.status) {
-        updateData.status = slot.status;
-        if (slot.refunded_amount != null) { updateData.refunded_amount = slot.refunded_amount; updateData.refunded_at = slot.refunded_at; }
-      }
+      if (slot.status) updateData.status = slot.status;  // 'PENDING_RETURN' when full
     }
 
     await admin.from('payments').update(updateData).eq('id', payment.id);

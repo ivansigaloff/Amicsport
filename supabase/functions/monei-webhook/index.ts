@@ -20,8 +20,17 @@ import { confirmSlotOrRefund } from '../_shared/confirmSlot.ts';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-// Terminal statuses that map directly from Monei
+// Terminal MONEI event statuses we act on (used against the incoming event).
 const TERMINAL_STATUSES = new Set(['SUCCEEDED', 'FAILED', 'CANCELED', 'EXPIRED', 'REFUNDED', 'PARTIALLY_REFUNDED']);
+
+// Internal payment states that are already resolved: a late/duplicate webhook
+// must NOT re-confirm or otherwise reopen them. Includes the async-return states
+// so a late SUCCEEDED webhook can't re-create a participant for a payment the
+// user already cancelled (race D).
+const RESOLVED_PAYMENT_STATUSES = new Set([
+  'SUCCEEDED', 'FAILED', 'CANCELED', 'EXPIRED', 'REFUNDED', 'PARTIALLY_REFUNDED',
+  'PENDING_RETURN', 'RETURNING', 'PENDING_REFUND_ADMIN',
+]);
 
 serve(async (req) => {
   if (req.method !== 'POST') {
@@ -86,9 +95,10 @@ serve(async (req) => {
     return new Response(JSON.stringify({ ok: true, warning: 'payment_not_found' }), { status: 200 });
   }
 
-  // Idempotency: skip if already in a terminal state
-  if (TERMINAL_STATUSES.has(payment.status)) {
-    return new Response(JSON.stringify({ ok: true, skipped: 'already_terminal' }), { status: 200 });
+  // Idempotency: skip if the payment is already resolved (terminal or in the
+  // async-return pipeline) so we don't reopen it.
+  if (RESOLVED_PAYMENT_STATUSES.has(payment.status)) {
+    return new Response(JSON.stringify({ ok: true, skipped: 'already_resolved' }), { status: 200 });
   }
 
   const updateData: Record<string, unknown> = {
@@ -99,14 +109,12 @@ serve(async (req) => {
   };
 
   if (event.status === 'SUCCEEDED') {
-    // Create the participant — or REFUND if the match filled while the hold aged
-    // out (reserve_paid_slot freshness window), to avoid overbooking.
+    // Create the participant under the match lock — or QUEUE a return if the
+    // match filled while the hold aged out, to avoid overbooking. The refund
+    // worker (reconcile-payments) does the Monei call.
     const slot = await confirmSlotOrRefund(admin, payment);
     if (slot.participant_id) updateData.participant_id = slot.participant_id;
-    if (slot.status) {
-      updateData.status = slot.status;
-      if (slot.refunded_amount != null) { updateData.refunded_amount = slot.refunded_amount; updateData.refunded_at = slot.refunded_at; }
-    }
+    if (slot.status) updateData.status = slot.status;  // 'PENDING_RETURN' when full
 
     await auditLog({
       env: payment.env, actor_id: payment.user_id,
