@@ -258,6 +258,35 @@ Clave: **versión de política** + **timestamp** + **canal** + **evidencia**.
 - **Política de privacidad:** alojada en la web (`multigraf.info/...`), enlazada desde bot y formulario; debe identificar controlador, finalidades, bases legales, processors, retención y ejercicio de derechos.
 - **Implementación:** `whatsapp-webhook` escribe en `consents` al registrar; keywords BAJA/ALTA actualizan `withdrawn_at`; endpoint/cron para export y borrado.
 
+### 10.9 Supervisión de conversaciones: ¿reenviar a otro número o registrar?
+
+**Pregunta:** ¿se puede hacer que cualquier conversación bot↔usuario se reenvíe a otro teléfono (supervisión)?
+
+**Sí, es viable** — una llamada extra a la Graph API por cada mensaje (inbound y outbound) hacia el número supervisor. Pero tiene pegas:
+- **Coste y límites de Meta:** cada reenvío es un mensaje **facturable**, y si el supervisor no ha escrito al bot en las últimas 24h, fuera de esa ventana harían falta **plantillas aprobadas** → fricción y coste.
+- **GDPR:** reenviar conversaciones a un tercero es un **tratamiento adicional** (y posible **cesión**) de datos personales. Necesita base legal y, sobre todo, estar **informado en la política de privacidad** (quién accede a los mensajes y para qué). **Nunca de forma oculta.**
+
+**Mejor para supervisión: registrar en BD + panel admin** (en vez de reenviar a un móvil). Encaja directamente con el stack actual de Amicsport:
+
+- **Tabla dedicada `whatsapp_messages`** — NO el `audit_log` general: ese guarda **eventos de negocio discretos** (`PAYMENT_SUCCEEDED`, `REFUND_ISSUED`…) y el chat es un **stream de alto volumen** con forma propia. Esquema sugerido:
+  ```sql
+  create table whatsapp_messages (
+    id            uuid primary key default gen_random_uuid(),
+    user_id       uuid references auth.users,   -- null si aún no vinculado
+    phone         text not null,                -- E.164
+    direction     text not null,                -- 'in' | 'out'
+    wa_message_id text,                         -- id de Meta (idempotencia/dedupe)
+    body          text,
+    raw           jsonb,                         -- payload completo por si acaso
+    created_at    timestamptz default now()
+  );
+  ```
+  El **evento de negocio derivado** ("se apuntó por WhatsApp") sí va al `audit_log` existente vía `auditLog()` (añadiendo `'whatsapp'` a su campo `source`).
+- **Escritura:** el `whatsapp-webhook` inserta cada inbound; el sender outbound inserta cada respuesta. Una sola fuente, con `wa_message_id` para dedupe (igual que `monei-webhook` es idempotente).
+- **Panel:** una pantalla admin nueva `app/admin/whatsapp.tsx`, reutilizando el **patrón de guard ya endurecido** en el resto de pantallas admin (`computeIsAdmin` + redirección, como `pagos.tsx`) y **RLS admin-only**: política `whatsapp_messages_admin_select USING auth_is_admin()` (clonando `audit_log_admin_select`). Da **búsqueda, histórico y exportación** sin consumir mensajes de pago ni chocar con la ventana de 24h.
+
+**Ventaja de control:** el registro en BD es **auditable y con acceso restringido** (RLS) — "supervisión por el responsable del tratamiento" — en vez de una **cesión opaca** a un móvil personal. Aun así, **ambos** casos deben constar en la **política de privacidad**, que en esta app es una pantalla real (`app/legal/privacidad.tsx`) a actualizar: finalidad (soporte/supervisión), quién accede (admins) y base legal (interés legítimo / ejecución de contrato).
+
 ---
 
 ## 11. Posibilidades / casos de uso
@@ -270,6 +299,7 @@ Clave: **versión de política** + **timestamp** + **canal** + **evidencia**.
 | Recordatorio + link de pago Monei al apuntarse a partido de pago | Inbound→Outbound | Media (reusa Monei) |
 | Aviso "entraste desde la lista de espera" al caerse un titular | Outbound | Baja (engancha a la promoción de waitlist) |
 | Confirmación de pago recibido | Outbound | Baja (engancha a `monei-webhook`) |
+| Supervisión de conversaciones (registro + panel admin) | Interna | Baja-Media (tabla `whatsapp_messages` + RLS admin; ver §10.9) |
 
 ---
 
@@ -295,6 +325,7 @@ Clave: **versión de política** + **timestamp** + **canal** + **evidencia**.
 - Variante service-role de `create-payment` para el flujo de pago por WhatsApp — Fase 3.
 - Secrets de WhatsApp en Supabase + registro del callback en el panel de Meta.
 - Política de privacidad publicada + DPAs firmados.
+- *(Opcional, supervisión)* Tabla `whatsapp_messages` + pantalla admin `app/admin/whatsapp.tsx` para registrar y revisar conversaciones — alternativa recomendada al reenvío a otro número (ver §10.9).
 
 ---
 
@@ -305,3 +336,4 @@ Clave: **versión de política** + **timestamp** + **canal** + **evidencia**.
 - ¿Código de partido: campo nuevo o derivado del `id`?
 - Edad mínima / tratamiento de menores.
 - Plazos de retención concretos.
+- Supervisión de conversaciones: ¿registro en BD + panel admin (recomendado) o reenvío a otro número? (ver §10.9)

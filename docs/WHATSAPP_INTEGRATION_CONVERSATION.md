@@ -158,6 +158,12 @@ es asesoramiento legal.
 ### 🤖 Asistente
 Creó `docs/WHATSAPP_INTEGRATION.md` (análisis completo) y este `docs/WHATSAPP_INTEGRATION_CONVERSATION.md` (transcripción).
 
+### 👤 Usuario
+> btw se puede hacer que cualquier conversación entre el bot y el usuario se reenvíe a otro teléfono?
+
+### 🤖 Asistente
+**Sí**, reenviar a otro número es viable (una llamada extra a la Graph API por cada mensaje), pero para **supervisión** suele ser mejor **registrar en BD + panel admin** que reenviar a un móvil: evita los límites de 24h/plantillas y el coste por mensaje, y da **búsqueda e histórico**. Aterrizado en el stack de Amicsport: una **tabla dedicada `whatsapp_messages`** (no el `audit_log` general, que es para eventos de negocio discretos), escrita por el `whatsapp-webhook` + el sender outbound (con `wa_message_id` para dedupe), y una **pantalla admin** `app/admin/whatsapp.tsx` con el mismo guard `computeIsAdmin` + **RLS admin-only** (`whatsapp_messages_admin_select USING auth_is_admin()`, clonando `audit_log_admin_select`) que `pagos.tsx`. **GDPR (importante):** reenviar conversaciones a un tercero es un **tratamiento adicional/cesión** de datos personales → debe tener base legal y, sobre todo, estar **informado en la política de privacidad** (`app/legal/privacidad.tsx`: quién accede y para qué); **nunca oculto**. El registro en BD es además más auditable y de acceso restringido que un reenvío opaco. Detalle completo en **§10.9** de `WHATSAPP_INTEGRATION.md`.
+
 ---
 
 ## Estado y próximos pasos sugeridos (para el próximo agente)
@@ -167,7 +173,7 @@ Creó `docs/WHATSAPP_INTEGRATION.md` (análisis completo) y este `docs/WHATSAPP_
   (paquete `com.custom.football`) y sirve solo como **referencia conceptual**; no se despliega.
 - Decisiones abiertas pendientes (ver §14 del análisis): auto-registro conversacional vs formulario;
   login web passwordless vs contraseña; código de partido (campo nuevo vs derivado del id);
-  edad mínima/menores; plazos de retención.
+  edad mínima/menores; plazos de retención; **supervisión de conversaciones (registro+panel vs reenvío a otro número — ver §10.9)**.
 - Siguiente paso recomendado por el asistente: **Fase 1 (outbound)** — replicar
   `send-match-notification` pero enviando a la Graph API de WhatsApp. Alternativamente, empezar el
   `whatsapp-webhook` inbound con `join_match_as` + auto-registro + tabla `consents`.
