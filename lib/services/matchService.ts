@@ -7,15 +7,16 @@ export const fetchMatchById = async (id: string, fromTable: (t: string) => strin
   return data as Match;
 };
 
-export const updateMatchJoinedPlayers = async (id: string, newVal: number, fromTable: (t: string) => string) => {
-  const { error } = await supabase.from(fromTable('matches')).update({ joined_players: newVal }).eq('id', id);
+// Atomically adjusts the manual "external players" counter (joined_players) by
+// delta and returns the new value (clamped at 0). Replaces a read-modify-write
+// that could lose updates under concurrent admin edits. Admin-only, enforced
+// inside the RPC.
+export const adjustJoinedPlayers = async (id: string, delta: number, env: string = 'prod'): Promise<number> => {
+  const { data, error } = await supabase.rpc('adjust_joined_players', {
+    p_match_id: id, p_delta: delta, p_env: env,
+  });
   if (error) throw error;
-};
-
-export const fetchLatestMatchJoinedPlayers = async (id: string, fromTable: (t: string) => string) => {
-  const { data, error } = await supabase.from(fromTable('matches')).select('joined_players').eq('id', id).single();
-  if (error) throw error;
-  return data?.joined_players ?? 0;
+  return (data as number) ?? 0;
 };
 
 export const deleteMatchTransaction = async (id: string, fromTable: (t: string) => string) => {

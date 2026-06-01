@@ -3,7 +3,7 @@ import { Alert, Platform, Linking } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { joinMatch, leaveMatch, addGuestParticipant, removeParticipantById, removeParticipantByName, updateParticipant } from '../../lib/services/participantService';
-import { fetchLatestMatchJoinedPlayers, updateMatchJoinedPlayers, deleteMatchTransaction } from '../../lib/services/matchService';
+import { adjustJoinedPlayers, deleteMatchTransaction } from '../../lib/services/matchService';
 import { sendEmailNotification } from '../../lib/services/notificationService';
 import { createPayment, refundPayment } from '../../lib/services/paymentService';
 import { supabase } from '../../lib/supabase';
@@ -186,9 +186,7 @@ export const useMatchActions = (matchDataHook: MatchDataHook, fromTable: (t: str
     if (!match || acting) return;
     setActing(true);
     try {
-      const currentVal = await fetchLatestMatchJoinedPlayers(id, fromTable);
-      const newVal = Math.max(0, currentVal - 1);
-      await updateMatchJoinedPlayers(id, newVal, fromTable);
+      const newVal = await adjustJoinedPlayers(id, -1, env);
       setMatch({ ...match!, joined_players: newVal });
     } catch(err) {
       showAlert('Error', 'No se pudo actualizar el contador.');

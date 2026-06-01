@@ -13,7 +13,7 @@ import MatchDetails from '../../components/MatchDetails';
 import { cacheMatchList } from '../../lib/matchCache';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { shareMultipleMatches, copyMultipleMatchUrls } from '../../lib/share';
-import { parseMatchDate, toISODate, getMatchTiming } from '../../lib/date';
+import { parseMatchDate, toISODate, getMatchTiming, barcelonaNow } from '../../lib/date';
 import i18n from '../../lib/i18n';
 import { COLORS, SHADOWS, FONTS, SIZES } from '../../constants/theme';
 
@@ -438,7 +438,7 @@ export default function MatchesScreen() {
   const isDesktop = Platform.OS === 'web' && width > 1024; // Increased threshold for 3 columns
   const isSmallScreen = width < 500;
 
-  const isMatchOver = (dateISO: string, timeStr: string) => getMatchTiming(dateISO, timeStr).isOver;
+  const isMatchOver = (dateISO: string, timeStr: string, now?: Date) => getMatchTiming(dateISO, timeStr, now).isOver;
 
   const fetchMatches = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -670,9 +670,13 @@ export default function MatchesScreen() {
     setShowPastMatches(false);
   };
 
-  const filteredMatches = useMemo(() => matches.filter(m => {
+  const filteredMatches = useMemo(() => {
+    // Compute "now" ONCE per recompute instead of per match — getMatchTiming →
+    // barcelonaNow() builds an Intl.DateTimeFormat, costly across 200 matches.
+    const now = barcelonaNow();
+    return matches.filter(m => {
     // 0. Past Matches Filter (Admins only)
-    if (!showPastMatches && isMatchOver(m.dateISO, m.time)) return false;
+    if (!showPastMatches && isMatchOver(m.dateISO, m.time, now)) return false;
 
     // 1. Venue Filter
     if (selectedVenueFilter && m.venue.trim().toLowerCase() !== selectedVenueFilter.trim().toLowerCase()) return false;
@@ -698,7 +702,8 @@ export default function MatchesScreen() {
     }
 
     return true;
-  }), [matches, showPastMatches, selectedVenueFilter, filterFemale, filterMixed, filterPrivate, filterAdvanced, filterMorning, filterEvening]);
+    });
+  }, [matches, showPastMatches, selectedVenueFilter, filterFemale, filterMixed, filterPrivate, filterAdvanced, filterMorning, filterEvening]);
 
   // Group matches into sections for SectionList
   const sections = useMemo(() => {
