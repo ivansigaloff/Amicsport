@@ -18,10 +18,12 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { verifyWhatsAppSignature, sendWhatsAppText } from '../_shared/whatsapp.ts';
 import { parseCommand, type WhatsAppCommand } from '../_shared/whatsappCommands.ts';
 import { timingSafeEqual } from '../_shared/timingSafeEqual.ts';
+import { moneiRequest } from '../_shared/monei.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const VERIFY_TOKEN = Deno.env.get('WHATSAPP_VERIFY_TOKEN') ?? '';
+const APP_BASE_URL = Deno.env.get('APP_BASE_URL') || 'https://multigraf.info/Kickerzbcn';
 
 // Invite codes (same secrets validate-invite uses). Duplicated here for the
 // service-role onboarding path; unify with validate-invite at integration.
@@ -73,6 +75,57 @@ async function handleRegister(admin: any, from: string, profileName: string, cod
   return `✅ ¡Bienvenido, ${name}! Ya puedes apuntarte: VOY <código del partido>.`;
 }
 
+// Generates a Monei checkout link for a paid join. Mirrors create-payment
+// (reserve_paid_slot hold → Monei session → attach id); the EXISTING
+// monei-webhook confirms the slot on payment, so reconciliation/refunds are
+// reused unchanged. Throws 'already_paid' | 'match_full' | 'monei_error'.
+async function createPaymentLink(admin: any, userId: string, name: string, email: string, match: any): Promise<string> {
+  // reserve_paid_slot only excludes OTHER users' holds — dedupe the caller's own
+  // payment here (create-payment does this upstream).
+  const { data: existing } = await admin.from('payments')
+    .select('id, status, monei_payment_id')
+    .eq('match_id', match.id).eq('user_id', userId).eq('env', 'prod').eq('is_guest', false)
+    .in('status', ['PENDING', 'SUCCEEDED']).maybeSingle();
+  if (existing?.status === 'SUCCEEDED') throw new Error('already_paid');
+  if (existing?.status === 'PENDING' && existing.monei_payment_id) {
+    try {
+      const p = await moneiRequest(`/payments/${existing.monei_payment_id}`);
+      if (p?.nextAction?.redirectUrl) return p.nextAction.redirectUrl;  // resume the pending checkout
+    } catch { /* fall through to create a new one */ }
+  }
+
+  const orderId = crypto.randomUUID();
+  const amountCents = Math.round(match.price * 100);
+  const { data: hold, error: reserveErr } = await admin.rpc('reserve_paid_slot', {
+    p_match_id: match.id, p_env: 'prod', p_user_id: userId, p_user_name: name,
+    p_user_email: email, p_is_guest: false, p_order_id: orderId, p_amount: amountCents,
+  });
+  if (reserveErr || !hold) {
+    if (String(reserveErr?.message || '').includes('match_full')) throw new Error('match_full');
+    throw new Error('db_error');
+  }
+
+  const completeUrl = `${APP_BASE_URL}/payment/return?order_id=${orderId}&status=SUCCEEDED`;
+  const cancelUrl   = `${APP_BASE_URL}/payment/return?order_id=${orderId}&status=CANCELED`;
+  const callbackUrl = `${SUPABASE_URL}/functions/v1/monei-webhook`;
+  const expireAt = Math.floor(Date.now() / 1000) + 5 * 60;
+
+  let moneiPayment: { id: string; nextAction?: { redirectUrl?: string } };
+  try {
+    moneiPayment = await moneiRequest('/payments', 'POST', {
+      orderId, amount: amountCents, currency: 'EUR',
+      description: `AmicSport - ${match.title || match.venue}`,
+      customer: { email, name }, completeUrl, cancelUrl, callbackUrl, expireAt,
+    });
+  } catch (e) {
+    await admin.from('payments').delete().eq('id', hold.id);  // release the hold
+    throw new Error('monei_error');
+  }
+
+  await admin.from('payments').update({ monei_payment_id: moneiPayment.id }).eq('id', hold.id);
+  return moneiPayment.nextAction?.redirectUrl ?? '';
+}
+
 // Maps a parsed command to a reply. Reuses the isolated service-role RPCs
 // (user_id_by_phone, join_match_as) + Monei for paid joins. Paid leave
 // (refund+deadline) is deferred to a later phase.
@@ -115,13 +168,29 @@ async function handleCommand(admin: any, from: string, profileName: string, cmd:
   }
 
   const { data: match } = await admin.from('matches')
-    .select('id, title, venue').eq('short_code', cmd.code).maybeSingle();
+    .select('id, title, venue, requires_payment, price').eq('short_code', cmd.code).maybeSingle();
   if (!match) return `No encuentro el partido ${cmd.code}.`;
   const label = match.title || match.venue;
 
   if (cmd.kind === 'join') {
     const { data: u } = await admin.auth.admin.getUserById(userId);
     const name = u?.user?.user_metadata?.full_name ?? 'Jugador';
+    const email = u?.user?.email ?? '';
+
+    // Paid match → send a Monei checkout link instead of joining for free.
+    if (match.requires_payment) {
+      try {
+        const link = await createPaymentLink(admin, userId, name, email, match);
+        return `${label} requiere pago (${Number(match.price).toFixed(2)}€).\nReserva tu plaza aquí:\n${link}`;
+      } catch (err) {
+        const m = String((err as any)?.message || err);
+        if (m.includes('already_paid')) return `Ya tienes plaza pagada en ${label}.`;
+        if (m.includes('match_full'))   return `${label} está completo.`;
+        console.error('createPaymentLink failed:', err);
+        return 'No pude generar el pago, inténtalo más tarde.';
+      }
+    }
+
     const { error } = await admin.rpc('join_match_as', {
       p_user_id: userId, p_match_id: match.id, p_user_name: name, p_is_guest: false,
     });
@@ -129,7 +198,6 @@ async function handleCommand(admin: any, from: string, profileName: string, cmd:
     const e = String(error.message || error);
     if (e.includes('already_joined'))  return `Ya estabas apuntado a ${label}.`;
     if (e.includes('match_full'))       return `${label} está completo.`;
-    if (e.includes('payment_required')) return `${label} requiere pago — apúntate desde la app por ahora.`;
     if (e.includes('not_validated'))    return 'Tu cuenta necesita un código de invitación válido.';
     console.error('join_match_as failed:', error);
     return 'No pude apuntarte, inténtalo más tarde.';
