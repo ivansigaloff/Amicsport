@@ -19,6 +19,7 @@ import { verifyWhatsAppSignature, sendWhatsAppText } from '../_shared/whatsapp.t
 import { parseCommand, type WhatsAppCommand } from '../_shared/whatsappCommands.ts';
 import { timingSafeEqual } from '../_shared/timingSafeEqual.ts';
 import { moneiRequest } from '../_shared/monei.ts';
+import { isPastCancellationDeadline } from '../_shared/cancellationDeadline.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -203,10 +204,30 @@ async function handleCommand(admin: any, from: string, profileName: string, cmd:
     return 'No pude apuntarte, inténtalo más tarde.';
   }
 
-  // LEAVE — paid participations must cancel via the app (refund + deadline). Deferred.
+  // LEAVE — paid participations go through the async refund queue (request_return)
+  // with the same cancellation-deadline gate as the web (refund-payment).
   const { data: paid } = await admin.from('payments')
     .select('id').eq('match_id', match.id).eq('user_id', userId).eq('env', 'prod').eq('status', 'SUCCEEDED').maybeSingle();
-  if (paid) return `Para cancelar ${label} (partido de pago) usa la app.`;
+  if (paid) {
+    const { data: mfull } = await admin.from('matches')
+      .select('match_date, time, cancellation_hours').eq('id', match.id).maybeSingle();
+    if (mfull?.match_date && mfull.time &&
+        isPastCancellationDeadline(mfull.match_date, mfull.time, mfull.cancellation_hours)) {
+      return `Ya ha pasado el plazo de cancelación de ${label}.`;
+    }
+    const { data: result, error } = await admin.rpc('request_return', {
+      p_payment_id: paid.id, p_user_id: userId, p_is_admin: false,
+    });
+    if (error) { console.error('request_return failed:', error); return 'No pude procesar la baja.'; }
+    switch (result?.outcome) {
+      case 'queued':            return `Te he dado de baja de ${label}. El reembolso se procesará en breve.`;
+      case 'already_requested': return `Tu baja de ${label} ya está en proceso.`;
+      case 'already_refunded':  return `Ya estabas reembolsado de ${label}.`;
+      default:                  return `Te he dado de baja de ${label}.`;
+    }
+  }
+
+  // Free participation → just remove the row.
   const { error: delErr } = await admin.from('match_participants')
     .delete().eq('match_id', match.id).eq('user_id', userId);
   if (delErr) { console.error('leave delete failed:', delErr); return 'No pude darte de baja.'; }
