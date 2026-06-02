@@ -421,3 +421,8 @@ verify_jwt = false
 
 [functions.reconcile-payments]
 verify_jwt = false
+
+# WhatsApp calls this unauthenticated; it verifies the X-Hub-Signature-256 HMAC
+# itself (see _shared/whatsapp.ts). Not deployed until the integration is wired.
+[functions.whatsapp-webhook]
+verify_jwt = false
