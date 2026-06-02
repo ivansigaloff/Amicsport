@@ -426,3 +426,7 @@ verify_jwt = false
 # itself (see _shared/whatsapp.ts). Not deployed until the integration is wired.
 [functions.whatsapp-webhook]
 verify_jwt = false
+
+# Cron-triggered; checks x-reminder-secret itself.
+[functions.whatsapp-reminders]
+verify_jwt = false

@@ -34,6 +34,38 @@ export async function sendWhatsAppText(to: string, body: string) {
   return JSON.parse(text);
 }
 
+/** Send an approved template message (required for proactive / outside-24h
+ *  sends). `bodyParams` fill the template's {{1}},{{2}},… body variables. */
+export async function sendWhatsAppTemplate(
+  to: string,
+  templateName: string,
+  lang: string,
+  bodyParams: string[],
+) {
+  const res = await fetch(`${GRAPH_BASE}/${WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to,
+      type: 'template',
+      template: {
+        name: templateName,
+        language: { code: lang },
+        components: bodyParams.length
+          ? [{ type: 'body', parameters: bodyParams.map((t) => ({ type: 'text', text: t })) }]
+          : [],
+      },
+    }),
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`WhatsApp template ${res.status}: ${text}`);
+  return JSON.parse(text);
+}
+
 /** Verify the X-Hub-Signature-256 header (HMAC-SHA256 of the raw body with the
  *  App Secret). Constant-time compare. Header format: "sha256=<hex>". */
 export async function verifyWhatsAppSignature(rawBody: string, signatureHeader: string): Promise<boolean> {
