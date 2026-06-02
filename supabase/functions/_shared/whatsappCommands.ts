@@ -7,6 +7,7 @@ export type WhatsAppCommand =
   | { kind: 'join'; code: string | null }
   | { kind: 'leave'; code: string | null }
   | { kind: 'list'; code: string | null }
+  | { kind: 'register'; code: string | null }  // code = invite code (not a match code)
   | { kind: 'help' }
   | { kind: 'unknown' };
 
@@ -23,6 +24,13 @@ export function parseCommand(raw: string): WhatsAppCommand {
   if (!text) return { kind: 'unknown' };
 
   const code = extractCode(raw);
+
+  // REGISTER: "ALTA <invite-code>". The invite code is the token after the
+  // keyword (arbitrary format, not the 4-char match code), captured case-intact
+  // from the raw input.
+  const reg = raw.match(/\b(?:alta|registro|registrar(?:me)?)\s+(\S+)/i);
+  if (reg) return { kind: 'register', code: reg[1] };
+  if (/\b(alta|registro|registrar(me)?)\b/.test(text)) return { kind: 'register', code: null };
 
   // LEAVE patterns checked BEFORE JOIN so "no voy" / "no me apunto" win over the
   // substring "voy" / "apunto".

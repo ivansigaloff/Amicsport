@@ -23,12 +23,64 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const VERIFY_TOKEN = Deno.env.get('WHATSAPP_VERIFY_TOKEN') ?? '';
 
+// Invite codes (same secrets validate-invite uses). Duplicated here for the
+// service-role onboarding path; unify with validate-invite at integration.
+const INVITE_CODES = {
+  admin_prod:  Deno.env.get('INVITE_ADMIN_PROD')  || '',
+  player_prod: Deno.env.get('INVITE_PLAYER_PROD') || '',
+  admin_dev:   Deno.env.get('INVITE_ADMIN_DEV')   || '',
+  player_dev:  Deno.env.get('INVITE_PLAYER_DEV')  || '',
+};
+function resolveInviteRole(code: string): { role: 'admin' | 'participant'; is_dev: boolean } | null {
+  const c = (code || '').trim().toUpperCase();
+  if (!c) return null;
+  if (INVITE_CODES.admin_prod  && c === INVITE_CODES.admin_prod.toUpperCase())  return { role: 'admin',       is_dev: false };
+  if (INVITE_CODES.player_prod && c === INVITE_CODES.player_prod.toUpperCase()) return { role: 'participant', is_dev: false };
+  if (INVITE_CODES.admin_dev   && c === INVITE_CODES.admin_dev.toUpperCase())   return { role: 'admin',       is_dev: true  };
+  if (INVITE_CODES.player_dev  && c === INVITE_CODES.player_dev.toUpperCase())  return { role: 'participant', is_dev: true  };
+  return null;
+}
+
+// Onboarding: create an invite-validated account from phone + WhatsApp profile
+// name (no conversational state). Keeps invite-only — a valid invite code is
+// required and sets app_metadata.role.
+async function handleRegister(admin: any, from: string, profileName: string, code: string | null): Promise<string> {
+  const { data: existing } = await admin.rpc('user_id_by_phone', { p_phone: from });
+  if (existing) return 'Ya tienes cuenta. Apúntate con VOY <código del partido>.';
+  if (!code) return 'Para darte de alta envía: ALTA <tu código de invitación>.';
+
+  const resolved = resolveInviteRole(code);
+  if (!resolved) return 'Ese código de invitación no es válido.';
+
+  const name = (profileName || 'Jugador').slice(0, 80);
+  const { data: created, error } = await admin.auth.admin.createUser({
+    phone: from,                 // E.164 as Meta sends it (digits, no '+')
+    phone_confirm: true,         // verified: it came over WhatsApp
+    user_metadata: { full_name: name },
+    app_metadata: { role: resolved.role, is_dev: resolved.is_dev },
+  });
+  if (error || !created?.user) {
+    console.error('createUser failed:', error);
+    return 'No pude crear la cuenta. ¿Quizás ya estás registrado?';
+  }
+
+  // GDPR: record the service-registration consent (proof).
+  await admin.from('consents').insert({
+    user_id: created.user.id, phone: from, purpose: 'service',
+    policy_version: 'v1', channel: 'whatsapp', evidence: `ALTA ${code}`,
+  });
+
+  return `✅ ¡Bienvenido, ${name}! Ya puedes apuntarte: VOY <código del partido>.`;
+}
+
 // Maps a parsed command to a reply. Reuses the isolated service-role RPCs
-// (user_id_by_phone, join_match_as). Paid join / paid leave / registration are
-// deferred to later phases and answered with a safe message for now.
-async function handleCommand(admin: any, from: string, cmd: WhatsAppCommand): Promise<string | null> {
+// (user_id_by_phone, join_match_as) + Monei for paid joins. Paid leave
+// (refund+deadline) is deferred to a later phase.
+async function handleCommand(admin: any, from: string, profileName: string, cmd: WhatsAppCommand): Promise<string | null> {
+  if (cmd.kind === 'register') return handleRegister(admin, from, profileName, cmd.code);
+
   if (cmd.kind === 'unknown' || cmd.kind === 'help') {
-    return 'Comandos:\n• VOY <código> — apuntarte\n• NOVOY <código> — salir\n• LISTA — próximos partidos';
+    return 'Comandos:\n• ALTA <código invitación> — darte de alta\n• VOY <código> — apuntarte\n• NOVOY <código> — salir\n• LISTA — próximos partidos';
   }
 
   // LIST works without resolving the user.
@@ -124,6 +176,8 @@ serve(async (req) => {
   // Meta payload: entry[].changes[].value.messages[]
   const value = event?.entry?.[0]?.changes?.[0]?.value;
   const messages: any[] = value?.messages ?? [];
+  // Meta includes the sender's WhatsApp profile name → use it for onboarding.
+  const profileName: string = value?.contacts?.[0]?.profile?.name ?? '';
 
   for (const m of messages) {
     const from = m?.from;                       // E.164 (no '+')
@@ -145,7 +199,7 @@ serve(async (req) => {
 
     // ── Command router ──────────────────────────────────────────────────────
     try {
-      const reply = await handleCommand(admin, from, parseCommand(body));
+      const reply = await handleCommand(admin, from, profileName, parseCommand(body));
       if (reply) {
         await sendWhatsAppText(from, reply);
         await admin.from('whatsapp_messages').insert({ phone: from, direction: 'out', body: reply });
