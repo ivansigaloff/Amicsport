@@ -133,8 +133,27 @@ async function createPaymentLink(admin: any, userId: string, name: string, email
 async function handleCommand(admin: any, from: string, profileName: string, cmd: WhatsAppCommand): Promise<string | null> {
   if (cmd.kind === 'register') return handleRegister(admin, from, profileName, cmd.code);
 
+  // Proactive-message consent (opt-in / opt-out).
+  if (cmd.kind === 'optin' || cmd.kind === 'optout') {
+    const { data: userId } = await admin.rpc('user_id_by_phone', { p_phone: from });
+    if (!userId) return 'No te tengo registrado. Envía ALTA <código de invitación> primero.';
+    if (cmd.kind === 'optin') {
+      const { data: active } = await admin.from('consents').select('id')
+        .eq('user_id', userId).eq('purpose', 'proactive_msgs').is('withdrawn_at', null).maybeSingle();
+      if (active) return 'Ya estás suscrito a los avisos. Escribe BAJA para darte de baja.';
+      await admin.from('consents').insert({
+        user_id: userId, phone: from, purpose: 'proactive_msgs',
+        policy_version: 'v1', channel: 'whatsapp', evidence: 'ACEPTO',
+      });
+      return '✅ Recibirás avisos de tus partidos. Escribe BAJA para dejar de recibirlos.';
+    }
+    await admin.from('consents').update({ withdrawn_at: new Date().toISOString() })
+      .eq('user_id', userId).eq('purpose', 'proactive_msgs').is('withdrawn_at', null);
+    return 'Dejarás de recibir avisos. (Para salir de un partido usa NOVOY <código>.)';
+  }
+
   if (cmd.kind === 'unknown' || cmd.kind === 'help') {
-    return 'Comandos:\n• ALTA <código invitación> — darte de alta\n• VOY <código> — apuntarte\n• NOVOY <código> — salir\n• LISTA — próximos partidos';
+    return 'Comandos:\n• ALTA <código invitación> — darte de alta\n• VOY <código> — apuntarte\n• NOVOY <código> — salir\n• LISTA — próximos partidos\n• ACEPTO / BAJA — activar / desactivar avisos';
   }
 
   // LIST works without resolving the user.

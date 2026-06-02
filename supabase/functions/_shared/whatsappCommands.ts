@@ -8,6 +8,8 @@ export type WhatsAppCommand =
   | { kind: 'leave'; code: string | null }
   | { kind: 'list'; code: string | null }
   | { kind: 'register'; code: string | null }  // code = invite code (not a match code)
+  | { kind: 'optin' }                          // ACEPTO — consent to proactive avisos
+  | { kind: 'optout' }                         // BAJA / STOP — withdraw proactive avisos
   | { kind: 'help' }
   | { kind: 'unknown' };
 
@@ -31,6 +33,10 @@ export function parseCommand(raw: string): WhatsAppCommand {
   const reg = raw.match(/\b(?:alta|registro|registrar(?:me)?)\s+(\S+)/i);
   if (reg) return { kind: 'register', code: reg[1] };
   if (/\b(alta|registro|registrar(me)?)\b/.test(text)) return { kind: 'register', code: null };
+
+  // Proactive-message consent (distinct from leaving a match, which is NOVOY).
+  if (/\b(acepto|quiero\s*avisos|activar\s*avisos|suscribir(me)?)\b/.test(text)) return { kind: 'optin' };
+  if (/\b(baja|stop|no\s*(quiero\s*)?avisos|cancelar\s*avisos)\b/.test(text))    return { kind: 'optout' };
 
   // LEAVE patterns checked BEFORE JOIN so "no voy" / "no me apunto" win over the
   // substring "voy" / "apunto".
