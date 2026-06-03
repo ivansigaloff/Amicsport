@@ -50,23 +50,25 @@ serve(async (req) => {
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
   const today = new Date().toISOString().split('T')[0];
 
-  // Upcoming, not yet reminded.
   const { data: matches } = await admin.from('matches')
     .select('id, title, venue, time, match_date')
-    .gte('match_date', today).is('reminder_sent_at', null).limit(100);
+    .gte('match_date', today).limit(100);
 
-  const results = { reminded: 0, sent: 0, errors: 0 };
+  const results = { sent: 0, errors: 0 };
 
   for (const m of matches ?? []) {
     const hrs = hoursUntilMatch(m.match_date, m.time);
     if (hrs === null || hrs <= 0 || hrs > REMINDER_HOURS) continue;  // not in the window yet
 
+    // reminder_recipients already excludes users that were reminded.
     const { data: recips } = await admin.rpc('reminder_recipients', { p_match_id: m.id });
     for (const r of (recips ?? []) as any[]) {
       try {
         await sendWhatsAppTemplate(r.phone, TEMPLATE_NAME, TEMPLATE_LANG, [
           r.user_name || 'Jugador', m.title || m.venue, m.time,
         ]);
+        // Record per-recipient ONLY on success → a failed send retries next run.
+        await admin.from('match_reminders').insert({ match_id: m.id, user_id: r.user_id });
         await admin.from('whatsapp_messages').insert({
           user_id: r.user_id, phone: r.phone, direction: 'out',
           body: `[plantilla ${TEMPLATE_NAME}] ${m.title || m.venue} ${m.time}`,
@@ -77,10 +79,6 @@ serve(async (req) => {
         results.errors++;
       }
     }
-
-    // Mark reminded (even with 0 recipients) so we don't rescan it every run.
-    await admin.from('matches').update({ reminder_sent_at: new Date().toISOString() }).eq('id', m.id);
-    results.reminded++;
   }
 
   return new Response(JSON.stringify({ ok: true, ...results }), {
