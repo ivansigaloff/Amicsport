@@ -284,10 +284,7 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
         )}
         <FilterChip icon="shirt-outline" iconColor="#334155" count={whiteCount} tone={filters.white ? 'sel' : 'off'} onPress={() => toggle('white')} label={t('match_details.manage.section_white')} />
         <FilterChip icon="shirt" iconColor="#0F172A" count={blackCount} tone={filters.black ? 'sel' : 'off'} onPress={() => toggle('black')} label={t('match_details.manage.section_black')} />
-        <FilterChip icon="ellipse-outline" iconColor="#94A3B8" count={unassignedCount} tone={filters.unassigned ? 'sel' : 'off'} onPress={() => toggle('unassigned')} label={t('match_details.manage.section_unassigned')} />
-        {waitlistCount > 0 && (
-          <FilterChip icon="time-outline" iconColor="#94A3B8" count={waitlistCount} tone={filters.waitlist ? 'sel' : 'off'} onPress={toggleWaitlist} label={t('match_details.manage.waitlist')} />
-        )}
+        <FilterChip icon="time-outline" iconColor="#94A3B8" count={waitlistCount} tone={filters.waitlist ? 'sel' : 'off'} onPress={toggleWaitlist} label={t('match_details.manage.waitlist')} />
       </View>
 
       {filters.waitlist ? (
