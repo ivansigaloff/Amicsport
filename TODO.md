@@ -11,6 +11,15 @@ Pendientes y mejoras. Última revisión: 2026-05-31.
 
 ## B. Seguridad y correctitud
 
+- [ ] **APLICAR `20260604000000_join_match_restore_guards.sql` en prod** (regresión CRÍTICA).
+  `20260603000001_match_waitlist.sql` reescribió `join_match` desde la versión vieja de capacidad
+  (2026-05-29) y **dropeó los guards `payment_required` + `not_validated`** que añadieron
+  `paid_join_guard` (0601000002) e `invite_only_enforcement` (0601000008). Como la RPC es
+  `SECURITY DEFINER` + `GRANT TO authenticated`, salta la RLS → cualquier usuario podía entrar
+  **gratis a un partido de pago** vía `rpc('join_match')`. La migración nueva re-aplica ambos guards
+  conservando el waitlist (overflow solo-admin). **Falta:** verificar si la regresión está viva en el
+  remoto (`supabase migration list`) y aplicar la migración. `join_match_as` (WhatsApp, service-role)
+  NO estaba afectada (conserva los guards).
 - [ ] **Programar `reconcile-payments`** en el Dashboard de Supabase (Integrations → Cron):
   POST a `https://wdidrnqjcdhmultayvgq.supabase.co/functions/v1/reconcile-payments`,
   header `x-reconcile-secret: <RECONCILE_SECRET>` (ya está seteado), schedule `0 * * * *`.
