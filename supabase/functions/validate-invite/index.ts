@@ -20,6 +20,7 @@
 
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { isInviteBlocked, recordInviteFailure } from '../_shared/inviteRateLimit.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -77,6 +78,13 @@ serve(async (req) => {
         return jsonResponse({ error: 'invalid_jwt' }, 401);
     }
     const userId = userData.user.id;
+    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+
+    // Rate-limit invite-code attempts (V1) keyed by client IP (fallback userId).
+    const rlKey = (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || userId;
+    if (await isInviteBlocked(admin, rlKey)) {
+        return jsonResponse({ error: 'too_many_attempts' }, 429);
+    }
 
     // Body
     let body: { code?: string };
@@ -85,13 +93,13 @@ serve(async (req) => {
 
     const resolved = resolveRole(body.code || '');
     if (!resolved) {
+        await recordInviteFailure(admin, rlKey);
         return jsonResponse({ error: 'invalid_invite' }, 403);
     }
 
     // Write to app_metadata via admin API (service role required).
     // Also clear `pending_invite_code` de user_metadata si estaba (signup vía
     // email confirmation lo deja ahí como buzón para que se procese al primer login).
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
     const newUserMeta = { ...(userData.user.user_metadata || {}) };
     if ('pending_invite_code' in newUserMeta) delete newUserMeta.pending_invite_code;
 

@@ -20,6 +20,7 @@ import { parseCommand, type WhatsAppCommand } from '../_shared/whatsappCommands.
 import { timingSafeEqual } from '../_shared/timingSafeEqual.ts';
 import { moneiRequest } from '../_shared/monei.ts';
 import { isPastCancellationDeadline } from '../_shared/cancellationDeadline.ts';
+import { isInviteBlocked, recordInviteFailure } from '../_shared/inviteRateLimit.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -52,8 +53,15 @@ async function handleRegister(admin: any, from: string, profileName: string, cod
   if (existing) return 'Ya tienes cuenta. Apúntate con VOY <código del partido>.';
   if (!code) return 'Para darte de alta envía: ALTA <tu código de invitación>.';
 
+  // Rate-limit invite-code attempts (V1) keyed by phone.
+  if (await isInviteBlocked(admin, from)) {
+    return 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.';
+  }
   const resolved = resolveInviteRole(code);
-  if (!resolved) return 'Ese código de invitación no es válido.';
+  if (!resolved) {
+    await recordInviteFailure(admin, from);
+    return 'Ese código de invitación no es válido.';
+  }
 
   const name = (profileName || 'Jugador').slice(0, 80);
   const { data: created, error } = await admin.auth.admin.createUser({
