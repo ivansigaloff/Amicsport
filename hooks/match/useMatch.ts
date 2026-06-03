@@ -63,8 +63,11 @@ export const useMatch = (id: string, env: string, fromTable: (t: string) => stri
     if (id) fetchData();
   }, [id, env]);
 
-  // Derived Logic
-  const availableSpots = match ? match.max_players - (match.joined_players + participantsList.length) : 0;
+  // Derived Logic — waitlisted participants do not occupy a slot, so capacity
+  // counts only ACTIVE rows (waitlist !== true) + the manual external counter.
+  const activeCount = participantsList.filter((p) => !p.waitlist).length;
+  const waitlistCount = participantsList.length - activeCount;
+  const availableSpots = match ? match.max_players - (match.joined_players + activeCount) : 0;
   const isFull = availableSpots <= 0;
 
   const bcnDate = barcelonaNow();
@@ -101,6 +104,7 @@ export const useMatch = (id: string, env: string, fromTable: (t: string) => stri
     joined, setJoined,
     isAdmin, loading,
     fetchData,
-    isFull, isStarted, isOver, cancellationDeadline, formattedDate, bcnDate
+    isFull, isStarted, isOver, cancellationDeadline, formattedDate, bcnDate,
+    activeCount, waitlistCount
   };
 };

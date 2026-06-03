@@ -25,3 +25,20 @@ export const sendEmailNotification = async (
     console.warn('Error sending email notification:', e);
   }
 };
+
+/**
+ * Triggers the promotion emails after a waitlisted player has been auto-promoted
+ * by the DB trigger (it flags the promoted row with pending_promotion_notice).
+ * The Edge Function drains every pending row for the match, so this is a
+ * best-effort, idempotent fire-and-forget — failures never block the UI.
+ */
+export const notifyPromotion = async (matchId: string) => {
+  try {
+    const { error } = await supabase.functions.invoke('notify-promotion', {
+      body: { match_id: matchId },
+    });
+    if (error) console.warn('notify-promotion error:', error.message);
+  } catch (e) {
+    console.warn('Error sending promotion notification:', e);
+  }
+};

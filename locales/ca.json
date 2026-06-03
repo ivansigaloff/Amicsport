@@ -110,6 +110,7 @@
     "add_guest": "Afegir convidat",
     "cancel_spot": "Cancel·lar Plaça",
     "joined_list_title": "Jugadors Apuntats",
+    "waitlist_title": "Llista d'espera",
     "inscribe_agenda": "Inscriure d'Agenda",
     "external_player": "Company Extern",
     "verified_web": "Verificat Web",
@@ -150,7 +151,8 @@
       "not_paid": "No pagat",
       "remove": "Treure",
       "full": "Ple",
-      "teams": "Equips"
+      "teams": "Equips",
+      "waitlist": "Espera"
     }
   },
   "menu": {

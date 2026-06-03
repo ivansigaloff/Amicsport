@@ -108,6 +108,7 @@
     "add_guest": "Add guest",
     "cancel_spot": "Cancel Spot",
     "joined_list_title": "Joined Players",
+    "waitlist_title": "Waiting list",
     "inscribe_agenda": "Register from Directory",
     "external_player": "External Player",
     "verified_web": "Web Verified",
@@ -148,7 +149,8 @@
       "not_paid": "Not paid",
       "remove": "Remove",
       "full": "Full",
-      "teams": "Teams"
+      "teams": "Teams",
+      "waitlist": "Waitlist"
     }
   },
   "menu": {

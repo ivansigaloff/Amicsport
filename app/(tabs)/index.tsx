@@ -1025,10 +1025,11 @@ export default function MatchesScreen() {
         {isDesktop && (
           <View style={styles.desktopDetailsPanel}>
             {selectedMatchId ? (
-              <MatchDetails 
-                matchId={selectedMatchId} 
-                asComponent={true} 
+              <MatchDetails
+                matchId={selectedMatchId}
+                asComponent={true}
                 onDeleteSuccess={() => { setSelectedMatchId(null); fetchMatches(); }}
+                onMutate={() => fetchMatches(true)}
               />
             ) : (
               <View style={styles.emptyDetails}>

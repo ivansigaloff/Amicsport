@@ -68,6 +68,10 @@ export interface Participant {
   checked_in?: boolean;
   shirt_color?: 'white' | 'black' | null;
   paid?: boolean;
+  // Waiting-list flag. Admin-added players above max_players land here (FIFO by
+  // created_at); promoted automatically when an active spot frees up. See
+  // migration 20260603000001_match_waitlist.sql.
+  waitlist?: boolean;
 }
 
 export interface AdminPlayer {

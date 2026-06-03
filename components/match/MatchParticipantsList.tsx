@@ -6,7 +6,7 @@ import { COLORS, SHADOWS, FONTS } from '../../constants/theme';
 
 type SectionKey = 'unassigned' | 'white' | 'black';
 type Tri = 'all' | 'yes' | 'no';
-type Filters = { checkin: Tri; paid: Tri; white: boolean; black: boolean; unassigned: boolean };
+type Filters = { checkin: Tri; paid: Tri; white: boolean; black: boolean; unassigned: boolean; waitlist: boolean };
 
 const DISABLED = COLORS.TEXT_LIGHT;
 
@@ -99,13 +99,58 @@ function PlayerRow({ p, sty, striped, userId, t, onRemove, setCheckin, setShirtC
   );
 }
 
+// Waiting list: numbered FIFO rows (created_at order), shown below the active
+// players. Admins get a remove control; everyone sees their position.
+function WaitlistSection({ waiting, isAdmin, userId, removeParticipant, t }: any) {
+  if (!waiting || waiting.length === 0) return null;
+  const ordered = [...waiting].sort((a: any, b: any) => (a.created_at || '').localeCompare(b.created_at || ''));
+  return (
+    <View style={styles.waitlistWrap}>
+      <View style={styles.waitlistHeader}>
+        <Ionicons name="time-outline" size={16} color={COLORS.TEXT_MUTED} />
+        <Text style={styles.waitlistTitle}>{t('match_details.waitlist_title')}</Text>
+        <View style={styles.waitlistCountBadge}>
+          <Text style={styles.waitlistCountText}>{waiting.length}</Text>
+        </View>
+      </View>
+      <View style={styles.sectionsWrap}>
+        {ordered.map((p: any, idx: number) => {
+          const isSelf = p.user_id === userId;
+          return (
+            <View key={p.id || idx} style={[styles.playerRow, styles.waitlistRow]}>
+              <View style={styles.waitlistPos}><Text style={styles.waitlistPosText}>{idx + 1}</Text></View>
+              <View style={styles.miniAvatar}>
+                <Text style={styles.miniAvatarText}>{p.user_name?.charAt(0).toUpperCase() || 'P'}</Text>
+              </View>
+              <Text style={[styles.playerName, { color: COLORS.TEXT_MAIN }]} numberOfLines={1}>
+                {p.user_name}{isSelf ? ` (${t('match_details.self_joined')})` : ''}
+              </Text>
+              {isAdmin && (
+                <TouchableOpacity onPress={() => removeParticipant(p)} style={styles.iconBtn} {...tip(t('match_details.manage.remove'))}>
+                  <Ionicons name="trash-outline" size={16} color={COLORS.DANGER} />
+                </TouchableOpacity>
+              )}
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 export default function MatchParticipantsList({ match, participantsList, isFull, isAdmin, userId, removeParticipant, removeDummyPlayer, setCheckin, setShirtColor, setPaid, compact = true, setCompact }: any) {
   const { t } = useTranslation();
-  const [filters, setFilters] = useState<Filters>({ checkin: 'all', paid: 'all', white: false, black: false, unassigned: false });
+  const [filters, setFilters] = useState<Filters>({ checkin: 'all', paid: 'all', white: false, black: false, unassigned: false, waitlist: false });
 
   if (!match) return null;
 
-  const list = participantsList || [];
+  // Split active players from the waiting list. `list` keeps meaning "active"
+  // for all the counters/filtering below; waitlisted players are shown apart and
+  // never count toward the capacity badge.
+  const allRows = participantsList || [];
+  const list = allRows.filter((p: any) => !p.waitlist);
+  const waiting = allRows.filter((p: any) => p.waitlist);
+  const waitlistCount = waiting.length;
   const dummyCount = match.joined_players || 0;
   const total = list.length + dummyCount;
 
@@ -182,6 +227,7 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
             </View>
           ))}
         </View>
+        <WaitlistSection waiting={waiting} isAdmin={isAdmin} userId={userId} removeParticipant={removeParticipant} t={t} />
       </View>
     );
   }
@@ -196,6 +242,9 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
     if (key === 'black') return { ...s, black: !s.black, white: false, unassigned: false };
     return { ...s, unassigned: !s.unassigned, white: false, black: false };
   });
+  // "Espera" filter focuses the waiting list only (hides active players + the
+  // color/check-in filters, which don't apply to waitlisted rows).
+  const toggleWaitlist = () => setFilters((s) => ({ ...s, waitlist: !s.waitlist }));
 
   const passes = (p: any) => {
     if (filters.checkin === 'yes' && !p.checked_in) return false;
@@ -236,8 +285,15 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
         <FilterChip icon="shirt-outline" iconColor="#334155" count={whiteCount} tone={filters.white ? 'sel' : 'off'} onPress={() => toggle('white')} label={t('match_details.manage.section_white')} />
         <FilterChip icon="shirt" iconColor="#0F172A" count={blackCount} tone={filters.black ? 'sel' : 'off'} onPress={() => toggle('black')} label={t('match_details.manage.section_black')} />
         <FilterChip icon="ellipse-outline" iconColor="#94A3B8" count={unassignedCount} tone={filters.unassigned ? 'sel' : 'off'} onPress={() => toggle('unassigned')} label={t('match_details.manage.section_unassigned')} />
+        {waitlistCount > 0 && (
+          <FilterChip icon="time-outline" iconColor="#94A3B8" count={waitlistCount} tone={filters.waitlist ? 'sel' : 'off'} onPress={toggleWaitlist} label={t('match_details.manage.waitlist')} />
+        )}
       </View>
 
+      {filters.waitlist ? (
+        <WaitlistSection waiting={waiting} isAdmin={isAdmin} userId={userId} removeParticipant={removeParticipant} t={t} />
+      ) : (
+      <>
       <View style={styles.sectionsWrap}>
         {showDummies && Array.from({ length: dummyCount }).map((_, i) => {
           const sty = SECTION_STYLES.unassigned;
@@ -270,6 +326,9 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
           />
         ))}
       </View>
+      <WaitlistSection waiting={waiting} isAdmin={isAdmin} userId={userId} removeParticipant={removeParticipant} t={t} />
+      </>
+      )}
     </View>
   );
 }
@@ -315,4 +374,14 @@ const styles = StyleSheet.create({
   colorChipBlack: { backgroundColor: '#0F172A', borderColor: '#0F172A' },
   colorChipActive: { borderColor: COLORS.PRIMARY, borderWidth: 2 },
   colorChipText: { fontSize: 12, fontFamily: FONTS.BOLD },
+
+  // Waiting list
+  waitlistWrap: { marginTop: 16 },
+  waitlistHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  waitlistTitle: { fontSize: 14, fontFamily: FONTS.BOLD, color: COLORS.TEXT_MUTED, textTransform: 'uppercase', letterSpacing: 0.3 },
+  waitlistCountBadge: { backgroundColor: COLORS.BORDER_LIGHT, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 1 },
+  waitlistCountText: { fontSize: 12, fontFamily: FONTS.BOLD, color: COLORS.TEXT_MUTED },
+  waitlistRow: { backgroundColor: '#FFFBEB', borderLeftColor: '#FDE68A', borderBottomColor: 'rgba(15,23,42,0.06)' },
+  waitlistPos: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#FDE68A', justifyContent: 'center', alignItems: 'center' },
+  waitlistPosText: { fontSize: 12, fontFamily: FONTS.BOLD, color: '#92400E' },
 });

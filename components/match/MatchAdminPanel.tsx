@@ -8,7 +8,7 @@ import { sendEmailNotification } from '../../lib/services/notificationService';
 import { COLORS, FONTS, SHADOWS } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 
-export default function MatchAdminPanel({ match, isAdmin, isStarted, participantsList, setParticipantsList, executeDelete, fromTable, showAlert }: any) {
+export default function MatchAdminPanel({ match, isAdmin, isStarted, participantsList, setParticipantsList, executeDelete, fromTable, showAlert, onMutate }: any) {
   const { t } = useTranslation();
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -44,16 +44,18 @@ export default function MatchAdminPanel({ match, isAdmin, isStarted, participant
 
   const closeDirectory = () => { setShowAdminModal(false); setSearch(''); setSelected(new Set()); };
 
-  // Capacity: never let the admin select beyond the free spots (max - participants - external).
-  const freeSpots = Math.max(0, (match.max_players || 0) - participantsList.length - (match.joined_players || 0));
-  const canSelectMore = selected.size < freeSpots;
+  // Free ACTIVE spots (waitlisted players don't occupy a slot). The admin MAY
+  // select beyond this: the overflow is inserted into the waiting list by the
+  // join_match RPC, so selection is no longer capped — we only inform.
+  const activeCount = participantsList.filter((p: any) => !p.waitlist).length;
+  const freeSpots = Math.max(0, (match.max_players || 0) - activeCount - (match.joined_players || 0));
+  const overflow = Math.max(0, selected.size - freeSpots); // how many of the selection go to the waitlist
 
   // No directory match → create the player, add it to the directory and SELECT it,
   // keeping the modal open so the prior selections + the new one stay checked.
   const createAndSelect = async () => {
     const clean = search.trim();
     if (!clean || creating) return;
-    if (!canSelectMore) { showAlert('Completo', 'No quedan plazas libres en este partido.'); return; }
     setCreating(true);
     try {
       const { data: created, error } = await supabase
@@ -78,7 +80,6 @@ export default function MatchAdminPanel({ match, isAdmin, isStarted, participant
 
   const toggleSelect = (id: string) => {
     const adding = !selected.has(id);
-    if (adding && selected.size >= freeSpots) return; // no free spots left
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
@@ -93,18 +94,25 @@ export default function MatchAdminPanel({ match, isAdmin, isStarted, participant
     if (players.length === 0 || adding) return;
     setAdding(true);
     let working = [...participantsList];
+    let waitlisted = 0;
     try {
       for (const player of players) {
         const name = computeName(player.name, working);
         const data = await addGuestParticipant(match.id, name, fromTable);
         working = [...working, data];
-        sendEmailNotification(match, 'join', name, working.length, match.id);
+        // Only notify the admin for players who actually entered the match —
+        // waitlisted overflow doesn't warrant a "joined" email.
+        if (data?.waitlist) waitlisted++;
+        else sendEmailNotification(match, 'join', name, working.length, match.id);
       }
       setParticipantsList(working);
+      onMutate?.();
       closeDirectory();
-      showAlert('Inscritos', `${players.length} jugador(es) añadido(s) al partido.`);
+      const base = `${players.length} jugador(es) añadido(s) al partido.`;
+      showAlert('Inscritos', waitlisted > 0 ? `${base} ${waitlisted} en lista de espera.` : base);
     } catch (err) {
       setParticipantsList(working); // keep whoever was added before the failure
+      onMutate?.();
       showAlert('Error', 'No se pudieron añadir todos los jugadores.');
     }
     setAdding(false);
@@ -161,7 +169,10 @@ export default function MatchAdminPanel({ match, isAdmin, isStarted, participant
               )}
             </View>
 
-            <Text style={styles.freeHint}>{freeSpots > 0 ? `${freeSpots} plaza(s) libre(s)` : 'Partido completo'}</Text>
+            <Text style={styles.freeHint}>
+              {freeSpots > 0 ? `${freeSpots} plaza(s) libre(s)` : 'Partido completo'}
+              {overflow > 0 ? ` · ${overflow} a lista de espera` : ''}
+            </Text>
 
             <FlatList
               data={sortedDirectory}
@@ -170,9 +181,8 @@ export default function MatchAdminPanel({ match, isAdmin, isStarted, participant
               contentContainerStyle={{ paddingBottom: 90 }}
               renderItem={({item}) => {
                 const isSel = selected.has(item.id);
-                const blocked = !isSel && !canSelectMore;
                 return (
-                  <TouchableOpacity style={[styles.dirPlayerCard, isSel && styles.dirPlayerCardSel, blocked && { opacity: 0.4 }]} onPress={() => toggleSelect(item.id)} disabled={blocked}>
+                  <TouchableOpacity style={[styles.dirPlayerCard, isSel && styles.dirPlayerCardSel]} onPress={() => toggleSelect(item.id)}>
                     <View style={styles.avatarSmall}><Text style={styles.avatarTextSmall}>{item.name.charAt(0)}</Text></View>
                     <Text style={styles.dirPlayerName}>{item.name}</Text>
                     <Ionicons name={isSel ? 'checkbox' : 'square-outline'} size={24} color={isSel ? COLORS.PRIMARY : COLORS.TEXT_LIGHT} />
@@ -181,7 +191,7 @@ export default function MatchAdminPanel({ match, isAdmin, isStarted, participant
               }}
               ListEmptyComponent={
                 search.trim().length > 0 ? (
-                  <TouchableOpacity style={styles.dirPlayerCard} onPress={createAndSelect} disabled={creating || !canSelectMore}>
+                  <TouchableOpacity style={styles.dirPlayerCard} onPress={createAndSelect} disabled={creating}>
                     <View style={[styles.avatarSmall, { backgroundColor: COLORS.PRIMARY }]}>
                       <Ionicons name="add" size={18} color="#FFF" />
                     </View>

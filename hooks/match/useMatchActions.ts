@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { joinMatch, leaveMatch, addGuestParticipant, removeParticipantById, removeParticipantByName, updateParticipant } from '../../lib/services/participantService';
 import { adjustJoinedPlayers, deleteMatchTransaction } from '../../lib/services/matchService';
-import { sendEmailNotification } from '../../lib/services/notificationService';
+import { sendEmailNotification, notifyPromotion } from '../../lib/services/notificationService';
 import { createPayment, refundPayment } from '../../lib/services/paymentService';
 import { supabase } from '../../lib/supabase';
 import { Match, Participant, CancellationDeadline } from '../../lib/types';
@@ -21,19 +21,31 @@ interface MatchDataHook {
   isAdmin: boolean;
   cancellationDeadline: CancellationDeadline | null;
   isFull: boolean;
+  fetchData: () => Promise<void>;
 }
 
-export const useMatchActions = (matchDataHook: MatchDataHook, fromTable: (t: string) => string, prefix: string, env: string = 'prod') => {
+export const useMatchActions = (matchDataHook: MatchDataHook, fromTable: (t: string) => string, prefix: string, env: string = 'prod', onMutate?: () => void) => {
   const { t } = useTranslation();
   const router = useRouter();
   const {
     match, setMatch, participantsList, setParticipantsList,
     userId, myUserName, joined, setJoined, isAdmin,
-    cancellationDeadline, isFull
+    cancellationDeadline, isFull, fetchData
   } = matchDataHook;
   const id = match?.id ?? '';
 
   const [acting, setActing] = useState(false);
+
+  // After an ACTIVE participant leaves, the DB trigger may have promoted the
+  // oldest waitlisted player. Reconcile the local list (fetchData) and fire the
+  // best-effort promotion emails. Only worth doing if a waitlist actually exists.
+  const reconcilePromotion = async (removedWasActive: boolean) => {
+    const hadWaitlist = participantsList.some((p) => p.waitlist);
+    if (removedWasActive && hadWaitlist) {
+      notifyPromotion(id);
+      await fetchData();
+    }
+  };
 
   const showAlert = (title: string, msg: string) => {
     if (Platform.OS === 'web') window.alert(`${title ? title + ': ' : ''}${msg}`);
@@ -85,6 +97,7 @@ export const useMatchActions = (matchDataHook: MatchDataHook, fromTable: (t: str
             const newCount = participantsList.length - 1;
             setParticipantsList((prev) => prev.filter((p) => p.user_id !== userId));
             sendEmailNotification(match!, 'leave', myUserName, newCount, id);
+            onMutate?.();
             const msg = result.status === 'PENDING_REFUND_ADMIN'
               ? 'Plaza cancelada. El reembolso está pendiente de revisión por el administrador.'
               : 'Plaza cancelada. El reembolso se procesará en breve.';
@@ -101,12 +114,15 @@ export const useMatchActions = (matchDataHook: MatchDataHook, fromTable: (t: str
         const newCount = participantsList.length - 1;
         setParticipantsList((prev) => prev.filter((p) => p.user_id !== userId));
         sendEmailNotification(match!, 'leave', myUserName, newCount, id);
+        await reconcilePromotion(true); // a regular user's own spot is always active
+        onMutate?.();
       } else {
         const data = await joinMatch(id, userId, myUserName, fromTable);
         setJoined(true);
         const newCount = participantsList.length + 1;
         setParticipantsList((prev) => [...prev, data]);
         sendEmailNotification(match!, 'join', myUserName, newCount, id);
+        onMutate?.();
         showAlert(t('match_details.joined_msg'), t('match_details.joined_success'));
       }
     } catch(err: any) {
@@ -158,6 +174,7 @@ export const useMatchActions = (matchDataHook: MatchDataHook, fromTable: (t: str
       const newCount = participantsList.length + 1;
       setParticipantsList((prev) => [...prev, data]);
       sendEmailNotification(match!, 'join', guestName, newCount, id);
+      onMutate?.();
       showAlert(t('common.success'), t('match_details.guest_added_success'));
     } catch (err: any) {
       showAlert('Error', err.message || 'No se pudo añadir al invitado.');
@@ -176,6 +193,8 @@ export const useMatchActions = (matchDataHook: MatchDataHook, fromTable: (t: str
       setParticipantsList((prev) => prev.filter((item) => p.id ? item.id !== p.id : item.user_name !== p.user_name));
       if (p.user_id === userId) setJoined(false);
       sendEmailNotification(match!, 'leave', p.user_name, participantsList.length - 1, id);
+      await reconcilePromotion(!p.waitlist); // removing an active player can free a slot
+      onMutate?.();
     } catch(err) {
       showAlert('Error', 'No se pudo quitar al jugador.');
     }
@@ -188,6 +207,7 @@ export const useMatchActions = (matchDataHook: MatchDataHook, fromTable: (t: str
     try {
       const newVal = await adjustJoinedPlayers(id, -1, env);
       setMatch({ ...match!, joined_players: newVal });
+      onMutate?.(); // external-counter slots do not auto-promote (no row deleted)
     } catch(err) {
       showAlert('Error', 'No se pudo actualizar el contador.');
     }

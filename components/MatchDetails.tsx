@@ -17,7 +17,7 @@ import MatchParticipantsList from './match/MatchParticipantsList';
 import MatchAdminPanel from './match/MatchAdminPanel';
 import MatchActionBar from './match/MatchActionBar';
 
-export default function MatchDetails({ matchId, asComponent = false, onDeleteSuccess }: { matchId?: string, asComponent?: boolean, onDeleteSuccess?: () => void }) {
+export default function MatchDetails({ matchId, asComponent = false, onDeleteSuccess, onMutate }: { matchId?: string, asComponent?: boolean, onDeleteSuccess?: () => void, onMutate?: () => void }) {
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ id: string }>();
   const id = matchId || params.id;
@@ -31,7 +31,7 @@ export default function MatchDetails({ matchId, asComponent = false, onDeleteSuc
   const matchDataHook = useMatch(id, env, fromTable);
   const { match, loading, fetchData, participantsList, isFull, isAdmin, userId, isStarted, isOver, cancellationDeadline, formattedDate, joined } = matchDataHook;
   
-  const actionsHook = useMatchActions(matchDataHook, fromTable, prefix, env);
+  const actionsHook = useMatchActions(matchDataHook, fromTable, prefix, env, onMutate);
   const { toggleJoin, addGuest, removeParticipant, removeDummyPlayer, setCheckin, setShirtColor, setPaid, executeDelete, acting, showAlert, initiatePayment } = actionsHook;
 
   const onRefresh = async () => {
@@ -89,7 +89,7 @@ export default function MatchDetails({ matchId, asComponent = false, onDeleteSuc
       <View style={styles.content}>
         {!(isAdmin && compact) && <MatchLocationCard match={match} />}
         <MatchParticipantsList match={match} participantsList={participantsList} isFull={isFull} isAdmin={isAdmin} userId={userId} removeParticipant={removeParticipant} removeDummyPlayer={removeDummyPlayer} setCheckin={setCheckin} setShirtColor={setShirtColor} setPaid={setPaid} compact={compact} setCompact={setCompact} />
-        <MatchAdminPanel match={match} isAdmin={isAdmin} isStarted={isStarted} participantsList={participantsList} setParticipantsList={matchDataHook.setParticipantsList} executeDelete={() => executeDelete(asComponent, onDeleteSuccess)} fromTable={fromTable} showAlert={showAlert} />
+        <MatchAdminPanel match={match} isAdmin={isAdmin} isStarted={isStarted} participantsList={participantsList} setParticipantsList={matchDataHook.setParticipantsList} executeDelete={() => executeDelete(asComponent, onDeleteSuccess)} fromTable={fromTable} showAlert={showAlert} onMutate={onMutate} />
       </View>
     </ScrollView>
   );

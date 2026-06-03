@@ -110,6 +110,7 @@
     "add_guest": "Añadir invitado",
     "cancel_spot": "Cancelar Plaza",
     "joined_list_title": "Jugadores Apuntados",
+    "waitlist_title": "Lista de espera",
     "inscribe_agenda": "Inscribir de Agenda",
     "external_player": "Compañero Externo",
     "verified_web": "Verificado Web",
@@ -150,7 +151,8 @@
       "not_paid": "No pagado",
       "remove": "Quitar",
       "full": "Lleno",
-      "teams": "Equipos"
+      "teams": "Equipos",
+      "waitlist": "Espera"
     }
   },
   "menu": {
