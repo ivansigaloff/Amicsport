@@ -38,6 +38,14 @@ Pendientes y mejoras. Última revisión: 2026-05-31.
 
 ## D. Producto / siguientes fases
 
+- [ ] **Saldo en la cuenta del jugador** — análisis hecho en **`docs/ANALISIS_SALDO_JUGADORES.md`**.
+  Idea: acumular saldo por cancelaciones/reembolsos o ingresos directos; jugadores en lista de espera
+  con saldo + opt-in que pasan directos al partido (cobro contra saldo). El doc cubre modelo de datos
+  (ledger `balance_transactions` + caché `player_balances`), RPCs atómicas, integración con el pipeline
+  Monei, el refactor del trigger de promoción FIFO (`20260603000001_match_waitlist.sql`) y, sobre todo,
+  el **bloqueante legal** (dinero electrónico / exención red limitada). Pendiente: Fase 0 legal antes de
+  tocar dinero de usuarios.
+
 - [ ] Notificaciones: WhatsApp y push (el plan era email primero, luego estos).
 - [ ] **Aplicar migración Fase B** `supabase/migrations/20260531000000_participant_match_management.sql`
   (`checked_in`/`shirt_color`/`paid` en `match_participants`). El código (tipos, `updateParticipant`,
