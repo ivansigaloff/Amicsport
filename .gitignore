@@ -60,4 +60,5 @@ dist/.deploy-manifest.json
 # E2E / debug test artifacts (output, not source)
 e2e-report/
 _probe_*.png
+e2e-chaos-soak.log
 
