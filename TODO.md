@@ -11,15 +11,21 @@ Pendientes y mejoras. Última revisión: 2026-05-31.
 
 ## B. Seguridad y correctitud
 
-- [ ] **APLICAR `20260604000000_join_match_restore_guards.sql` en prod** (regresión CRÍTICA).
+- [x] **`20260604000000_join_match_restore_guards.sql` aplicada en prod** *(✅ 2026-06-04: regresión
+  CRÍTICA cerrada, verificado en `migration list` Local==Remote)*.
   `20260603000001_match_waitlist.sql` reescribió `join_match` desde la versión vieja de capacidad
   (2026-05-29) y **dropeó los guards `payment_required` + `not_validated`** que añadieron
   `paid_join_guard` (0601000002) e `invite_only_enforcement` (0601000008). Como la RPC es
   `SECURITY DEFINER` + `GRANT TO authenticated`, salta la RLS → cualquier usuario podía entrar
-  **gratis a un partido de pago** vía `rpc('join_match')`. La migración nueva re-aplica ambos guards
-  conservando el waitlist (overflow solo-admin). **Falta:** verificar si la regresión está viva en el
-  remoto (`supabase migration list`) y aplicar la migración. `join_match_as` (WhatsApp, service-role)
-  NO estaba afectada (conserva los guards).
+  **gratis a un partido de pago** vía `rpc('join_match')` (la regresión estaba **viva en prod**). La
+  migración nueva re-aplica ambos guards conservando el waitlist (overflow solo-admin). Aplicada con
+  `db push` quirúrgico (solo esta migración; la pendiente `20260530000002` se dejó fuera a propósito).
+  `join_match_as` (WhatsApp, service-role) NO estaba afectada.
+- [ ] **`20260530000002_reserve_paid_slot_freshness` NO está en prod** (descubierto 2026-06-04 vía
+  `migration list`: Local-only). El archivo estuvo mal ubicado fuera de `migrations/`, por eso ningún
+  `db push` la aplicó. Efecto: la ventana de frescura de 10 min en holds de pago no está viva → un hold
+  abandonado bloquea plaza hasta 24h. Decidir si aplicarla (cambia comportamiento de pagos; el edge de
+  late-completion ya lo cubre `confirm_paid_slot`).
 - [ ] **Programar `reconcile-payments`** en el Dashboard de Supabase (Integrations → Cron):
   POST a `https://wdidrnqjcdhmultayvgq.supabase.co/functions/v1/reconcile-payments`,
   header `x-reconcile-secret: <RECONCILE_SECRET>` (ya está seteado), schedule `0 * * * *`.

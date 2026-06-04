@@ -1,9 +1,14 @@
 # Análisis profundo del proyecto AmicSport
 
-Fecha: 2026-05-22
-Stack: React Native + Expo (Router v6) + Supabase (PostgreSQL + Auth).
+Fecha: 2026-06-04 (sustituye al análisis del 2026-05-22).
+Stack: React Native + Expo (Router v6) + Supabase (PostgreSQL + Auth + RLS + Edge Functions) + Monei (pagos) + WhatsApp Cloud API.
 Plataformas: iOS / Android / Web (multigraf.info/Kickerzbcn).
-Alcance: ~6,250 LOC TypeScript/TSX en `app/`, `components/`, `lib/`, `hooks/`.
+Alcance: ~8.090 LOC TS/TSX en `app/`+`components/`+`lib/`+`hooks/` · 23 migraciones SQL · 10 Edge Functions + `_shared`.
+Rama analizada: `docs/whatsapp-integration` (17 commits por delante de `main`, **sin mergear**).
+
+> **Nota:** el proyecto maduró enormemente desde el análisis del 2026-05-22. Los 2 hallazgos
+> CRÍTICOS de seguridad de entonces (invite codes en el bundle, `role` en `user_metadata`) están
+> **resueltos**, y la duplicación de `app/dev/` (~2.800 LOC) fue **eliminada**. Ver §0.
 
 ---
 
@@ -11,453 +16,192 @@ Alcance: ~6,250 LOC TypeScript/TSX en `app/`, `components/`, `lib/`, `hooks/`.
 
 | # | Severidad | Hallazgo | Fichero |
 |---|---|---|---|
-| 1 | **🚨 CRÍTICO** | Códigos de invitación admin hardcoded en el bundle del frontend (`ADMINKKZ2026`, `KZ2026`…) | `app/login.tsx:56-59` |
-| 2 | **🚨 CRÍTICO** | `role` y `is_dev` se guardan en `user_metadata` (user-controlled) — privilegio admin asignable por el propio usuario sin pasar por el login | `app/login.tsx:83-93` + 6 sitios usan `user_metadata.role` |
-| 3 | **Alto** | `app/(tabs)/index.tsx` con 1585 líneas (home screen + MatchCard + calendar + filtros + share + admin) | `app/(tabs)/index.tsx` |
-| 4 | **Alto** | `app/dev/` duplica `app/` con ~3,400 LOC en deriva (1439 líneas de diff sólo en `(tabs)/index.tsx`) | `app/dev/(tabs)/index.tsx`, `app/dev/admin/crear-partido.tsx`, … |
-| 5 | **Alto** | `supabase_types.ts` está vacío (1 byte). Sin tipos generados de Supabase → cero seguridad de tipos en queries | `supabase_types.ts` |
-| 6 | **Alto** | 13 scripts dev en raíz del proyecto (`query_db_*.js`, `debug_*.js`, `create_*.js`) + CSV con datos de usuarios reales | raíz del repo |
-| 7 | **Medio** | Notificaciones email via PHP endpoint sin auth (`multigraf.info/send_match_update.php`) — posible spam vector | `lib/services/notificationService.ts:16` |
-| 8 | **Medio** | URL `multigraf.info/Kickerzbcn/...` hardcodeado en 4 sitios | `_layout.tsx`, `login.tsx`, `notificationService.ts` |
-| 9 | **Medio** | Validación de cancelación + permisos admin sólo client-side; bypasseable | `hooks/match/useMatchActions.ts:34-38`, `useMatch.ts:39` |
-| 10 | **Medio** | `deleteMatchTransaction` hace 2 deletes no-atómicos (participantes + match) | `lib/services/matchService.ts:20-24` |
-| 11 | **Bajo** | Sin tests (cero `*.test.*` o `*.spec.*` en todo el repo) | — |
-| 12 | **Bajo** | 20 `console.log/error/warn` activos en código de producción | varios |
-| 13 | **Bajo** | `MapView` duplicado entre `.tsx` (211L) y `.web.tsx` (334L) — patrón Expo pero divergente | `components/MapView*` |
+| 1 | **✅ RESUELTO** (era 🔴 CRÍTICO) | **Regresión:** la migración de waitlist reescribió `join_match` desde una versión vieja y **eliminó los guards `payment_required` y `not_validated`** → cualquier usuario entraba **gratis a un partido de pago** vía `rpc('join_match')` (la RPC es `SECURITY DEFINER`, salta la RLS). **Corregido 2026-06-04** (`20260604000000`, aplicado a prod). | `supabase/migrations/20260604000000_join_match_restore_guards.sql` |
+| 2 | **🟡 Medio** | `supabase_types.ts` **sigue vacío (0 bytes)**. 67 anotaciones `: any`. Cero seguridad de tipos en queries Supabase. | `supabase_types.ts` |
+| 3 | **🟡 Medio** | Rama `docs/whatsapp-integration` contiene 17 commits — la mayoría `feat()`/`security()` reales, no docs. Nombre engañoso + sin mergear a `main`. | git |
+| 4 | **🟡 Medio** | `app/(tabs)/index.tsx` creció a **1.659 LOC** (era 1.585). Sigue siendo el monolito (home + MatchCard + calendario + filtros + share + admin). | `app/(tabs)/index.tsx` |
+| 5 | **🟢 Bajo** | **Cero tests** unitarios/componente. El E2E vive en `scripts/*.cjs` (suite real contra Supabase/Monei — valiosa pero no cubre funciones puras). | — |
+| 6 | **🟢 Bajo** | `INVITE_CODES` duplicado entre `whatsapp-webhook` y `validate-invite` (el propio código pide "unify at integration"). | `supabase/functions/whatsapp-webhook/index.ts:32` |
+| 7 | **🟢 Bajo** | Pagos en **modo test** (`pk_test_`). Falta clave de producción Monei (bloqueante de negocio). | `TODO.md` |
+| 8 | **🟢 Bajo** | 17 `console.*` activos (bajó de 20). | varios |
 
 ---
 
-## 1. Arquitectura
+## 0. Qué se resolvió desde el 2026-05-22 (delta positivo)
 
-### 1.1 Estructura
+| Hallazgo viejo (CRÍTICO/Alto) | Estado hoy |
+|---|---|
+| Invite codes hardcoded en el bundle del frontend | ✅ Validación server-side (`validate-invite` Edge Function); el cliente solo envía el código |
+| `role`/`is_dev` en `user_metadata` (auto-elevación de privilegio) | ✅ Migrado a `app_metadata` (server-only) vía `secure_roles`; `getUserRole` solo lee `app_metadata` |
+| Permisos/cancelación solo client-side (bypasseables) | ✅ `join_match`/`leave` son RPC `SECURITY DEFINER` con `SELECT … FOR UPDATE`; RLS consolidada |
+| Sin enforcement invite-only server-side | ✅ `auth_is_validated()` exige `app_metadata.role` en escrituras (⚠️ pero ver hallazgo #1: `join_match` lo perdió) |
+| `app/dev/` duplicado (~2.800 LOC en deriva) | ✅ Eliminado; las rutas dev son re-exports de prod |
+| Email vía PHP sin auth | ⚠️ Sustituido por Edge Functions con HMAC; queda confirmar/retirar el PHP legacy |
+
+Se añadieron además: **rate-limiting de intentos de invite** (web + WhatsApp), **HMAC `X-Hub-Signature-256`** en webhooks (Monei + WhatsApp) y `timingSafeEqual`. La postura de seguridad pasó de "crítica" a "sólida" — con la excepción del hallazgo #1.
+
+---
+
+## 1. Arquitectura (estado actual)
 
 ```
-app/                          File-based routing (Expo Router)
-├── _layout.tsx (118L)        Auth gate + theme + i18n + fonts + Cookies + Stack
-├── index.tsx (13L)           Redirect a (tabs)
-├── login.tsx (334L)          Login + Signup + Reset password
-├── reset-password.tsx
-├── (tabs)/                   Bottom tabs (PROD)
-│   ├── _layout.tsx (66L)
-│   ├── index.tsx (1585L)     🚨 Home — MatchCard + calendar + filtros + share + admin
-│   ├── explore.tsx (232L)    Mapa Google Maps + filtros
+app/                          File-based routing (Expo Router) — app/dev/ ELIMINADO
+├── _layout.tsx (104L)        Auth gate + theme + i18n + fonts + Cookies + Stack
+├── login.tsx (346L)          Login + Signup (invite code) + Reset password
+├── (tabs)/
+│   ├── index.tsx (1659L)     🟡 Home monolítica — MatchCard + calendario + filtros + share + admin
+│   ├── explore.tsx (249L)    Mapa Google Maps + filtros
 │   └── menu.tsx (213L)       Perfil + logout + idiomas
-├── admin/                    Pantallas administrativas
-│   ├── crear-partido.tsx (769L)  🚨 Wizard de creación/edición con modal de ubicaciones
-│   └── jugadores.tsx (242L)  Agenda de jugadores invitados
-├── match/[id].tsx (5L)       Wrapper que renderiza components/MatchDetails
-├── modal.tsx                 Modal genérico
-├── legal/                    Términos, privacidad
-└── dev/                      🚨 Duplicación masiva del entorno prod (ver 4.)
-    ├── _layout.tsx (8L)
-    ├── (tabs)/
-    │   ├── _layout.tsx (46L)
-    │   ├── index.tsx (940L)  Copia divergente del index prod
-    │   └── explore.tsx (132L)
-    ├── admin/
-    │   ├── crear-partido.tsx (2L)  ✓ Re-export (correcto)
-    │   └── jugadores.tsx (2L)      ✓ Re-export (correcto)
-    └── match/[id].tsx (2L)         ✓ Re-export (correcto)
+├── admin/
+│   ├── crear-partido.tsx (816L) 🟡 Wizard creación/edición con modales
+│   ├── jugadores.tsx (266L)  Agenda de jugadores invitados
+│   ├── pagos.tsx (286L)      Panel admin de pagos
+│   └── whatsapp.tsx (135L)   Panel de supervisión de conversaciones WhatsApp
+├── match/[id].tsx            Wrapper de components/MatchDetails
+├── payment/return.tsx (113L) Retorno del checkout Monei
+└── legal/                    Términos, privacidad
 
-components/
-├── MatchDetails.tsx (138L)   Pantalla de detalle modular (compone los Match*)
-├── MapView.tsx (211L)        Mapa native
-├── MapView.web.tsx (334L)    Mapa web (@react-google-maps/api)
-├── CookieBanner.tsx (111L)
-├── match/                    Sub-componentes de MatchDetails
-│   ├── MatchHeader.tsx (82L)
-│   ├── MatchLocationCard.tsx (33L)
-│   ├── MatchParticipantsList.tsx (71L)
-│   ├── MatchAdminPanel.tsx (143L)
-│   └── MatchActionBar.tsx (104L)
-├── ui/
-└── themed-text.tsx, parallax-scroll-view.tsx, ...
+components/match/             Sub-componentes de MatchDetails (patrón a seguir)
+├── MatchParticipantsList.tsx (384L)  Vista compacta admin: chips-filtro, check-in/color/pagado
+├── MatchAdminPanel.tsx (273L)        Inscribir de agenda (buscador + crear inline + multi-select)
+├── MatchActionBar.tsx (131L), MatchHeader, MatchLocationCard
 
-hooks/
-├── use-env.tsx (63L)         Context que decide prod/dev y mapea tablas (matches → matches_dev)
-├── use-color-scheme.ts(.web).ts
-└── match/
-    ├── useMatch.ts (114L)    Estado del partido + permisos + deadlines
-    └── useMatchActions.ts (124L)  toggleJoin, addGuest, removeParticipant, executeDelete
+hooks/match/
+├── useMatch.ts (110L)        Estado del partido + permisos + deadlines
+└── useMatchActions.ts (269L) toggleJoin, addGuest, setCheckin/setShirtColor/setPaid, refunds
 
 lib/
-├── supabase.ts (49L)         Cliente Supabase con UniversalStorageAdapter (web+móvil)
-├── i18n.ts (53L)             react-i18next con es/en/ca
-├── date.ts (81L)             parseMatchDate + formatLocalizedDate (custom)
-├── share.ts (150L)           shareMatch, shareMultipleMatches, validatePassword, getBaseUrl
-├── venueImages.ts (20L)
-└── services/                 Capa fina sobre Supabase
-    ├── matchService.ts (24L)
-    ├── participantService.ts (47L)
-    └── notificationService.ts (40L)
+├── supabase.ts               Cliente con UniversalStorageAdapter (web+móvil)
+├── types.ts (98L)            Tipos MANUALES (Match/Payment/Participant/…) — bien mantenidos
+├── date.ts (125L)            barcelonaNow/getMatchTiming (timing unificado)
+├── matchCache.ts             Siembra del detalle desde la lista (perf)
+└── services/                 matchService, participantService, paymentService, notificationService
+
+supabase/
+├── migrations/  (23 .sql)    Roles, RLS, pagos, waitlist, WhatsApp
+└── functions/   (10 + _shared)
+    ├── create-payment, verify-payment, monei-webhook, reconcile-payments, refund-payment
+    ├── validate-invite, notify-promotion, send-match-notification
+    └── whatsapp-webhook, whatsapp-reminders
 ```
 
-### 1.2 Lo que funciona bien
-
-- **Pantalla `MatchDetails` correctamente descompuesta** en sub-componentes (Header / LocationCard / Participants / AdminPanel / ActionBar) + dos hooks `useMatch`/`useMatchActions`. Es el ejemplo a seguir para el resto.
-- **`use-env` hook** + `fromTable()` resuelve elegantemente la dualidad prod/dev sin duplicar lógica (cuando se usa bien — ver 4.).
-- **`UniversalStorageAdapter` en `supabase.ts`** maneja SSR/web/móvil sin caer en `window is not defined`.
-- **i18n configurado** con 3 idiomas (es/en/ca) incluyendo locale del calendario.
-- **Capa `lib/services/`** funcional para Supabase queries — buena separación de responsabilidades, aunque incompleta (no cubre todo).
+### Lo que funciona bien
+- **`MatchDetails` bien descompuesto** en sub-componentes + hooks — sigue siendo el ejemplo a seguir.
+- **`use-env` + `fromTable()`** resuelve la dualidad prod/dev sin duplicar (ahora que `app/dev/` es re-export).
+- **Capa `lib/services/`** ampliada (pagos incluidos).
+- **Ingeniería de concurrencia en pagos y waitlist** de nivel alto (ver §3 y §5).
 
 ---
 
-## 2. Seguridad
+## 2. ✅ RESUELTO (era 🔴 CRÍTICO) — Regresión en `join_match` (bypass de pago e invite-only)
 
-### 🚨 2.1 Códigos de invitación hardcoded en el frontend (CRÍTICO)
+> **Corregido el 2026-06-04** con la migración `20260604000000_join_match_restore_guards.sql`,
+> aplicada a prod (`db push` quirúrgico, verificado en `migration list`). Lo que sigue documenta la
+> regresión tal como se encontró.
 
-`app/login.tsx:56-59`:
-```js
-const DEV_ADMIN_CODE = 'DEV_ADMIN';
-const DEV_PLAYER_CODE = 'DEV_PART';
-const PROD_ADMIN_CODE = 'ADMINKKZ2026';   // ⚠️ visible en el bundle
-const PLAYER_CODE = 'KZ2026';
-```
+### 2.1 Qué pasó
+El guard de pago **no** es un trigger de tabla: es **lógica dentro del cuerpo de `join_match`**:
+- `20260601000002_paid_join_guard.sql:60-62` → `IF v_req AND NOT v_admin THEN RAISE EXCEPTION 'payment_required'`.
+- `20260601000008_invite_only_enforcement.sql:48-50` → `IF NOT auth_is_validated() THEN RAISE 'not_validated'`.
 
-Esos códigos viajan en el JS bundle público (`multigraf.info/Kickerzbcn/`). Cualquier persona puede abrir DevTools, ver el código, registrarse con `ADMINKKZ2026` y entrar como admin.
+La migración **`20260603000001_match_waitlist.sql`** hace `CREATE OR REPLACE FUNCTION public.join_match(...)` reescribiendo el cuerpo **entero**, y su cabecera lo delata: *"Replaces 20260529000002_join_match_capacity.sql"* — es decir, partió de la versión de capacidad del **2026-05-29**, anterior a ambos guards. Así, **revirtió silenciosamente los dos checks**. La nueva versión (líneas 33-109) no contiene `auth_is_validated` ni `requires_payment`/`payment_required`.
 
-**Mitigación inmediata:**
-- Mover la validación de invite codes a un endpoint server-side (Supabase Edge Function o RPC). El cliente envía el código, el servidor valida y devuelve el `role` autorizado.
-- Hashear/rotarlos.
+### 2.2 Por qué es explotable
+`join_match` es `SECURITY DEFINER` y `GRANT EXECUTE … TO authenticated` (línea 112). Las funciones `SECURITY DEFINER` **se saltan la RLS**. La policy `participants_insert` sigue bloqueando *inserts directos* a partidos de pago — pero **no** aplica a la inserción que hace la propia RPC. Por tanto:
 
-### 🚨 2.2 `role` como user_metadata (CRÍTICO)
+- **Bypass de pago (impacto: ingresos + integridad):** cualquier usuario autenticado y validado llama
+  `supabase.rpc('join_match', { p_match_id: <partido de pago>, p_user_name: '…' })` y **obtiene plaza gratis**, saltándose Monei por completo.
+- **Bypass de invite-only (impacto: menor):** una cuenta orphan no validada (creada con un código inválido antes del `signOut`) puede apuntarse a cualquier partido vía la RPC.
 
-`app/login.tsx:83-93`:
-```js
-await supabase.auth.signUp({ email, password, options: {
-  data: { full_name: name, role: role, is_dev: isDev }
-}});
-```
-
-`options.data` se guarda en `auth.users.raw_user_meta_data` (alias `user_metadata`). En Supabase **el usuario controla su propio `user_metadata`** vía `supabase.auth.updateUser({ data: { role: 'admin' } })`. No hace falta saber ningún código: cualquier usuario autenticado puede auto-elevarse.
-
-Los 6 sitios donde se lee `user_metadata.role` para decidir `isAdmin` son por tanto fiables sólo si:
-- (a) las **RLS policies** del backend NO confían en `user_metadata.role` para autorizar
-- (b) se usa `app_metadata.role` (que SÍ es server-only) en su lugar
-- (c) o hay una tabla `admins` separada y el front sólo la lee.
-
-**Acción urgente:** auditar las policies de Supabase. Si una sola usa `auth.jwt() ->> 'user_metadata' ->> 'role'`, es vulnerable. Migrar a `app_metadata` o a una tabla `user_roles` poblada server-side.
-
-### 2.3 Comprobaciones de seguridad sólo client-side
-
-`hooks/match/useMatchActions.ts:34-38`:
-```js
-if (cancellationDeadline?.isPast && !isAdmin) {
-  showAlert('Aviso', `No puedes desapuntarte si faltan menos de ${...}h…`);
-  return;
-}
-await leaveMatch(...);
-```
-
-La regla "no se puede desapuntar pasado el deadline" se aplica en el cliente. Un usuario malicioso llama directamente a `supabase.from('match_participants').delete()…` y se salta la regla. Lo mismo aplica para:
-- Borrar participantes (`removeParticipant`, `removeDummyPlayer`)
-- Crear/editar/borrar partidos
-- Inscribirse pasada la fecha
-
-**Mitigación:** RLS policies + triggers que validen `now() < cancellation_deadline` server-side.
-
-### 2.4 PHP endpoint de email sin autenticación visible
-
-`lib/services/notificationService.ts:16`:
-```js
-const response = await fetch('https://multigraf.info/send_match_update.php', {
-  method: 'POST', headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ to: match.creator_email, type, playerName, … })
-});
-```
-
-- El endpoint acepta `to` como un email arbitrario (lo lee de la BD pero el cliente lo envía).
-- No vemos auth header. Si no requiere un token en el PHP, **cualquiera puede usarlo como relay de spam** apuntando a cualquier email.
-
-**Acción:** auditar `send_match_update.php`. Idealmente mover a Supabase Edge Function con check de RLS + rate limiting + autenticación.
-
-### 2.5 Códigos hardcoded en commit/repo
-
-```
-ADMINKKZ2026  KZ2026  DEV_ADMIN  DEV_PART
-```
-
-Aunque sustituidos por server-side validation, el historial git ya los contiene. Habría que cambiarlos (rotarlos) en BD/policies para que dejen de ser válidos.
-
-### 2.6 No hay `.env.example`
-
-El README dice "crea un `.env` con `EXPO_PUBLIC_SUPABASE_URL` y `EXPO_PUBLIC_SUPABASE_ANON_KEY`". No hay `.env.example` ni se documenta `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` que también se usa (`app/admin/crear-partido.tsx:14`). El `EXPO_PUBLIC_` prefix indica que estas variables van al bundle (correcto para anon key + Maps API key con restricciones de dominio, pero confirmar que la Maps key SÍ tiene restricciones).
-
-### 2.7 Datos de usuarios en el repo
-
-`admin_players_import.csv` está en la raíz. Sin verlo asumo nombres/teléfonos de personas reales. Debería estar en `.gitignore`.
+### 2.3 Acción — ✅ hecha
+Migración `20260604000000_join_match_restore_guards.sql`: re-aplica **ambos guards** sobre la versión de
+waitlist de `join_match` (`IF NOT auth_is_validated() THEN RAISE 'not_validated'` y
+`IF v_req AND NOT v_admin THEN RAISE 'payment_required'`), conservando el overflow→waitlist (solo admin).
+La regresión **estaba viva en prod** (la migración de waitlist figuraba aplicada en el remoto); el fix se
+aplicó con un `db push` quirúrgico que dejó fuera a propósito la pendiente `20260530000002` (§7).
+`join_match_as` (WhatsApp, service-role) no estaba afectada — conserva ambos guards.
 
 ---
 
-## 3. Duplicación masiva `app/dev/`
+## 3. Sistema de pagos (Monei) — punto fuerte de ingeniería
 
-### 3.1 Estado actual
+El flujo resuelve correctamente la concurrencia difícil:
+- **Reserva atómica de plaza** (`reserve_paid_slot`) con `FOR UPDATE` *antes* de cobrar → cierra la carrera de overbooking entre dos pagos por la última plaza.
+- **Ventana de frescura de 10 min** en holds PENDING (`20260530000002`) → un pago abandonado no bloquea la plaza 24h (evita venta perdida).
+- **Edge case de late-completion resuelto** (`_shared/confirmSlot.ts` + `confirm_paid_slot`): bloquea la fila del partido, re-chequea cupo e idempotencia; si el partido se llenó mientras el hold caducaba → **`queued_return`** (encola reembolso en lugar de sobre-reservar). Las 3 rutas de confirmación (`webhook`/`verify-payment`/`reconcile`) **serializan** bajo el mismo lock.
+- **Cola de reembolso asíncrona** con un único worker → no hay doble reembolso.
 
-| Archivo dev | LOC | ¿Re-export limpio? | Diff vs prod |
-|---|---|---|---|
-| `app/dev/match/[id].tsx` | 2 | ✓ Sí | 9 |
-| `app/dev/admin/jugadores.tsx` | 2 | ✓ Sí | 246 |
-| `app/dev/admin/crear-partido.tsx` | 769 | ✗ Copia | 773 |
-| `app/dev/(tabs)/index.tsx` | 940 | ✗ Copia divergente | 1439 |
-| `app/dev/(tabs)/explore.tsx` | 132 | ✗ Copia | 235 |
-| `app/dev/(tabs)/_layout.tsx` | 46 | ✗ Copia | 62 |
-
-Tres archivos siguen el patrón correcto (2 LOC re-exportando el componente prod, que internamente decide qué tabla usar vía `useEnv().fromTable`).
-
-**Pero `app/dev/(tabs)/index.tsx` tiene 940 LOC y diverge en 1,439 líneas del prod de 1585.** Quiere decir que en algún momento alguien tocó manualmente la versión dev y NO sincronizó con la prod (o viceversa). Esto es deuda técnica seria: dos versiones de la home screen mantenidas a mano.
-
-### 3.2 Acción recomendada
-
-Convertir TODOS los archivos `dev/*` que no sean ya re-export en re-exports de la versión prod. Por ejemplo:
-
-```tsx
-// app/dev/(tabs)/index.tsx
-import IndexScreen from '../../(tabs)';
-export default IndexScreen;
-```
-
-La diferencia prod/dev queda **completamente delegada al hook `useEnv()`** que ya está pensado para eso (`fromTable('matches')` → `matches_dev`).
-
-Si hay diferencias de UI específicas para dev (botones extra, etc.), exponerlas con un flag dentro del componente prod:
-```tsx
-const { isDev } = useEnv();
-return <View>{isDev && <DevToolbar />} … </View>
-```
-
-**Reducción estimada**: ~3,000 LOC.
+Riesgos aquí **operativos**, no técnicos: falta **programar `reconcile-payments` en cron** (TODO B) y la **clave de producción** Monei.
 
 ---
 
-## 4. Sin tipos de Supabase
+## 4. WhatsApp (trabajo de la rama actual)
 
-`supabase_types.ts` = 1 byte. No se ha corrido el generador de tipos:
-```bash
-npx supabase gen types typescript --project-id <ref> > supabase_types.ts
-```
+Integración completa vía `whatsapp-webhook` (HMAC + log idempotente en `whatsapp_messages`):
+- Router de comandos `ALTA` / `VOY` / `NOVOY` / `LISTA` / `ACEPTO` / `BAJA`.
+- **Onboarding preservando invite-only** (exige código válido → escribe `app_metadata.role`).
+- **Joins de pago reutilizan el pipeline Monei** intacto (mismo `reserve_paid_slot` + webhook existente).
+- **Bajas de pago** vía `request_return` con el mismo gate de deadline que la web.
+- Recordatorios proactivos (`whatsapp-reminders`: cron + plantilla + consentimiento GDPR en `consents` + dedup por destinatario V2).
+- Panel de supervisión admin (`app/admin/whatsapp.tsx`).
 
-Resultado: todas las queries devuelven `any`. Una sola columna mal escrita (`max_player` en vez de `max_players`) no salta en compile time.
-
-Esto se nota en patrones como:
-```ts
-const [match, setMatch] = useState<any>(null);
-const [participantsList, setParticipantsList] = useState<any[]>([]);
-```
-
-(`hooks/match/useMatch.ts:9-10`).
-
-**Acción:** regenerar tipos y reemplazar los `any` por `Database['public']['Tables']['matches']['Row']` y similares. Incremental — cada archivo que se toque, tipar.
+**A vigilar:** `INVITE_CODES` duplicado respecto a `validate-invite` (el comentario lo reconoce) — unificar antes de que diverjan.
 
 ---
 
-## 5. Componentes monolíticos
+## 5. Lista de espera (waitlist)
 
-### 5.1 `app/(tabs)/index.tsx` — 1585 LOC
-
-La home contiene:
-- `MatchCard` (sub-componente inline)
-- Lógica del calendario (LocaleConfig + selección + filtros)
-- Fetch + filtrado de partidos
-- Share múltiple
-- Refresh control
-- Modos admin/no-admin con duplicación inline
-
-**Refactor sugerido:**
-1. Extraer `MatchCard` a `components/match/MatchCard.tsx` (~150 LOC).
-2. Extraer el calendar bar a `components/MatchCalendarBar.tsx`.
-3. Mover la lógica de `fetchMatches`, role-check, refresh, etc. a un hook `useMatchList()`.
-4. `(tabs)/index.tsx` debería quedar como ~200 LOC de composición.
-
-### 5.2 `app/admin/crear-partido.tsx` — 769 LOC
-
-Wizard de creación/edición con 3 modales (date, time, location), validación, image picker, switches de categoría.
-
-**Refactor sugerido:**
-- Extraer modales: `<DatePickerModal>`, `<TimePickerModal>`, `<LocationPickerModal>`.
-- Mover `fetchLocations`, `saveLocation`, `submit` a un hook `useCreateMatchForm()`.
-- Validación en `lib/validators/match.ts`.
-
-### 5.3 `lib/services/` está infrautilizado
-
-Sólo 3 archivos pequeños (95 LOC total). Mucha lógica de Supabase vive directamente en componentes (`app/(tabs)/index.tsx` hace `supabase.from(...).select()` en línea). Migrar más queries a `lib/services/` da consistencia y permite mockear para tests futuros.
+`20260603000001_match_waitlist.sql`: el admin inscribe por encima de `max_players` (overflow → `waitlist=true`, FIFO por `created_at`). Un trigger `AFTER DELETE` (`promote_waitlist_after_leave`) promociona al más antiguo al liberarse plaza activa, **bloqueando la fila del partido** (`FOR UPDATE`) para que dos bajas concurrentes promocionen a personas distintas — mismo patrón de serialización que `join_match`. La lógica de waitlist es **correcta**; el problema de esta migración es colateral (§2: arrastró una versión vieja de `join_match`).
 
 ---
 
-## 6. Scripts dev en raíz
+## 6. Deuda técnica vigente
 
-Igual que NexusHub, hay basura en la raíz que debería estar en `scripts/dev/`:
-
-```
-admin_players_import.csv          ⚠️ Datos personales — debería estar en .gitignore
-create_matches_from_image.js
-create_requested_matches.js
-create_users.js
-debug_dev.js
-debug_match.js
-download_images.js
-get_venues.js
-query_db.js
-query_db_schema.js
-query_db_users.js
-query_db_venues.js
-test_filter.js
-```
-
-13 ficheros + CSV. Action: mover a `scripts/dev/` y añadir `*.csv` con datos personales a `.gitignore`.
+- **`supabase_types.ts` vacío (0 bytes)** → 67 `any`. Mayor palanca de calidad pendiente: `npx supabase gen types typescript` y tipar incrementalmente. El `lib/types.ts` manual (98L) está bien pero no cubre las queries.
+- **`app/(tabs)/index.tsx` (1.659 LOC)** sin partir. Refactor pendiente desde mayo (extraer `MatchCard`, `MatchCalendarBar`, hook `useMatchList()`) — más urgente ahora que creció.
+- **Cero tests automatizados** in-repo. La suite E2E (`e2e-suite.cjs`, escenarios, caos/soak contra Monei real) es valiosa, pero faltan unit tests de funciones puras (`lib/date.ts`, `lib/share.ts`) que serían triviales.
+- 17 `console.*` activos.
 
 ---
 
-## 7. Base de datos
-
-### 7.1 Schema inferido (sin tipos generados)
-
-Tablas usadas en el código:
-- `matches` / `matches_dev` — title, venue, location_url, date, time, price, max_players, joined_players, level, distance (formato 5v5), is_female, is_mixed, is_private, is_advanced, cancellation_hours, creator_email, venue_image_url, …
-- `match_participants` / `match_participants_dev` — match_id, user_id (nullable for guests), user_name
-- `saved_locations` / `saved_locations_dev` — name, location_url, image_url
-- `admin_players` / `admin_players_dev` — name, level, phone
-
-### 7.2 Anti-patterns observados
-
-- `deleteMatchTransaction` no es transaccional (`matchService.ts:20-24`). Dos `await` consecutivos sin BEGIN/COMMIT. Si el segundo falla → orfanos en `match_participants`.
-- `joined_players` se mantiene a mano (`updateMatchJoinedPlayers`) en lugar de calcularse con un COUNT o trigger. Riesgo de desincronización.
-- Hay un `computed_joined` mencionado en `(tabs)/index.tsx:74` — sugiere que la suma se hace en JS. Si la BD tiene una view, mejor.
-- `max_players - joined_players - participantsList.length` en `useMatch.ts:52`: combina contador BD + array de participantes — confuso. Una de las dos fuentes sobra.
-
-### 7.3 Recomendación
-
-- Definir un Postgres RPC `delete_match(match_id)` con transacción.
-- Reemplazar `joined_players` por una computed column / view (`SELECT COUNT(*) FROM match_participants WHERE match_id = …`).
-- Usar `JOIN` server-side para devolver `available_spots` directamente.
+## 7. Anomalías de repo (2026-06-04)
+- ✅ Migración `20260530000002_reserve_paid_slot_freshness.sql` se había movido **fuera** de `migrations/` (al root de `supabase/`) en el working tree → un `db reset`/entorno nuevo la habría saltado. **Restaurada** a `migrations/` (coincide con HEAD).
+- ✅ `e2e-chaos-soak.log` (artefacto de test sin rastrear) → **añadido a `.gitignore`** (commit `6a23023`).
+- ⚠️ **Hallazgo derivado:** `migration list` reveló que `20260530000002` **nunca se aplicó al remoto** (Local-only) — consecuencia de haber estado mal ubicada. La ventana de frescura de 10 min en holds de pago **no está viva** en prod (un hold abandonado bloquea plaza hasta 24h). Pendiente de decidir si aplicarla (ver TODO §B; el edge de late-completion ya lo cubre `confirm_paid_slot`).
 
 ---
 
-## 8. UX / Frontend issues
+## 8. Acción priorizada
 
-### 8.1 i18n incompleto
+### 🔥 Ahora (crítico)
+1. ✅ **HECHO (2026-06-04)** — Guards `payment_required` + `not_validated` re-aplicados sobre la `join_match` de waitlist (`20260604000000`, aplicado a prod). La regresión estaba viva; el agujero está cerrado.
+2. **Decidir sobre `20260530000002_reserve_paid_slot_freshness`** (no está en prod, §7) — aplicarla o descartarla conscientemente.
 
-Strings hardcoded en español en muchos sitios:
-- `useMatchActions.ts:35`: `'Aviso'`, `'No puedes desapuntarte…'`
-- `crear-partido.tsx`: labels y placeholders parcialmente sin `t()`
-- `notificationService.ts`: subjects de email
-- Múltiples `Alert.alert('Error', ...)` sin pasar por `t()`
+### 📋 Este sprint
+2. **Programar `reconcile-payments`** en cron (Dashboard Supabase) — cierra TODO B y limpia holds de test.
+3. **Renombrar/mergear** la rama: `docs/whatsapp-integration` no refleja su contenido (feat real). Considerar squash + merge a `main`.
+4. **Generar `supabase_types.ts`** y empezar a sustituir `any`.
+5. **Unificar `INVITE_CODES`** (whatsapp-webhook ↔ validate-invite).
 
-### 8.2 `console.log` activos
-
-20 sitios. Mínimamente:
-- `useMatch.ts:42` `console.log('Error fetching match data:', err)`
-- `notificationService.ts:33,35` logs de notificación
-- `(tabs)/index.tsx:522` `console.error('Error getting user for role check:', error)`
-- `lib/share.ts` (sin contar)
-
-**Acción:** wrapper `logger.ts` con flag `__DEV__` o reemplazar por toasts no intrusivos.
-
-### 8.3 `Alert.alert` web fallback
-
-`useMatchActions.ts:21-24`:
-```ts
-const showAlert = (title, msg) => {
-  if (Platform.OS === 'web') window.alert(`${title}: ${msg}`);
-  else Alert.alert(title, msg);
-};
-```
-
-OK como solución temporal. A largo plazo, un `<Toast>` propio multiplataforma daría UX consistente.
-
-### 8.4 Carga de role en cada pantalla
-
-Cada componente que necesita saber `isAdmin` hace su propio `supabase.auth.getUser()` y lee `user_metadata.role`. 4+ duplicaciones (`useMatch.ts`, `_layout.tsx`, `(tabs)/index.tsx`, `app/dev/(tabs)/index.tsx`).
-
-**Refactor:** un hook `useAuth()` o un `AuthContext` que exponga `{ user, isAdmin, isDev }`.
-
----
-
-## 9. Tests
-
-**Cero tests** en todo el proyecto. Ni `*.test.*` ni `*.spec.*` ni configuración de Vitest/Jest.
-
-Dado que es una app móvil con lógica complicada (deadlines, permisos, parsing de fechas en es/en/ca, share URLs), los candidatos naturales son:
-
-- `lib/date.ts`: `parseMatchDate`, `toISODate`, `formatLocalizedDate` (puramente funcionales — fáciles).
-- `lib/share.ts`: `validatePassword`, `getBaseUrl` (puras).
-- `hooks/match/useMatch.ts`: las derivaciones (`isFull`, `isStarted`, `cancellationDeadline`) son testeables con mocks de fecha.
-- `lib/services/*`: integración con Supabase mockeado.
-
-Setup mínimo recomendado: Jest + `@testing-library/react-native` (Expo lo soporta out of the box).
-
----
-
-## 10. Dependencias
-
-Stack moderno y razonable:
-- Expo 54 (última), React 19.1, React Native 0.81.5
-- Expo Router 6
-- Supabase JS 2.100
-- i18next + react-i18next
-- React Navigation 7
-- Google Maps via `@react-google-maps/api` (web) + `react-native-maps` (native)
-- Reanimated 4
-- ftp-deploy para deploy web (raro pero funcional)
-
-No detecto deps obvias innecesarias. `dotenv` está como dependency pero Expo + `EXPO_PUBLIC_*` debería ser suficiente sin él — confirmar uso.
-
-**Acción:** `npm audit` después de `npm install` por si hay CVEs.
-
----
-
-## 11. Web build (Multigraf hosting)
-
-Pistas detectadas:
-- `app/_layout.tsx:105`: `<link rel="canonical" href="https://multigraf.info/Kickerzbcn/${segments.join('/')}">` → publicación bajo subdir.
-- `lib/share.ts` y `notificationService.ts` apuntan a `https://multigraf.info/Kickerzbcn/`.
-- `eas.json` + `package.json` `deploy: node scripts/deploy.js` + dep `ftp-deploy` → deploy probablemente vía FTP a multigraf.
-
-**Riesgos:**
-- Credenciales FTP en `scripts/deploy.js` — comprobar que NO están en el repo en plano.
-
----
-
-## 12. Acción priorizada (lo que haría AHORA)
-
-### 🔥 Esta semana (crítico, no se puede esperar)
-
-1. **Auditar RLS policies de Supabase** y verificar que NO confían en `user_metadata.role`. Si lo hacen, migrar a `app_metadata` (server-only) o a una tabla `user_roles`. (1-2 días con tests manuales).
-2. **Mover validación de invite codes a Edge Function**. Bloquear `signUp` con role en `user_metadata` desde el cliente. Rotar `ADMINKKZ2026` (ya quemado en bundles antiguos). (1 día).
-3. **Auditar `send_match_update.php`** — añadir token/auth en el header y rate-limit. (medio día).
-4. **`admin_players_import.csv` fuera del repo** + `.gitignore` para `*.csv`. Si ya se pusheó con datos reales: borrar del historial con `git filter-repo`. (2 horas).
-
-### 📋 Próximo sprint
-
-5. **Generar tipos Supabase** (`npx supabase gen types ...`) y reemplazar `any` poco a poco.
-6. **Consolidar duplicación `app/dev/`** a re-exports. -3,000 LOC. (medio día).
-7. **Mover scripts dev** a `scripts/dev/` y arreglar paths. (1 hora).
-8. **Hook `useAuth()`** que centralice user + isAdmin + isDev. Eliminar las 4 duplicaciones. (medio día).
-9. **Convertir `deleteMatchTransaction` a un RPC** con transacción Postgres. (2 horas).
-
-### 🛠️ Roadmap medio plazo
-
-10. **Partir `app/(tabs)/index.tsx`** en `MatchCard` + `MatchCalendarBar` + `useMatchList()`. (1 día).
-11. **Partir `crear-partido.tsx`** en modales + `useCreateMatchForm()`. (1 día).
-12. **Constante `APP_BASE_URL`** que reemplace los 4 hardcoded de `multigraf.info/Kickerzbcn`. (15 min).
-13. **Tests iniciales** para `lib/date.ts`, `lib/share.ts`, `useMatch` deadlines. (1 día setup + tests).
-14. **Reemplazar `joined_players` por COUNT/view**, eliminar la sincronización manual.
-15. **i18n cobertura completa** — recorrer `useMatchActions.ts` y demás archivos con strings ES hardcodeados.
+### 🛠️ Medio plazo
+6. **Partir `app/(tabs)/index.tsx`** en `MatchCard` + `MatchCalendarBar` + `useMatchList()`.
+7. **Partir `crear-partido.tsx`** en modales + `useCreateMatchForm()`.
+8. **Tests unitarios** de `lib/date.ts` / `lib/share.ts` (puras, rápidas).
+9. **Clave de producción Monei** + revisión legal de Términos/Privacidad (TODO A).
 
 ---
 
 ## Anexo — métricas
 
-| Métrica | Valor |
-|---|---|
-| LOC totales (sin node_modules) | ~6,250 |
-| Archivos TSX/TS | 47 |
-| Archivos en `app/` (rutas) | 21 |
-| Componentes en `components/` | 14 |
-| Hooks custom | 5 |
-| Servicios Supabase | 3 archivos / 95 LOC |
-| Idiomas i18n | 3 (es, en, ca) |
-| Tests | 0 |
-| Líneas duplicadas `app/dev/` ↔ `app/` | ~2,800 |
-| Scripts dev en raíz | 13 + 1 CSV |
-| `console.log/error/warn` activos | 20 |
-| URLs hardcoded a `multigraf.info` | 4 |
-| `user_metadata.role` reads | 6 sitios |
+| Métrica | 2026-05-22 | 2026-06-04 |
+|---|---|---|
+| LOC (app+components+lib+hooks) | ~6.250 | ~8.090 |
+| `app/(tabs)/index.tsx` | 1.585 | 1.659 |
+| Migraciones SQL | — | 23 |
+| Edge Functions | 0 (PHP) | 10 + `_shared` |
+| Duplicación `app/dev/` | ~2.800 LOC | 0 (eliminada) |
+| `supabase_types.ts` | 1 byte | 0 bytes (sigue vacío) |
+| Anotaciones `: any` | (sin medir) | 67 |
+| `console.*` activos | 20 | 17 |
+| Tests | 0 | 0 (+ suite E2E en `scripts/`) |
+| Hallazgos CRÍTICOS de seguridad | 2 | 0 (la regresión `join_match` se corrigió el 2026-06-04) |
