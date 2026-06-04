@@ -21,11 +21,11 @@ Pendientes y mejoras. Última revisión: 2026-05-31.
   migración nueva re-aplica ambos guards conservando el waitlist (overflow solo-admin). Aplicada con
   `db push` quirúrgico (solo esta migración; la pendiente `20260530000002` se dejó fuera a propósito).
   `join_match_as` (WhatsApp, service-role) NO estaba afectada.
-- [ ] **`20260530000002_reserve_paid_slot_freshness` NO está en prod** (descubierto 2026-06-04 vía
-  `migration list`: Local-only). El archivo estuvo mal ubicado fuera de `migrations/`, por eso ningún
-  `db push` la aplicó. Efecto: la ventana de frescura de 10 min en holds de pago no está viva → un hold
-  abandonado bloquea plaza hasta 24h. Decidir si aplicarla (cambia comportamiento de pagos; el edge de
-  late-completion ya lo cubre `confirm_paid_slot`).
+- [x] **`20260530000002_reserve_paid_slot_freshness` aplicada a prod** *(✅ 2026-06-04, `db push
+  --include-all` quirúrgico; verificado Local==Remote)*. Había estado mal ubicada fuera de `migrations/`,
+  por eso ningún `db push` la había aplicado (descubierto vía `migration list`: Local-only). Ahora la
+  ventana de frescura de **6 min** en holds de pago está viva → un hold abandonado deja de bloquear plaza
+  a los 6 min (antes, hasta 24h). El edge de late-completion ya lo cubre `confirm_paid_slot`.
 - [ ] **Programar `reconcile-payments`** en el Dashboard de Supabase (Integrations → Cron):
   POST a `https://wdidrnqjcdhmultayvgq.supabase.co/functions/v1/reconcile-payments`,
   header `x-reconcile-secret: <RECONCILE_SECRET>` (ya está seteado), schedule `0 * * * *`.

@@ -127,7 +127,7 @@ aplicó con un `db push` quirúrgico que dejó fuera a propósito la pendiente `
 
 El flujo resuelve correctamente la concurrencia difícil:
 - **Reserva atómica de plaza** (`reserve_paid_slot`) con `FOR UPDATE` *antes* de cobrar → cierra la carrera de overbooking entre dos pagos por la última plaza.
-- **Ventana de frescura de 10 min** en holds PENDING (`20260530000002`) → un pago abandonado no bloquea la plaza 24h (evita venta perdida).
+- **Ventana de frescura de 6 min** en holds PENDING (`20260530000002`, viva en prod 2026-06-04) → un pago abandonado no bloquea la plaza 24h (evita venta perdida).
 - **Edge case de late-completion resuelto** (`_shared/confirmSlot.ts` + `confirm_paid_slot`): bloquea la fila del partido, re-chequea cupo e idempotencia; si el partido se llenó mientras el hold caducaba → **`queued_return`** (encola reembolso en lugar de sobre-reservar). Las 3 rutas de confirmación (`webhook`/`verify-payment`/`reconcile`) **serializan** bajo el mismo lock.
 - **Cola de reembolso asíncrona** con un único worker → no hay doble reembolso.
 
@@ -167,7 +167,7 @@ Integración completa vía `whatsapp-webhook` (HMAC + log idempotente en `whatsa
 ## 7. Anomalías de repo (2026-06-04)
 - ✅ Migración `20260530000002_reserve_paid_slot_freshness.sql` se había movido **fuera** de `migrations/` (al root de `supabase/`) en el working tree → un `db reset`/entorno nuevo la habría saltado. **Restaurada** a `migrations/` (coincide con HEAD).
 - ✅ `e2e-chaos-soak.log` (artefacto de test sin rastrear) → **añadido a `.gitignore`** (commit `6a23023`).
-- ⚠️ **Hallazgo derivado:** `migration list` reveló que `20260530000002` **nunca se aplicó al remoto** (Local-only) — consecuencia de haber estado mal ubicada. La ventana de frescura de 10 min en holds de pago **no está viva** en prod (un hold abandonado bloquea plaza hasta 24h). Pendiente de decidir si aplicarla (ver TODO §B; el edge de late-completion ya lo cubre `confirm_paid_slot`).
+- ✅ **Hallazgo derivado (resuelto 2026-06-04):** `migration list` reveló que `20260530000002` **nunca se había aplicado al remoto** (Local-only) — consecuencia de haber estado mal ubicada → la ventana de frescura de 6 min en holds de pago no estaba viva (un hold abandonado bloqueaba plaza hasta 24h). **Aplicada a prod** con `db push --include-all` quirúrgico (verificado Local==Remote). El edge de late-completion ya lo cubre `confirm_paid_slot`.
 
 ---
 
@@ -175,7 +175,7 @@ Integración completa vía `whatsapp-webhook` (HMAC + log idempotente en `whatsa
 
 ### 🔥 Ahora (crítico)
 1. ✅ **HECHO (2026-06-04)** — Guards `payment_required` + `not_validated` re-aplicados sobre la `join_match` de waitlist (`20260604000000`, aplicado a prod). La regresión estaba viva; el agujero está cerrado.
-2. **Decidir sobre `20260530000002_reserve_paid_slot_freshness`** (no está en prod, §7) — aplicarla o descartarla conscientemente.
+2. ✅ **HECHO (2026-06-04)** — `20260530000002_reserve_paid_slot_freshness` aplicada a prod (ventana de frescura de 6 min ya viva; ver §7).
 
 ### 📋 Este sprint
 2. **Programar `reconcile-payments`** en cron (Dashboard Supabase) — cierra TODO B y limpia holds de test.
