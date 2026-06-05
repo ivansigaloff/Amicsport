@@ -150,6 +150,16 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           )}
 
+          {isAdmin && (
+            <TouchableOpacity style={styles.actionButton} onPress={() => router.push(`${prefix}/admin/ajustes` as any)}>
+              <View style={styles.actionIconContainer}>
+                <Ionicons name="options-outline" size={22} color={COLORS.PRIMARY} />
+              </View>
+              <Text style={styles.actionText}>Ajustes de Reembolsos</Text>
+              <Ionicons name="chevron-forward" size={18} color={COLORS.TEXT_LIGHT} />
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity style={[styles.actionButton, styles.logoutButton]} onPress={handleLogout}>
             <View style={[styles.actionIconContainer, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
               <Ionicons name="log-out-outline" size={22} color={COLORS.DANGER} />
