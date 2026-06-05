@@ -64,7 +64,7 @@ serve(async (req) => {
   }
 
   const results = { synced: 0, expired: 0, errors: 0, skipped: 0, repaired: 0 };
-  const expiredThreshold = new Date(Date.now() - 60 * 60 * 1000); // 1h: a Monei-PENDING that old is dead (slot already freed by reserve_paid_slot's 10-min window)
+  const expiredThreshold = new Date(Date.now() - 60 * 60 * 1000); // 1h: a Monei-PENDING that old is dead (slot already freed by reserve_paid_slot's 6-min window)
 
   for (const payment of stalePending ?? []) {
     try {

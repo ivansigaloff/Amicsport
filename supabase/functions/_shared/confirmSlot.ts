@@ -1,6 +1,6 @@
 // Shared: confirm a paid slot when a payment reaches SUCCEEDED.
 //
-// reserve_paid_slot reserves a PENDING "hold" that only blocks capacity for ~10
+// reserve_paid_slot reserves a PENDING "hold" that only blocks capacity for ~6
 // min (freshness window). If a payment completes LATE (after its hold aged out),
 // the slot may already have been re-sold. Creating the participant blindly would
 // OVERBOOK.
