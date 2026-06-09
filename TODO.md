@@ -1,6 +1,6 @@
 # TODO — AmicSport
 
-Pendientes y mejoras. Última revisión: 2026-06-05.
+Pendientes y mejoras. Última revisión: 2026-06-10.
 
 ## A. Bloqueantes / acción requerida
 
@@ -11,19 +11,21 @@ Pendientes y mejoras. Última revisión: 2026-06-05.
 
 ## B. Seguridad y correctitud
 
-- [x] **V1 — INSERT directo a partidos GRATIS cerrado** *(código 2026-06-05, commit `126917a`; ⚠️ migración
-  `20260605000000` NO aplicada a prod)*. `participants_insert` dejaba a cualquier usuario validado insertar
+- [x] **V1 — INSERT directo a partidos GRATIS cerrado** *(código 2026-06-05, commit `126917a`; ✅ migración
+  `20260605000000` aplicada a prod 2026-06-10 vía `db push`; smoke test en vivo: self-insert e insert de
+  invitado directos rechazados con RLS 42501)*. `participants_insert` dejaba a cualquier usuario validado insertar
   plazas directas (propia o invitados ilimitados) en partidos gratis vía PostgREST, saltándose el aforo/waitlist
   de `join_match` (los de PAGO ya estaban protegidos). Fix: bloquea el INSERT directo a no-admins; el cliente
-  solo usa la RPC `SECURITY DEFINER`, así que no rompe ningún flujo. Aplicar con `db push` quirúrgico (footgun).
-- [x] **V3 — idempotencia de `confirm_paid_slot` por pago** *(código 2026-06-05, commit `5055eef`; ⚠️ migración
-  `20260605000001` NO aplicada a prod)*. La dedup de invitados por `(match_id, user_name)` colisionaba con dos
+  solo usa la RPC `SECURITY DEFINER`, así que no rompe ningún flujo.
+- [x] **V3 — idempotencia de `confirm_paid_slot` por pago** *(código 2026-06-05, commit `5055eef`; ✅ migración
+  `20260605000001` aplicada a prod 2026-06-10 vía `db push`)*. La dedup de invitados por `(match_id, user_name)` colisionaba con dos
   invitados del mismo nombre → host cobrado dos veces, una sola plaza. Fix: añade `match_participants.payment_id`
   (+ backfill + índice) y clava la idempotencia en el pago. Solo DB (las edge functions llaman a la RPC; sin redeploy).
 - [x] **R4 — pantalla admin de límites de reembolso** *(código 2026-06-05, commit `e12b265`)*. `app/admin/ajustes.tsx`
   (+ `settingsService`) edita `daily_refund_count_limit` y `daily_refund_amount_limit_cents` (RLS admin ya existía).
-  Migración `20260605000002` corrige el default legacy 999→20 (solo si seguía en 999) y las descripciones.
-  ⚠️ Pendiente: aplicar migración + **deploy web** (`expo export --platform web` + `npm run deploy`, build desde
+  Migración `20260605000002` corrige el default legacy 999→20 (solo si seguía en 999) y las descripciones
+  (✅ aplicada a prod 2026-06-10 vía `db push`).
+  ⚠️ Pendiente: **deploy web** (`expo export --platform web` + `npm run deploy`, build desde
   PowerShell) para que la UI esté viva.
 - [x] **R3 — comentarios de la ventana de frescura 10→6 min** *(2026-06-05, commit `dd157ed`)*. Solo comentarios;
   redeploy de `reconcile-payments` opcional (sin cambio de comportamiento).
