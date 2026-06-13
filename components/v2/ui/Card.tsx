@@ -1,4 +1,4 @@
-import { View, ViewStyle } from 'react-native';
+import { View, StyleProp, ViewStyle } from 'react-native';
 import { C, R, S, SHADOW } from '../theme';
 import PressableScale from './PressableScale';
 
@@ -6,7 +6,7 @@ type Props = {
   children: React.ReactNode;
   onPress?: () => void;
   onLongPress?: () => void;
-  style?: ViewStyle | ViewStyle[];
+  style?: StyleProp<ViewStyle>;
   padded?: boolean;
   tone?: 'surface' | 'soft' | 'ink' | 'brand';
   elevation?: keyof typeof SHADOW;

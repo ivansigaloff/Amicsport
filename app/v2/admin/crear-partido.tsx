@@ -306,7 +306,7 @@ export default function V2CreateMatch() {
                 renderItem={({ item }) => (
                   <View style={styles.locRow}>
                     <TouchableOpacity style={styles.locMain} onPress={() => { setVenue(item.name); setLocationUrl(item.location_url); setVenueImageUrl(item.image_url || ''); setShowLocationModal(false); }}>
-                      <View style={styles.locThumb}>{item.image_url ? <Image source={{ uri: item.image_url }} style={{ width: 42, height: 42, borderRadius: 10 }} /> : <Ionicons name="business" size={20} color={C.brandDeep} />}</View>
+                      <View style={styles.locThumb}>{item.image_url ? <Image source={{ uri: item.image_url }} style={{ width: 42, height: 42 }} /> : <Ionicons name="business" size={20} color={C.brandDeep} />}</View>
                       <View style={{ flex: 1 }}><Text style={styles.locName}>{item.name}</Text><Text style={styles.locUrl} numberOfLines={1}>{item.location_url}</Text></View>
                     </TouchableOpacity>
                     <PressableScale onPress={async () => { const { error } = await supabase.from('saved_locations').delete().eq('id', item.id); if (!error) await fetchLocations(); }} style={styles.locDelete}><Ionicons name="trash-outline" size={18} color={C.danger} /></PressableScale>
@@ -355,7 +355,7 @@ const styles = StyleSheet.create({
   statusBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: C.surface, padding: 10, borderRadius: R.sm, marginTop: 10, borderWidth: 1, borderStyle: 'dashed' },
   statusText: { fontSize: 12.5, fontFamily: FONTS.semibold, flex: 1 },
   preview: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.surface, padding: 10, borderRadius: R.md, marginTop: 10, borderWidth: 1, borderColor: C.border },
-  previewImg: { width: 48, height: 48, borderRadius: 10 },
+  previewImg: { width: 48, height: 48 },
   previewLabel: { flex: 1, fontSize: 13, fontFamily: FONTS.semibold, color: C.text },
   picker: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: C.surface, borderRadius: R.md, borderWidth: 1.5, borderColor: C.border, paddingHorizontal: S.lg, height: 54 },
   pickerText: { flex: 1, fontFamily: FONTS.semibold, fontSize: 14.5 },
@@ -377,7 +377,7 @@ const styles = StyleSheet.create({
   optText: { fontSize: 16, color: C.textMuted, fontFamily: FONTS.medium },
   locRow: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: C.border },
   locMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
-  locThumb: { width: 42, height: 42, borderRadius: 10, backgroundColor: C.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
+  locThumb: { width: 42, height: 42, backgroundColor: C.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   locName: { fontSize: 15, fontFamily: FONTS.bold, color: C.text },
   locUrl: { fontSize: 12.5, color: C.textMuted, marginTop: 2 },
   locDelete: { padding: 12 },

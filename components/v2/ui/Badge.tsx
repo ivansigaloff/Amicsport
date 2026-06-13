@@ -13,7 +13,7 @@ const TONES: Record<Tone, { bg: string; fg: string }> = {
   info: { bg: C.infoWash, fg: '#1D4ED8' },
   neutral: { bg: C.surfaceAlt, fg: C.textMuted },
   ink: { bg: C.ink800, fg: '#FFFFFF' },
-  lime: { bg: '#ECFCCB', fg: '#3F6212' },
+  lime: { bg: C.brandTint, fg: C.text },
 };
 
 export default function Badge({
@@ -50,7 +50,7 @@ export default function Badge({
         style,
       ]}
     >
-      {dot && <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: dotColor || t.fg }} />}
+      {dot && <View style={{ width: 7, height: 7, backgroundColor: dotColor || t.fg }} />}
       {icon && <Ionicons name={icon} size={sm ? 11 : 13} color={t.fg} />}
       <Text style={{ color: t.fg, fontFamily: FONTS.bold, fontSize: sm ? 10 : 11, letterSpacing: 0.4, textTransform: 'uppercase' }}>
         {label}

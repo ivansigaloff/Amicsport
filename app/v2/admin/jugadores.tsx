@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', marginTop: 80, gap: 16 },
   emptyText: { color: C.textMuted, fontSize: 15, fontFamily: FONTS.medium, textAlign: 'center', maxWidth: 260 },
   card: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, padding: 14, borderRadius: R.lg, borderWidth: 1, borderColor: C.border, gap: 14, ...SHADOW.sm },
-  avatar: { width: 50, height: 50, borderRadius: 25, backgroundColor: C.brandWash, alignItems: 'center', justifyContent: 'center' },
+  avatar: { width: 50, height: 50, backgroundColor: C.brandWash, alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: C.brandDeep, fontSize: 20, fontFamily: FONTS.black },
   name: { color: C.text, fontSize: 16, fontFamily: FONTS.bold },
   sub: { color: C.textMuted, fontSize: 13, marginTop: 2, fontFamily: FONTS.medium },

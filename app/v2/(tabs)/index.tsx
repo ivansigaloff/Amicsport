@@ -485,7 +485,7 @@ const styles = StyleSheet.create({
   dayBubbleSel: { backgroundColor: C.ink800, borderColor: C.ink800 },
   dayWeekday: { fontFamily: FONTS.semibold, fontSize: 10, color: C.textFaint, textTransform: 'uppercase' },
   dayNum: { fontFamily: FONTS.extraBold, fontSize: 17, color: C.text },
-  dayDot: { width: 6, height: 6, borderRadius: 3, marginTop: 1 },
+  dayDot: { width: 6, height: 6, marginTop: 1 },
   dayMine: { position: 'absolute', top: 5, right: 5 },
 
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: S.xl, marginBottom: S.md },
@@ -500,13 +500,13 @@ const styles = StyleSheet.create({
   cardPrice: { fontFamily: FONTS.black, fontSize: 18, color: C.brandDeep },
   joinedPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: C.brandWash, paddingHorizontal: 8, paddingVertical: 3, borderRadius: R.pill, marginLeft: 4 },
   joinedText: { color: C.brandDeep, fontFamily: FONTS.bold, fontSize: 10.5 },
-  shareCheck: { position: 'absolute', top: 10, right: 10, width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: C.borderStrong, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
+  shareCheck: { position: 'absolute', top: 10, right: 10, width: 24, height: 24, borderWidth: 2, borderColor: C.borderStrong, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
 
   empty: { alignItems: 'center', paddingVertical: 70, gap: 12 },
   emptyText: { color: C.textMuted, fontFamily: FONTS.semibold, fontSize: 15 },
 
   shareBar: { position: 'absolute', bottom: 100, left: 16, right: 16, maxWidth: 460, alignSelf: 'center', backgroundColor: C.surface, borderRadius: R.pill, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 12, gap: 10, ...SHADOW.lg, borderWidth: 1, borderColor: C.border },
-  shareClose: { width: 36, height: 36, borderRadius: 18, backgroundColor: C.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
+  shareClose: { width: 36, height: 36, backgroundColor: C.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   shareCount: { fontFamily: FONTS.bold, fontSize: 14, color: C.text, flex: 1, textAlign: 'center' },
 
   modalOverlay: { flex: 1, backgroundColor: C.overlay, justifyContent: 'flex-end' },

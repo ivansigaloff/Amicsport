@@ -1,11 +1,11 @@
-import { Animated, Pressable, PressableProps, ViewStyle, Platform } from 'react-native';
+import { Animated, Pressable, PressableProps, StyleProp, ViewStyle } from 'react-native';
 import { usePressable } from './motion';
 import { webOnly } from '../theme';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 type Props = PressableProps & {
-  style?: ViewStyle | ViewStyle[];
+  style?: StyleProp<ViewStyle>;
   scaleTo?: number;
   hoverLift?: boolean;
   children?: React.ReactNode;

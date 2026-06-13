@@ -46,7 +46,7 @@ function ParticipantRow({ p, index, isAdmin, userId, actions }: any) {
               <Ionicons name="shirt" size={15} color={p.shirt_color === 'white' ? C.brand : C.textFaint} />
             </PressableScale>
             <PressableScale onPress={() => actions.setShirtColor(p, p.shirt_color === 'black' ? null : 'black')} style={[styles.pBtn, { backgroundColor: C.ink800 }]}>
-              <Ionicons name="shirt" size={15} color={p.shirt_color === 'black' ? C.accent : 'rgba(255,255,255,0.5)'} />
+              <Ionicons name="shirt" size={15} color={p.shirt_color === 'black' ? '#fff' : 'rgba(255,255,255,0.5)'} />
             </PressableScale>
             <PressableScale onPress={() => actions.removeParticipant(p)} style={[styles.pBtn, { backgroundColor: C.dangerWash }]}>
               <Ionicons name="close" size={15} color={C.danger} />
@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
 
   hero: { height: 280, justifyContent: 'flex-end' },
   heroBar: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: S.lg, paddingTop: Platform.OS === 'web' ? S.lg : 0 },
-  circleBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(11,18,32,0.4)', alignItems: 'center', justifyContent: 'center', ...webOnly({ backdropFilter: 'blur(6px)' } as any) },
+  circleBtn: { width: 40, height: 40, backgroundColor: 'rgba(9,9,11,0.45)', alignItems: 'center', justifyContent: 'center', ...webOnly({ backdropFilter: 'blur(6px)' } as any) },
   heroContent: { padding: S.xl, paddingBottom: S.xxl },
   heroTitle: { color: '#fff', fontSize: 28, fontFamily: FONTS.black, letterSpacing: -0.6 },
   heroVenue: { color: 'rgba(255,255,255,0.85)', fontSize: 14, fontFamily: FONTS.medium },
@@ -287,8 +287,8 @@ const styles = StyleSheet.create({
   capTitle: { fontFamily: FONTS.bold, fontSize: 14, color: C.textMuted },
   capCount: { fontFamily: FONTS.black, fontSize: 20, color: C.text },
   capMax: { fontFamily: FONTS.bold, fontSize: 14, color: C.textFaint },
-  capBarBg: { height: 10, borderRadius: 5, backgroundColor: C.bgAlt, overflow: 'hidden' },
-  capBarFill: { height: '100%', borderRadius: 5 },
+  capBarBg: { height: 10, backgroundColor: C.bgAlt, overflow: 'hidden' },
+  capBarFill: { height: '100%' },
   capNote: { marginTop: 8, fontFamily: FONTS.semibold, fontSize: 12.5, color: C.textMuted },
 
   locCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.surface, borderRadius: R.lg, padding: S.lg, marginTop: S.md, borderWidth: 1, borderColor: C.border, ...SHADOW.sm },
@@ -301,10 +301,10 @@ const styles = StyleSheet.create({
   emptyP: { fontFamily: FONTS.medium, fontSize: 14, color: C.textFaint, fontStyle: 'italic', paddingVertical: 10 },
 
   pRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: R.md, borderWidth: 1, ...SHADOW.sm },
-  pAvatar: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  pAvatar: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
   pAvatarText: { fontFamily: FONTS.black, fontSize: 15, color: C.brandDeep },
   pName: { fontFamily: FONTS.bold, fontSize: 14.5 },
-  pBtn: { width: 32, height: 32, borderRadius: 8, backgroundColor: C.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
+  pBtn: { width: 32, height: 32, backgroundColor: C.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
 
   actionBar: { bottom: 0, left: 0, right: 0, position: 'absolute', backgroundColor: C.surface, flexDirection: 'row', alignItems: 'center', paddingHorizontal: S.xl, paddingTop: S.lg, borderTopWidth: 1, borderTopColor: C.border, ...SHADOW.lg, zIndex: 100 },
   barPrice: { fontFamily: FONTS.black, fontSize: 24, color: C.text },

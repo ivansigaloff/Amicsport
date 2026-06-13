@@ -82,17 +82,14 @@ export default function V2Login() {
     <View style={{ flex: 1 }}>
       <Head><title>AmicSport</title></Head>
       <LinearGradient colors={GRADIENTS.inkBrand as any} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill as any} />
-      {/* decorative orbs */}
-      <View pointerEvents="none" style={styles.orb1} />
-      <View pointerEvents="none" style={styles.orb2} />
 
       <SafeAreaView style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <AnimatedEntrance distance={18}>
             <View style={styles.brandHead}>
-              <LinearGradient colors={GRADIENTS.brand as any} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.logo}>
-                <Ionicons name="football" size={38} color="#fff" />
-              </LinearGradient>
+              <View style={styles.logo}>
+                <Ionicons name="football" size={38} color={C.text} />
+              </View>
               <Text style={styles.title}>AmicSport</Text>
               <Text style={styles.subtitle}>{subtitle}</Text>
             </View>
@@ -158,10 +155,8 @@ export default function V2Login() {
 
 const styles = StyleSheet.create({
   scroll: { flexGrow: 1, justifyContent: 'center', padding: S.xxl, paddingBottom: S.huge },
-  orb1: { position: 'absolute', top: -80, right: -60, width: 260, height: 260, borderRadius: 130, backgroundColor: 'rgba(45,212,191,0.16)' },
-  orb2: { position: 'absolute', bottom: -90, left: -70, width: 280, height: 280, borderRadius: 140, backgroundColor: 'rgba(16,185,129,0.12)' },
   brandHead: { alignItems: 'center', marginBottom: S.xxl },
-  logo: { width: 76, height: 76, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginBottom: S.lg, ...SHADOW.brand },
+  logo: { width: 76, height: 76, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginBottom: S.lg, ...SHADOW.md },
   title: { fontSize: 34, fontFamily: FONTS.black, color: '#fff', letterSpacing: -0.8 },
   subtitle: { fontSize: 15, color: 'rgba(255,255,255,0.72)', marginTop: 6, fontFamily: FONTS.medium, textAlign: 'center' },
   card: { width: '100%', maxWidth: 440, alignSelf: 'center', backgroundColor: C.surface, borderRadius: R.xl, padding: S.xxl, ...SHADOW.lg },

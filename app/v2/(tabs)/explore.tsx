@@ -60,10 +60,9 @@ export default function V2Profile() {
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={['left', 'right']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 130 }}>
         <LinearGradient colors={GRADIENTS.inkBrand as any} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
-          <View pointerEvents="none" style={styles.heroOrb} />
           <AnimatedEntrance distance={16} style={{ alignItems: 'center' }}>
             <View style={styles.avatarRing}>
-              <LinearGradient colors={GRADIENTS.brand as any} style={styles.avatar}><Text style={styles.avatarText}>{initial}</Text></LinearGradient>
+              <View style={styles.avatar}><Text style={styles.avatarText}>{initial}</Text></View>
             </View>
             <Text style={styles.name}>{name}</Text>
             {!!email && <Text style={styles.email}>{email}</Text>}
@@ -103,14 +102,13 @@ export default function V2Profile() {
 
 const styles = StyleSheet.create({
   hero: { paddingTop: Platform.OS === 'web' ? S.xxxl : 70, paddingBottom: S.xxxl, paddingHorizontal: S.xl, borderBottomLeftRadius: R.xl, borderBottomRightRadius: R.xl, overflow: 'hidden' },
-  heroOrb: { position: 'absolute', top: -60, right: -50, width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(45,212,191,0.15)' },
-  avatarRing: { padding: 4, borderRadius: 60, backgroundColor: 'rgba(255,255,255,0.12)' },
-  avatar: { width: 92, height: 92, borderRadius: 46, alignItems: 'center', justifyContent: 'center', ...SHADOW.brand },
-  avatarText: { color: '#fff', fontSize: 40, fontFamily: FONTS.black },
+  avatarRing: { padding: 4, backgroundColor: 'rgba(255,255,255,0.12)' },
+  avatar: { width: 92, height: 92, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...SHADOW.md },
+  avatarText: { color: C.text, fontSize: 40, fontFamily: FONTS.black },
   name: { color: '#fff', fontSize: 24, fontFamily: FONTS.black, marginTop: S.md, letterSpacing: -0.5 },
   email: { color: 'rgba(255,255,255,0.7)', fontSize: 13, fontFamily: FONTS.medium, marginTop: 2 },
   adminTag: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: C.accent, paddingHorizontal: 10, paddingVertical: 4, borderRadius: R.pill, marginTop: 10 },
-  adminTagText: { color: C.ink, fontFamily: FONTS.black, fontSize: 10, letterSpacing: 0.8 },
+  adminTagText: { color: C.onInk, fontFamily: FONTS.black, fontSize: 10, letterSpacing: 0.8 },
   body: { paddingHorizontal: S.lg, marginTop: -18 },
   statCard: { alignItems: 'center' },
   stat: { alignItems: 'center' },
