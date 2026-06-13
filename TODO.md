@@ -95,11 +95,14 @@ Pendientes y mejoras. Última revisión: 2026-06-10.
 > Único toque a v1: guard en `app/_layout.tsx` que delega el routing de `/v2/*` a su propio layout (aditivo).
 > Motion con `Animated` core (`useNativeDriver: Platform.OS!=='web'`) + `expo-linear-gradient`.
 
-- [ ] Fundamentos: `theme.ts`, `ui/*` (PressableScale, Card, Button, Badge, Screen, GradientHero, Skeleton, motion)
-- [ ] Plumbing: guard en `app/_layout.tsx`, `app/v2/_layout.tsx` (gate), `app/v2/(tabs)/_layout.tsx` (tab-bar animada)
-- [ ] Flujo principal: `/v2/login`, `/v2` (lista), `/v2/match/[id]`, `/v2/explore` (perfil), `/v2/menu`
-- [ ] Admin: crear-partido, jugadores, pagos, ajustes, whatsapp
-- [ ] Verificar `/v2` funcional (join/leave, filtros, idioma, login) en web y móvil
+- [x] Fundamentos: `theme.ts`, `ui/*` (PressableScale, Card, Button, Badge, Field, Screen, GradientHero, Skeleton, SectionTitle, motion)
+- [x] Plumbing: guard en `app/_layout.tsx`, `app/v2/_layout.tsx` (gate), `app/v2/(tabs)/_layout.tsx` (tab-bar animada)
+- [x] Flujo principal: `/v2/login`, `/v2` (lista), `/v2/match/[id]`, `/v2/explore` (perfil), `/v2/menu`
+- [x] Admin: crear-partido, jugadores, pagos, ajustes, whatsapp (`components/v2/admin/AdminScreen` wrapper)
+- [x] Bundla limpio en web (Metro, 1725 módulos, todas las rutas 200, `tsc` v2 limpio)
+- [ ] **Pendiente**: prueba visual/interacción real (login, join/leave, pagos) en navegador + móvil; pulir según feedback
+- [ ] **Pendiente**: warnings `shadow*`→`boxShadow` (cosméticos en web; opcional migrar)
+- [ ] **Pendiente**: cuando se valide, decidir si /v2 reemplaza a v1 (y borrar v1) o se mantiene el doble
 
 ## Hecho recientemente
 
