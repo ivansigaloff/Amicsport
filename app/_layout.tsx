@@ -61,6 +61,11 @@ export default function RootLayout() {
   useEffect(() => {
     if (!initialized) return;
 
+    // V2 redesign lives under /v2 and runs its own auth gate (app/v2/_layout).
+    // Don't apply the v1 redirects there so the parallel version is reachable
+    // and self-contained for testing. (v1 paths never start with 'v2'.)
+    if (segments[0] === 'v2') return;
+
     const inAuthGroup = segments[0] === 'login';
     const isResetPage = segments[0] === 'reset-password';
 
@@ -93,6 +98,7 @@ export default function RootLayout() {
         </Head>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="v2" options={{ headerShown: false }} />
           <Stack.Screen name="login" options={{ headerShown: false }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
         </Stack>

@@ -87,6 +87,20 @@ Pendientes y mejoras. Última revisión: 2026-06-10.
   la Fase B hasta aplicar la migración** (si no, los toggles de check-in/color/pagado darán error por
   columna inexistente). `paid` solo en modo test (`EXPO_PUBLIC_PAYMENTS_TEST_MODE`).
 
+## E. Rediseño V2 — nuevo aspecto en `/v2` (en progreso, 2026-06-13)
+
+> Versión actual **intacta**. Nueva en grupo de rutas paralelo `app/v2/`, navegable en **`/v2`**.
+> Decisiones: alcance = TODO (incl. admin) · color = libertad (fuera naranja, marca esmeralda/teal + lima) ·
+> plataforma = web + móvil por igual. Sistema de diseño nuevo en `components/v2/` (tokens + primitivos + motion).
+> Único toque a v1: guard en `app/_layout.tsx` que delega el routing de `/v2/*` a su propio layout (aditivo).
+> Motion con `Animated` core (`useNativeDriver: Platform.OS!=='web'`) + `expo-linear-gradient`.
+
+- [ ] Fundamentos: `theme.ts`, `ui/*` (PressableScale, Card, Button, Badge, Screen, GradientHero, Skeleton, motion)
+- [ ] Plumbing: guard en `app/_layout.tsx`, `app/v2/_layout.tsx` (gate), `app/v2/(tabs)/_layout.tsx` (tab-bar animada)
+- [ ] Flujo principal: `/v2/login`, `/v2` (lista), `/v2/match/[id]`, `/v2/explore` (perfil), `/v2/menu`
+- [ ] Admin: crear-partido, jugadores, pagos, ajustes, whatsapp
+- [ ] Verificar `/v2` funcional (join/leave, filtros, idioma, login) en web y móvil
+
 ## Hecho recientemente
 
 **2026-05-27**
