@@ -143,6 +143,13 @@ function MatchCardV2({ item, index, expanded, expandedWidth, onExpand, onJoin, j
   }
 
   // ------- carta destapada: la ficha completa -------
+  const estado = isOver ? { label: t('matches.finished', 'Finalizado'), tone: 'neutral' as const, icon: 'flag' }
+    : isStarted ? { label: t('matches.in_progress', 'En curso'), tone: 'warning' as const, icon: 'time' }
+    : isFull ? { label: t('matches.closed', 'Cerrado'), tone: 'danger' as const }
+    : free === 1 ? { label: t('matches.last_spot', 'Última plaza'), tone: 'warning' as const }
+    : (free / item.max_players) * 100 <= 25 ? { label: t('matches.last_spots', 'Últimas plazas'), tone: 'warning' as const }
+    : { label: t('matches.open', 'Abierto'), tone: 'success' as const };
+
   return (
     <AnimatedEntrance index={Math.min(index, 4)} style={expandedWidth ? { width: expandedWidth } : undefined}>
       <Card
@@ -160,9 +167,13 @@ function MatchCardV2({ item, index, expanded, expandedWidth, onExpand, onJoin, j
                 {fecha}{item.distance && item.distance !== 'Apto' ? ` · ${item.distance}` : ''}
               </Text>
             </View>
-            {isOver ? <Badge label={t('matches.finished', 'Finalizado')} tone="neutral" icon="flag" />
-              : isStarted ? <Badge label={t('matches.in_progress', 'En curso')} tone="warning" icon="time" />
-              : isFull ? <Badge label={t('matches.closed', 'Cerrado')} tone="danger" /> : null}
+            <View style={{ alignItems: 'flex-end', gap: 8 }}>
+              <Badge label={estado.label} tone={estado.tone} icon={estado.icon as any} />
+              <PressableScale onPress={() => onPress(item.id)} style={styles.verFicha}>
+                <Text style={styles.verFichaText}>{t('matches.see_card', 'Ver ficha')}</Text>
+                <Ionicons name="arrow-forward" size={12} color={C.text} />
+              </PressableScale>
+            </View>
           </View>
 
           {isFull && !isOver && (
@@ -177,7 +188,7 @@ function MatchCardV2({ item, index, expanded, expandedWidth, onExpand, onJoin, j
           )}
 
           {(joined || item.is_female || item.is_mixed || item.is_private || item.is_advanced) && (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
               {joined && <Badge tone="ink" icon="checkmark" label={t('matches.you_are_titular', 'Eres titular')} />}
               {item.userStatus?.guestCount > 0 && <Badge tone="neutral" label={`+${item.userStatus.guestCount} ${t('match_details.guests', 'invitados')}`} />}
               {item.is_female && <Badge size="sm" tone="brand" label={t('common.female')} />}
@@ -201,26 +212,17 @@ function MatchCardV2({ item, index, expanded, expandedWidth, onExpand, onJoin, j
             </Text>
           </View>
 
-          <View style={{ flexDirection: 'row', gap: 10, marginTop: S.md }}>
-            {canJoin && (
-              <Button
-                title={isPaid ? t('match_details.pay_spot', 'Pagar plaza') : t('matches.join_now', 'Me apunto')}
-                variant="brand"
-                size="sm"
-                loading={joining}
-                onPress={() => onJoin(item)}
-                style={{ flex: 1 }}
-              />
-            )}
+          {canJoin && (
             <Button
-              title={t('matches.see_card', 'Ver ficha')}
-              variant="ghost"
+              title={isPaid ? t('match_details.pay_spot', 'Pagar plaza') : t('matches.join_now', 'Me apunto')}
+              variant="brand"
               size="sm"
-              iconRight="arrow-forward"
-              onPress={() => onPress(item.id)}
-              style={{ flex: 1 }}
+              loading={joining}
+              onPress={() => onJoin(item)}
+              full
+              style={{ marginTop: S.sm + 2 }}
             />
-          </View>
+          )}
         </View>
 
         {shareMode && (
@@ -548,7 +550,7 @@ export default function V2Matches() {
                           item={m}
                           index={Math.min(i, 6)}
                           expanded={isExpanded}
-                          expandedWidth={Math.max(270, Math.min(width - 2 * S.lg, 720) - (sec.data.length - 1) * 56 - 10)}
+                          expandedWidth={Math.max(270, Math.min(width - 2 * S.lg, 720) - (sec.data.length - 1) * 78 - 10)}
                           onExpand={() => setExpandedByDay((prev) => ({ ...prev, [sec.iso]: String(m.id) }))}
                           onJoin={joinFromCard}
                           joining={joiningId === m.id}
@@ -673,31 +675,37 @@ const styles = StyleSheet.create({
   sectionTitle: { fontFamily: FONTS.extraBold, fontSize: 17, color: C.text, textTransform: 'capitalize', flex: 1 },
   sectionCount: { fontFamily: FONTS.monoMedium, fontSize: 11.5, color: C.textMuted, backgroundColor: C.surface, borderWidth: 1.5, borderColor: C.ink, paddingHorizontal: 8, paddingVertical: 2, borderRadius: R.pill, overflow: 'hidden' },
 
-  cardDivider: { borderTopWidth: 1.5, borderStyle: 'dashed', borderColor: C.border, marginVertical: 12 },
+  cardDivider: { borderTopWidth: 1.5, borderStyle: 'dashed', borderColor: C.border, marginVertical: 10 },
   shareCheck: { position: 'absolute', top: 10, right: 10, width: 24, height: 24, borderWidth: 2, borderColor: C.ink, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
   // ---- lomo vertical (carta tapada en el abanico)
   spine: {
-    width: 66, alignItems: 'center',
+    width: 88, alignItems: 'center',
     backgroundColor: C.surface, borderWidth: 2, borderColor: C.ink,
-    paddingVertical: 12, paddingLeft: 6, paddingRight: 2, gap: 6,
+    paddingVertical: 12, paddingLeft: 10, paddingRight: 4, gap: 6,
     ...SHADOW.sm,
   },
   spineSelected: { borderColor: C.accentStrong, shadowColor: C.accentStrong },
-  spineTime: { fontFamily: FONTS.black, fontSize: 15.5, color: C.text, letterSpacing: 0.3 },
-  spineCount: { fontFamily: FONTS.monoMedium, fontSize: 11, letterSpacing: 0.3 },
-  spineTitle: { fontFamily: FONTS.bold, fontSize: 12, color: C.textMuted, letterSpacing: 0.2 },
+  spineTime: { fontFamily: FONTS.black, fontSize: 18, color: C.text, letterSpacing: 0.3 },
+  spineCount: { fontFamily: FONTS.monoMedium, fontSize: 12.5, letterSpacing: 0.3 },
+  spineTitle: { fontFamily: FONTS.bold, fontSize: 13, color: C.textMuted, letterSpacing: 0.2 },
   spineYou: { width: 18, height: 18, backgroundColor: C.accent, borderWidth: 1.5, borderColor: C.ink, alignItems: 'center', justifyContent: 'center' },
   shareCheckStrip: { width: 20, height: 20, borderWidth: 2, borderColor: C.ink, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
   // ---- ficha (carta destapada)
-  fichaHora: { fontFamily: FONTS.black, fontSize: 42, lineHeight: 44, color: C.text, letterSpacing: 0.5 },
+  fichaHora: { fontFamily: FONTS.black, fontSize: 34, lineHeight: 36, color: C.text, letterSpacing: 0.5 },
   fichaFecha: { fontFamily: FONTS.monoMedium, fontSize: 11.5, letterSpacing: 1.6, color: C.textMuted, textTransform: 'uppercase', marginTop: 2 },
-  fichaTitle: { fontFamily: FONTS.extraBold, fontSize: 17, color: C.text, letterSpacing: -0.3, marginTop: 12 },
+  fichaTitle: { fontFamily: FONTS.extraBold, fontSize: 17, color: C.text, letterSpacing: -0.3, marginTop: 8 },
   fichaDir: { fontFamily: FONTS.medium, fontSize: 13, color: C.textMuted, marginTop: 2 },
+  verFicha: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    borderWidth: 1.5, borderStyle: 'dashed', borderColor: C.ink,
+    paddingHorizontal: 9, paddingVertical: 4, backgroundColor: 'transparent',
+  },
+  verFichaText: { fontFamily: FONTS.extraBold, fontSize: 10.5, color: C.text, letterSpacing: 0.8, textTransform: 'uppercase' },
   fichaCount: { fontFamily: FONTS.monoMedium, fontSize: 13.5, letterSpacing: 0.5 },
   fichaPrice: { fontFamily: FONTS.monoMedium, fontSize: 17, color: C.text },
   fichaEur: { fontSize: 10.5, color: C.textMuted, letterSpacing: 0.5 },
   stamp: {
-    position: 'absolute', right: 12, top: 34, zIndex: 5,
+    position: 'absolute', right: 104, top: 8, zIndex: 5,
     borderWidth: 2.5, borderColor: C.danger, backgroundColor: C.surface,
     paddingHorizontal: 10, paddingVertical: 3,
     transform: [{ rotate: '-8deg' }],
