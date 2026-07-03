@@ -368,7 +368,10 @@ export default function V2Matches() {
     return Object.keys(grouped).sort().map((iso) => {
       const isToday = iso === todayISO;
       const d = new Date(iso + 'T00:00:00');
-      const title = isToday ? t('common.today') : d.toLocaleDateString(i18n.language === 'en' ? 'en-US' : i18n.language === 'ca' ? 'ca-ES' : 'es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+      // el año solo cuando no es el actual — evita que un partido lejano
+      // (p. ej. seeds de test en 2027) parezca de este año
+      const sameYear = d.getFullYear() === new Date().getFullYear();
+      const title = isToday ? t('common.today') : d.toLocaleDateString(i18n.language === 'en' ? 'en-US' : i18n.language === 'ca' ? 'ca-ES' : 'es-ES', { weekday: 'long', day: 'numeric', month: 'long', ...(sameYear ? {} : { year: 'numeric' }) });
       return { iso, title, data: grouped[iso] };
     });
   }, [filtered, i18n.language, todayISO, t]);
