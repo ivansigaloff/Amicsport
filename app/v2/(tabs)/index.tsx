@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, Switch, Alert, useWindowDimensions, Platform, Modal, LayoutChangeEvent, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, Switch, Alert, useWindowDimensions, Platform, Modal, LayoutChangeEvent, Animated, Linking } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -7,6 +7,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { supabase } from '../../../lib/supabase';
 import { computeIsAdmin } from '../../../lib/auth';
+import { joinMatch } from '../../../lib/services/participantService';
+import { createPayment } from '../../../lib/services/paymentService';
+import { sendEmailNotification } from '../../../lib/services/notificationService';
 import { cacheMatchList } from '../../../lib/matchCache';
 import { shareMultipleMatches, copyMultipleMatchUrls } from '../../../lib/share';
 import { parseMatchDate, toISODate, getMatchTiming, barcelonaNow } from '../../../lib/date';
@@ -39,66 +42,173 @@ const availColor = (mList: any[]): string => {
 };
 
 // ---------------------------------------------------------------- Match card
-function MatchCardV2({ item, index, isAdmin, shareMode, shareSelected, onPress, onToggleShare }: any) {
-  const { t } = useTranslation();
+// Ficha «convocatoria»: en la baraja del día una carta va destapada (ficha
+// completa con alineación de puntos, sello y acciones) y el resto asoman como
+// lomos con la info básica — hora, campo y plazas. Tap en un lomo destapa esa
+// carta; el detalle solo se abre desde la carta destapada.
+const AVAIL_TONE = (joinedCount: number, max: number) => {
+  const free = max - joinedCount;
+  if (free <= 0) return C.availFull;
+  if ((free / max) * 100 <= 25) return C.availLow;
+  return C.availFree;
+};
+
+function LineupDots({ joined, max, mine }: { joined: number; max: number; mine: number }) {
+  const dots = [];
+  for (let i = 0; i < Math.min(max, 22); i++) {
+    const filled = i < joined;
+    const isMine = filled && i >= joined - mine;
+    dots.push(
+      <View
+        key={i}
+        style={[styles.dot, filled ? (isMine ? styles.dotMine : styles.dotFilled) : styles.dotFree]}
+      />
+    );
+  }
+  return <View style={styles.dotsRow}>{dots}</View>;
+}
+
+function MatchCardV2({ item, index, expanded, onExpand, onJoin, joining, shareMode, shareSelected, onPress, onToggleShare }: any) {
+  const { t, i18n } = useTranslation();
   const free = item.max_players - item.computed_joined;
-  const pct = (free / item.max_players) * 100;
   const isFull = free <= 0;
   const { isStarted, isOver } = useMemo(() => getMatchTiming(item.dateISO, item.time), [item.dateISO, item.time]);
 
-  const cap = isOver ? { label: t('matches.finished', 'Finalizado'), tone: 'neutral' as const }
-    : isStarted ? { label: t('matches.in_progress', 'En curso'), tone: 'warning' as const }
-    : { label: `${item.computed_joined}/${item.max_players}`, tone: isFull ? 'danger' as const : pct <= 25 ? 'warning' as const : 'success' as const };
-
   const joined = item.userStatus?.isJoined || item.userStatus?.guestCount > 0;
+  const mineCount = (item.userStatus?.isJoined ? 1 : 0) + (item.userStatus?.guestCount || 0);
+  const availColor = AVAIL_TONE(item.computed_joined, item.max_players);
+  const isPaid = item.requires_payment && item.price > 0;
+  const canJoin = !joined && !isFull && !isStarted && !isOver;
 
+  const fecha = useMemo(() => {
+    const locale = i18n.language === 'en' ? 'en-US' : i18n.language === 'ca' ? 'ca-ES' : 'es-ES';
+    try {
+      return new Date(`${item.dateISO}T00:00:00`).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' }).replace(/[.,]/g, '').toUpperCase();
+    } catch { return ''; }
+  }, [item.dateISO, i18n.language]);
+
+  const handleTap = () => {
+    if (shareMode) return onToggleShare(item.id);
+    if (expanded) onPress(item.id);
+    else onExpand();
+  };
+
+  // ------- lomo (carta tapada): toda la info básica en dos líneas -------
+  if (!expanded) {
+    const countColor = isOver ? C.textFaint : availColor === C.availLow ? C.warning : availColor;
+    return (
+      <PressableScale onPress={handleTap} onLongPress={() => onToggleShare(item.id)} style={[styles.strip, shareSelected && styles.stripSelected]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <Text style={styles.stripTime}>{item.time}</Text>
+          <Text style={styles.stripTitle} numberOfLines={1}>{item.title || item.venue}</Text>
+          {joined && (
+            <View style={styles.stripYou}>
+              <Ionicons name="checkmark" size={11} color={C.ink} />
+            </View>
+          )}
+          {shareMode && (
+            <View style={[styles.shareCheckStrip, shareSelected && { backgroundColor: C.brand, borderColor: C.brand }]}>
+              {shareSelected && <Ionicons name="checkmark" size={13} color="#fff" />}
+            </View>
+          )}
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 5 }}>
+          <View style={[styles.stripDotBase, { backgroundColor: countColor }]} />
+          <Text style={[styles.stripCount, { color: countColor }]}>
+            {isOver ? t('matches.finished', 'Finalizado').toUpperCase() : `${item.computed_joined}/${item.max_players}`}
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            {item.is_female && <Ionicons name="female" size={12} color={C.textMuted} />}
+            {item.is_mixed && <Ionicons name="people-outline" size={13} color={C.textMuted} />}
+            {item.is_advanced && <Ionicons name="trophy-outline" size={12} color={C.textMuted} />}
+            {item.is_private && <Ionicons name="lock-closed-outline" size={12} color={C.textMuted} />}
+            {!!item.distance && item.distance !== 'Apto' && <Text style={styles.stripMeta}>{item.distance}</Text>}
+          </View>
+          <View style={{ flex: 1 }} />
+          <Text style={styles.stripPrice}>{Number(item.price).toFixed(2).replace('.', ',')} €</Text>
+        </View>
+      </PressableScale>
+    );
+  }
+
+  // ------- carta destapada: la ficha completa -------
   return (
-    <AnimatedEntrance index={index} style={{ flex: 1 }}>
+    <AnimatedEntrance index={Math.min(index, 4)}>
       <Card
-        onPress={() => (shareMode ? onToggleShare(item.id) : onPress(item.id))}
+        onPress={handleTap}
         onLongPress={() => onToggleShare(item.id)}
         selected={shareSelected}
-        elevation="sm"
+        elevation="md"
         padded={false}
-        style={{ overflow: 'hidden' }}
       >
-        {/* accent rail by availability */}
-        <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: cap.tone === 'success' ? C.availFree : cap.tone === 'warning' ? C.availLow : cap.tone === 'danger' ? C.availFull : C.borderStrong }} />
-        <View style={{ padding: S.lg, paddingLeft: S.lg + 4 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: S.sm }}>
-            <Text style={styles.cardTitle} numberOfLines={1}>{item.title || item.venue}</Text>
-            <Badge label={cap.label} tone={cap.tone} icon={isOver ? 'flag' : isStarted ? 'time' : 'people'} />
+        <View style={{ padding: S.lg, paddingBottom: S.md }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: S.sm }}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.fichaHora}>{item.time}</Text>
+              <Text style={styles.fichaFecha}>
+                {fecha}{item.distance && item.distance !== 'Apto' ? ` · ${item.distance}` : ''}
+              </Text>
+            </View>
+            {isOver ? <Badge label={t('matches.finished', 'Finalizado')} tone="neutral" icon="flag" />
+              : isStarted ? <Badge label={t('matches.in_progress', 'En curso')} tone="warning" icon="time" />
+              : isFull ? <Badge label={t('matches.closed', 'Cerrado')} tone="danger" /> : null}
           </View>
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5 }}>
-            <Ionicons name="location-outline" size={14} color={C.textFaint} />
-            <Text style={styles.cardVenue} numberOfLines={1}>{item.venue}</Text>
-          </View>
+          {isFull && !isOver && (
+            <View style={styles.stamp} pointerEvents="none">
+              <Text style={styles.stampText}>{t('matches.full_stamp', 'COMPLETO')}</Text>
+            </View>
+          )}
 
-          {(item.is_female || item.is_mixed || item.is_private || item.is_advanced || (item.distance && item.distance !== 'Apto')) && (
+          <Text style={styles.fichaTitle} numberOfLines={1}>{item.title || item.venue}</Text>
+          {!!item.venue && item.venue !== item.title && (
+            <Text style={styles.fichaDir} numberOfLines={1}>{item.venue}</Text>
+          )}
+
+          {(joined || item.is_female || item.is_mixed || item.is_private || item.is_advanced) && (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+              {joined && <Badge tone="ink" icon="checkmark" label={t('matches.you_are_titular', 'Eres titular')} />}
+              {item.userStatus?.guestCount > 0 && <Badge tone="neutral" label={`+${item.userStatus.guestCount} ${t('match_details.guests', 'invitados')}`} />}
               {item.is_female && <Badge size="sm" tone="brand" label={t('common.female')} />}
               {item.is_mixed && <Badge size="sm" tone="brand" label={t('common.mixed')} />}
               {item.is_private && <Badge size="sm" tone="neutral" label={t('common.private')} icon="lock-closed" />}
               {item.is_advanced && <Badge size="sm" tone="lime" label={t('common.advanced')} icon="trophy" />}
-              {item.distance && item.distance !== 'Apto' && <Badge size="sm" tone="neutral" label={item.distance} />}
             </View>
           )}
 
           <View style={styles.cardDivider} />
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Ionicons name="time-outline" size={17} color={C.text} />
-              <Text style={styles.cardTime}>{item.time}</Text>
-              {joined && !shareMode && (
-                <View style={styles.joinedPill}>
-                  <Ionicons name="checkmark-circle" size={13} color={C.ink} />
-                  <Text style={styles.joinedText}>{t('match_details.you_are_in', 'Apuntado')}</Text>
-                </View>
-              )}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: S.md }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, flexWrap: 'wrap' }}>
+              <LineupDots joined={item.computed_joined} max={item.max_players} mine={mineCount} />
+              <Text style={[styles.fichaCount, { color: availColor === C.availLow ? C.warning : availColor }]}>
+                {item.computed_joined}/{item.max_players}
+              </Text>
             </View>
-            <Text style={styles.cardPrice}>{Number(item.price).toFixed(2)}€</Text>
+            <Text style={styles.fichaPrice}>
+              {Number(item.price).toFixed(2).replace('.', ',')}<Text style={styles.fichaEur}> EUR</Text>
+            </Text>
+          </View>
+
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: S.md }}>
+            {canJoin && (
+              <Button
+                title={isPaid ? t('match_details.pay_spot', 'Pagar plaza') : t('matches.join_now', 'Me apunto')}
+                variant="brand"
+                size="sm"
+                loading={joining}
+                onPress={() => onJoin(item)}
+                style={{ flex: 1 }}
+              />
+            )}
+            <Button
+              title={t('matches.see_card', 'Ver ficha')}
+              variant="ghost"
+              size="sm"
+              iconRight="arrow-forward"
+              onPress={() => onPress(item.id)}
+              style={{ flex: 1 }}
+            />
           </View>
         </View>
 
@@ -140,11 +250,15 @@ export default function V2Matches() {
   const [shareIds, setShareIds] = useState<Set<string>>(new Set());
   const shareMode = shareIds.size > 0;
 
+  // baraja: qué carta va destapada en cada día + alta en curso desde la carta
+  const [expandedByDay, setExpandedByDay] = useState<Record<string, string>>({});
+  const [joiningId, setJoiningId] = useState<string | null>(null);
+  const meRef = useRef<{ id: string | null; name: string }>({ id: null, name: '' });
+
   const scrollRef = useRef<ScrollView>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
   const sectionY = useRef<Record<string, number>>({});
 
-  const columns = width > 1280 ? 3 : width > 820 ? 2 : 1;
   const todayISO = new Date().toISOString().split('T')[0];
   const anyFilter = fFemale || fMixed || fPrivate || fAdvanced || fMorning || fEvening;
 
@@ -154,6 +268,7 @@ export default function V2Matches() {
     const user = session?.user ?? null;
     const userName = user?.user_metadata?.full_name || user?.email || '';
     const safeUserName = userName.replace(/[,.()%]/g, ' ').trim();
+    meRef.current = { id: user?.id ?? null, name: safeUserName };
     const matchCols = 'id, title, venue, location_url, date, match_date, time, price, max_players, joined_players, level, distance, created_at, is_female, is_mixed, is_private, is_advanced, requires_payment';
     const today = new Date().toISOString().split('T')[0];
     const includePast = showPastRef.current;
@@ -258,6 +373,34 @@ export default function V2Matches() {
   };
 
   const openMatch = (id: string) => router.push(`/v2/match/${id}` as any);
+
+  // Alta directa desde la carta destapada. Gratis → RPC atómica join_match
+  // (misma que el detalle, capacidad garantizada en servidor); de pago →
+  // redirige a Monei igual que initiatePayment del detalle.
+  const notify = (title: string, msg: string) => {
+    if (Platform.OS === 'web') window.alert(`${title}\n${msg}`);
+    else Alert.alert(title, msg);
+  };
+  const joinFromCard = async (m: any) => {
+    const me = meRef.current;
+    if (!me.id) return notify(t('match_details.login_required', 'Inicia sesión'), t('match_details.login_required_msg', 'Necesitas iniciar sesión para apuntarte.'));
+    setJoiningId(m.id);
+    try {
+      if (m.requires_payment && m.price > 0) {
+        const { redirectUrl } = await createPayment(m.id, 'prod');
+        if (Platform.OS === 'web') { window.location.href = redirectUrl; return; }
+        await Linking.openURL(redirectUrl);
+      } else {
+        await joinMatch(m.id, me.id, me.name, (tb: string) => tb);
+        sendEmailNotification(m, 'join', me.name, m.computed_joined + 1, m.id);
+        await fetchMatches(true);
+        notify(t('match_details.joined_msg', '¡Apuntado!'), t('match_details.joined_success', 'Tu plaza está reservada.'));
+      }
+    } catch (err: any) {
+      notify(t('common.error', 'Error'), err.message || t('common.connection_error', 'Error de conexión'));
+    }
+    setJoiningId(null);
+  };
   const toggleShare = useCallback((id: string) => setShareIds((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; }), []);
   const cancelShare = () => setShareIds(new Set());
 
@@ -377,12 +520,28 @@ export default function V2Matches() {
                   <Text style={styles.sectionTitle}>{sec.title}</Text>
                   <Text style={styles.sectionCount}>{sec.data.length}</Text>
                 </View>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-                  {sec.data.map((m: any, i: number) => (
-                    <View key={m.id} style={{ width: columns === 1 ? '100%' : `${100 / columns}%`, flexGrow: 1, flexBasis: columns === 1 ? '100%' : 280, maxWidth: columns === 1 ? '100%' : '48%' }}>
-                      <MatchCardV2 item={m} index={Math.min(i, 6)} isAdmin={isAdmin} shareMode={shareMode} shareSelected={shareIds.has(m.id.toString()) || shareIds.has(m.id)} onPress={openMatch} onToggleShare={toggleShare} />
-                    </View>
-                  ))}
+                {/* baraja del día: una carta destapada, el resto lomos tapados */}
+                <View style={{ maxWidth: 720, width: '100%' }}>
+                  {sec.data.map((m: any, i: number) => {
+                    const expandedId = expandedByDay[sec.iso] ?? String(sec.data[0].id);
+                    const isExpanded = String(m.id) === expandedId;
+                    return (
+                      <View key={m.id} style={{ zIndex: isExpanded ? 60 : sec.data.length - i, marginTop: i === 0 ? 0 : -8 }}>
+                        <MatchCardV2
+                          item={m}
+                          index={Math.min(i, 6)}
+                          expanded={isExpanded}
+                          onExpand={() => setExpandedByDay((prev) => ({ ...prev, [sec.iso]: String(m.id) }))}
+                          onJoin={joinFromCard}
+                          joining={joiningId === m.id}
+                          shareMode={shareMode}
+                          shareSelected={shareIds.has(m.id.toString()) || shareIds.has(m.id)}
+                          onPress={openMatch}
+                          onToggleShare={toggleShare}
+                        />
+                      </View>
+                    );
+                  })}
                 </View>
               </View>
             ))
@@ -496,14 +655,44 @@ const styles = StyleSheet.create({
   sectionTitle: { fontFamily: FONTS.extraBold, fontSize: 17, color: C.text, textTransform: 'capitalize', flex: 1 },
   sectionCount: { fontFamily: FONTS.monoMedium, fontSize: 11.5, color: C.textMuted, backgroundColor: C.surface, borderWidth: 1.5, borderColor: C.ink, paddingHorizontal: 8, paddingVertical: 2, borderRadius: R.pill, overflow: 'hidden' },
 
-  cardTitle: { flex: 1, fontFamily: FONTS.extraBold, fontSize: 16, color: C.text, letterSpacing: -0.3 },
-  cardVenue: { color: C.textMuted, fontFamily: FONTS.medium, fontSize: 13, flex: 1 },
-  cardDivider: { height: 1, backgroundColor: C.border, marginVertical: 12 },
-  cardTime: { fontFamily: FONTS.black, fontSize: 17, letterSpacing: 0.5, color: C.text },
-  cardPrice: { fontFamily: FONTS.monoMedium, fontSize: 16, color: C.brandDeep },
-  joinedPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: C.accent, borderWidth: 1, borderColor: C.ink, paddingHorizontal: 8, paddingVertical: 3, borderRadius: R.pill, marginLeft: 4 },
-  joinedText: { color: C.ink, fontFamily: FONTS.bold, fontSize: 10.5 },
+  cardDivider: { borderTopWidth: 1.5, borderStyle: 'dashed', borderColor: C.border, marginVertical: 12 },
   shareCheck: { position: 'absolute', top: 10, right: 10, width: 24, height: 24, borderWidth: 2, borderColor: C.ink, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
+  // ---- lomo (carta tapada)
+  strip: {
+    backgroundColor: C.surface, borderWidth: 2, borderColor: C.ink,
+    paddingHorizontal: S.lg, paddingVertical: 11, paddingTop: 17,
+    ...SHADOW.sm,
+  },
+  stripSelected: { borderColor: C.accentStrong, shadowColor: C.accentStrong },
+  stripTime: { fontFamily: FONTS.black, fontSize: 19, color: C.text, letterSpacing: 0.5 },
+  stripTitle: { flex: 1, fontFamily: FONTS.bold, fontSize: 14, color: C.text, letterSpacing: -0.2 },
+  stripYou: { width: 18, height: 18, backgroundColor: C.accent, borderWidth: 1.5, borderColor: C.ink, alignItems: 'center', justifyContent: 'center' },
+  stripCount: { fontFamily: FONTS.monoMedium, fontSize: 13, letterSpacing: 0.5 },
+  stripDotBase: { width: 8, height: 8, borderWidth: 1, borderColor: C.ink },
+  stripMeta: { fontFamily: FONTS.monoMedium, fontSize: 11, color: C.textMuted, letterSpacing: 0.5 },
+  stripPrice: { fontFamily: FONTS.monoMedium, fontSize: 12.5, color: C.textMuted },
+  shareCheckStrip: { width: 20, height: 20, borderWidth: 2, borderColor: C.ink, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
+  // ---- ficha (carta destapada)
+  fichaHora: { fontFamily: FONTS.black, fontSize: 42, lineHeight: 44, color: C.text, letterSpacing: 0.5 },
+  fichaFecha: { fontFamily: FONTS.monoMedium, fontSize: 11.5, letterSpacing: 1.6, color: C.textMuted, textTransform: 'uppercase', marginTop: 2 },
+  fichaTitle: { fontFamily: FONTS.extraBold, fontSize: 17, color: C.text, letterSpacing: -0.3, marginTop: 12 },
+  fichaDir: { fontFamily: FONTS.medium, fontSize: 13, color: C.textMuted, marginTop: 2 },
+  fichaCount: { fontFamily: FONTS.monoMedium, fontSize: 13.5, letterSpacing: 0.5 },
+  fichaPrice: { fontFamily: FONTS.monoMedium, fontSize: 17, color: C.text },
+  fichaEur: { fontSize: 10.5, color: C.textMuted, letterSpacing: 0.5 },
+  stamp: {
+    position: 'absolute', right: 12, top: 34, zIndex: 5,
+    borderWidth: 2.5, borderColor: C.danger, backgroundColor: C.surface,
+    paddingHorizontal: 10, paddingVertical: 3,
+    transform: [{ rotate: '-8deg' }],
+  },
+  stampText: { fontFamily: FONTS.black, fontSize: 15, color: C.danger, letterSpacing: 1.5, textTransform: 'uppercase' },
+  // ---- puntitos de alineación
+  dotsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, alignItems: 'center' },
+  dot: { width: 10, height: 10, borderRadius: 5 },
+  dotFilled: { backgroundColor: C.brand, borderWidth: 1, borderColor: C.brandDeep },
+  dotMine: { backgroundColor: C.accent, borderWidth: 1.5, borderColor: C.ink },
+  dotFree: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: C.textFaint },
 
   empty: { alignItems: 'center', paddingVertical: 70, gap: 12 },
   emptyText: { color: C.textMuted, fontFamily: FONTS.semibold, fontSize: 15 },
