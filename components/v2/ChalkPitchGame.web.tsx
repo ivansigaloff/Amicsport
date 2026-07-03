@@ -19,15 +19,14 @@ const CONFETTI_COLORS = ['#FFC91F', '#17713A', '#D63415', '#FFFFFF'];
 const CSS = `
 .amic-pitch{
   position:relative;height:300px;max-width:440px;width:100%;align-self:center;
-  border:2px solid rgba(244,250,240,.5);
-  background:
-    repeating-linear-gradient(0deg,transparent 0 37px,rgba(255,255,255,.045) 37px 74px),
-    #0F4A26;
+  border:2px solid rgba(244,250,240,.65);
+  background:repeating-linear-gradient(0deg,#186234 0 37px,#124D28 37px 74px);
   box-shadow:8px 8px 0 rgba(0,0,0,.45);
   overflow:hidden;touch-action:pan-y;
 }
-.amic-pitch .halfline{position:absolute;left:0;right:0;top:50%;border-top:2px dashed rgba(244,250,240,.55)}
-.amic-pitch .centerspot{position:absolute;left:18%;top:50%;width:8px;height:8px;margin:-4px;border-radius:50%;background:rgba(244,250,240,.8)}
+.amic-pitch .halfline{position:absolute;left:0;right:0;top:50%;border-top:2px dashed rgba(244,250,240,.9)}
+.amic-pitch .centerspot{position:absolute;left:18%;top:50%;width:8px;height:8px;margin:-4px;border-radius:50%;background:#FFFFFF}
+.amic-pitch .centercircle{position:absolute;left:18%;top:50%;width:96px;height:96px;margin:-48px;border-radius:50%;border:2px dashed rgba(244,250,240,.7)}
 .amic-pitch .hint{
   position:absolute;left:12px;top:9px;z-index:3;
   font-family:'IBMPlexMono_500Medium',monospace;font-size:10.5px;letter-spacing:.16em;
@@ -44,8 +43,8 @@ const CSS = `
 .amic-pitch .goal .frame{
   position:absolute;inset:0;border:4px solid rgba(244,250,240,.85);border-right:none;
   background:
-    repeating-linear-gradient(0deg,transparent 0 12px,rgba(244,250,240,.22) 12px 13px),
-    repeating-linear-gradient(90deg,transparent 0 12px,rgba(244,250,240,.22) 12px 13px);
+    repeating-linear-gradient(0deg,transparent 0 12px,rgba(244,250,240,.3) 12px 13px),
+    repeating-linear-gradient(90deg,transparent 0 12px,rgba(244,250,240,.3) 12px 13px);
 }
 .amic-pitch .goal .label{
   position:absolute;left:-2px;bottom:-22px;white-space:nowrap;
@@ -215,6 +214,7 @@ export default function ChalkPitchGame() {
           {t('login.game_goals', 'GOLES')} <b ref={countRef as any}>0</b>
         </span>
         <div className="halfline" />
+        <div className="centercircle" />
         <div className="centerspot" />
         <div className="goal" ref={goalRef}>
           <div className="frame" />
