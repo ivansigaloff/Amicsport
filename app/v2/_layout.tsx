@@ -4,6 +4,7 @@ import { View, ActivityIndicator } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { C } from '../../components/v2/ui';
 import ChalkCursor from '../../components/v2/ChalkCursor';
+import PitchStripes from '../../components/v2/PitchStripes';
 
 /**
  * V2 (redesign) navigation root. Self-contained auth gate so /v2 works as a
@@ -49,6 +50,7 @@ export default function V2Layout() {
   return (
     <>
       <ChalkCursor />
+      <PitchStripes />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg } }} />
     </>
   );
