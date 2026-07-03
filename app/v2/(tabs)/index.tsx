@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, ScrollView, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, Switch, Alert, useWindowDimensions, Platform, Modal, LayoutChangeEvent, Animated, Linking } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useEffect, useState, useMemo, useRef, useCallback, lazy, Suspense } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
@@ -126,18 +126,22 @@ function MatchCardV2({ item, index, expanded, expandedWidth, onExpand, onJoin, j
             <Ionicons name="checkmark" size={11} color={C.ink} />
           </View>
         )}
-        <VerticalText text={item.title || item.venue} style={styles.spineTitle} />
-        <View style={{ alignItems: 'center', gap: 5 }}>
-          {item.is_female && <Ionicons name="female" size={12} color={C.textMuted} />}
-          {item.is_mixed && <Ionicons name="people-outline" size={13} color={C.textMuted} />}
-          {item.is_advanced && <Ionicons name="trophy-outline" size={12} color={C.textMuted} />}
-          {item.is_private && <Ionicons name="lock-closed-outline" size={12} color={C.textMuted} />}
-          {shareMode && (
-            <View style={[styles.shareCheckStrip, shareSelected && { backgroundColor: C.brand, borderColor: C.brand }]}>
-              {shareSelected && <Ionicons name="checkmark" size={13} color="#fff" />}
-            </View>
-          )}
+        {/* dos columnas verticales: campo girado + iconos de características */}
+        <View style={{ flex: 1, alignSelf: 'stretch', flexDirection: 'row', alignItems: 'stretch' }}>
+          <VerticalText text={item.title || item.venue} style={styles.spineTitle} />
+          <View style={{ width: 24, alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            {item.is_female && <Ionicons name="female" size={14} color={C.textMuted} />}
+            {item.is_mixed && <Ionicons name="people-outline" size={15} color={C.textMuted} />}
+            {item.is_advanced && <Ionicons name="trophy-outline" size={14} color={C.textMuted} />}
+            {item.is_private && <Ionicons name="lock-closed-outline" size={14} color={C.textMuted} />}
+            {!!item.distance && item.distance !== 'Apto' && <Text style={styles.spineMeta}>{item.distance}</Text>}
+          </View>
         </View>
+        {shareMode && (
+          <View style={[styles.shareCheckStrip, shareSelected && { backgroundColor: C.brand, borderColor: C.brand }]}>
+            {shareSelected && <Ionicons name="checkmark" size={13} color="#fff" />}
+          </View>
+        )}
       </PressableScale>
     );
   }
@@ -328,6 +332,18 @@ export default function V2Matches() {
   }, []);
 
   useEffect(() => { fetchMatches(); setSelectedDate(todayISO); checkRole(); }, []);
+
+  // Al volver a esta pantalla (p. ej. desde la ficha de un partido tras
+  // apuntarse/desapuntarse) los datos se refrescan en silencio. El primer
+  // focus coincide con el montaje, que ya hace fetch — se salta.
+  const didFocus = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (!didFocus.current) { didFocus.current = true; return; }
+      fetchMatches(true);
+    }, [fetchMatches])
+  );
+
   const didToggle = useRef(false);
   useEffect(() => { showPastRef.current = showPast; if (!didToggle.current) { didToggle.current = true; return; } fetchMatches(); }, [showPast, fetchMatches]);
 
@@ -536,36 +552,58 @@ export default function V2Matches() {
                   <Text style={styles.sectionTitle}>{sec.title}</Text>
                   <Text style={styles.sectionCount}>{sec.data.length}</Text>
                 </View>
-                {/* baraja del día: abanico horizontal — lomos verticales
-                    tapados y la carta destapada ocupando el resto */}
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={{ maxWidth: 720 }}
-                  contentContainerStyle={{ alignItems: 'stretch', paddingBottom: 8, paddingRight: 8 }}
-                >
-                  {sec.data.map((m: any, i: number) => {
-                    const expandedId = expandedByDay[sec.iso] ?? String(sec.data[0].id);
-                    const isExpanded = String(m.id) === expandedId;
-                    return (
-                      <View key={m.id} style={{ zIndex: isExpanded ? 60 : i + 1, marginLeft: i === 0 ? 0 : -10, flexDirection: 'row', alignItems: 'stretch' }}>
-                        <MatchCardV2
-                          item={m}
-                          index={Math.min(i, 6)}
-                          expanded={isExpanded}
-                          expandedWidth={Math.max(270, Math.min(width - 2 * S.lg, 720) - (sec.data.length - 1) * 78 - 10)}
-                          onExpand={() => setExpandedByDay((prev) => ({ ...prev, [sec.iso]: String(m.id) }))}
-                          onJoin={joinFromCard}
-                          joining={joiningId === m.id}
-                          shareMode={shareMode}
-                          shareSelected={shareIds.has(m.id.toString()) || shareIds.has(m.id)}
-                          onPress={openMatch}
-                          onToggleShare={toggleShare}
-                        />
-                      </View>
-                    );
-                  })}
-                </ScrollView>
+                {isDesktop ? (
+                  /* PC: sin solape — todas las fichas enteras en fila */
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14, alignItems: 'flex-start' }}>
+                    {sec.data.map((m: any, i: number) => (
+                      <MatchCardV2
+                        key={m.id}
+                        item={m}
+                        index={Math.min(i, 6)}
+                        expanded
+                        expandedWidth={340}
+                        onExpand={() => {}}
+                        onJoin={joinFromCard}
+                        joining={joiningId === m.id}
+                        shareMode={shareMode}
+                        shareSelected={shareIds.has(m.id.toString()) || shareIds.has(m.id)}
+                        onPress={openMatch}
+                        onToggleShare={toggleShare}
+                      />
+                    ))}
+                  </View>
+                ) : (
+                  /* móvil: abanico horizontal — lomos verticales tapados y
+                     la carta destapada ocupando el resto */
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={{ maxWidth: 720 }}
+                    contentContainerStyle={{ alignItems: 'stretch', paddingBottom: 8, paddingRight: 8 }}
+                  >
+                    {sec.data.map((m: any, i: number) => {
+                      const expandedId = expandedByDay[sec.iso] ?? String(sec.data[0].id);
+                      const isExpanded = String(m.id) === expandedId;
+                      return (
+                        <View key={m.id} style={{ zIndex: isExpanded ? 60 : i + 1, marginLeft: i === 0 ? 0 : -10, flexDirection: 'row', alignItems: 'stretch' }}>
+                          <MatchCardV2
+                            item={m}
+                            index={Math.min(i, 6)}
+                            expanded={isExpanded}
+                            expandedWidth={Math.max(270, Math.min(width - 2 * S.lg, 720) - (sec.data.length - 1) * 96 - 10)}
+                            onExpand={() => setExpandedByDay((prev) => ({ ...prev, [sec.iso]: String(m.id) }))}
+                            onJoin={joinFromCard}
+                            joining={joiningId === m.id}
+                            shareMode={shareMode}
+                            shareSelected={shareIds.has(m.id.toString()) || shareIds.has(m.id)}
+                            onPress={openMatch}
+                            onToggleShare={toggleShare}
+                          />
+                        </View>
+                      );
+                    })}
+                  </ScrollView>
+                )}
               </View>
             ))
           )}
@@ -682,15 +720,16 @@ const styles = StyleSheet.create({
   shareCheck: { position: 'absolute', top: 10, right: 10, width: 24, height: 24, borderWidth: 2, borderColor: C.ink, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
   // ---- lomo vertical (carta tapada en el abanico)
   spine: {
-    width: 88, alignItems: 'center',
+    width: 106, alignItems: 'center',
     backgroundColor: C.surface, borderWidth: 2, borderColor: C.ink,
-    paddingVertical: 12, paddingLeft: 10, paddingRight: 4, gap: 6,
+    paddingVertical: 12, paddingLeft: 12, paddingRight: 6, gap: 6,
     ...SHADOW.sm,
   },
   spineSelected: { borderColor: C.accentStrong, shadowColor: C.accentStrong },
   spineTime: { fontFamily: FONTS.black, fontSize: 18, color: C.text, letterSpacing: 0.3 },
   spineCount: { fontFamily: FONTS.monoMedium, fontSize: 12.5, letterSpacing: 0.3 },
   spineTitle: { fontFamily: FONTS.bold, fontSize: 13, color: C.textMuted, letterSpacing: 0.2 },
+  spineMeta: { fontFamily: FONTS.monoMedium, fontSize: 10, color: C.textMuted, letterSpacing: 0.3 },
   spineYou: { width: 18, height: 18, backgroundColor: C.accent, borderWidth: 1.5, borderColor: C.ink, alignItems: 'center', justifyContent: 'center' },
   shareCheckStrip: { width: 20, height: 20, borderWidth: 2, borderColor: C.ink, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
   // ---- ficha (carta destapada)
