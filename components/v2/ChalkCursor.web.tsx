@@ -11,7 +11,7 @@ import { useEffect } from 'react';
  * modo que v1 conserva el cursor del sistema.
  */
 const CSS = `
-#amic-chalk-cursor{position:fixed;z-index:9999;pointer-events:none;left:0;top:0;mix-blend-mode:difference}
+#amic-chalk-cursor{position:fixed;z-index:2147483647;pointer-events:none;left:0;top:0;mix-blend-mode:difference}
 #amic-chalk-cursor .dot{position:absolute;left:-3px;top:-3px;width:6px;height:6px;background:#fff;border-radius:50%}
 #amic-chalk-cursor .ring{
   position:absolute;left:-16px;top:-16px;width:32px;height:32px;border-radius:50%;
