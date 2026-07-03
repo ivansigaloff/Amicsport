@@ -275,6 +275,7 @@ export default function V2Matches() {
   const scrollRef = useRef<ScrollView>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
   const sectionY = useRef<Record<string, number>>({});
+  const contentTopY = useRef(0);
 
   const todayISO = new Date().toISOString().split('T')[0];
   const anyFilter = fFemale || fMixed || fPrivate || fAdvanced || fMorning || fEvening;
@@ -400,8 +401,10 @@ export default function V2Matches() {
 
   const onSelectDate = (iso: string) => {
     setSelectedDate(iso);
+    // el y de la sección es relativo al contenedor de contenido; se suma su
+    // offset dentro del scroll para aterrizar en el día correcto
     const y = sectionY.current[iso];
-    if (y != null) scrollRef.current?.scrollTo({ y: Math.max(y - 8, 0), animated: true });
+    if (y != null) scrollRef.current?.scrollTo({ y: Math.max(contentTopY.current + y - 60, 0), animated: true });
   };
 
   const openMatch = (id: string) => router.push(`/v2/match/${id}` as any);
@@ -517,7 +520,10 @@ export default function V2Matches() {
           </View>
         </View>
 
-        <View style={{ paddingHorizontal: S.lg, maxWidth: 1320, width: '100%', alignSelf: 'center' }}>
+        <View
+          style={{ paddingHorizontal: S.lg, maxWidth: 1320, width: '100%', alignSelf: 'center' }}
+          onLayout={(e: LayoutChangeEvent) => { contentTopY.current = e.nativeEvent.layout.y; }}
+        >
           {mapOpen && (
             <View style={{ marginTop: S.md, borderRadius: R.lg, overflow: 'hidden', height: 300, borderWidth: 2, borderColor: C.ink, ...SHADOW.sm }}>
               <Suspense fallback={<MapFallback />}>
