@@ -9,6 +9,7 @@ import Head from 'expo-router/head';
 import { supabase } from '../../lib/supabase';
 import { getBaseUrl, validatePassword } from '../../lib/share';
 import { Button, Field, AnimatedEntrance, C, FONTS, GRADIENTS, R, S, SHADOW } from '../../components/v2/ui';
+import ChalkPitchGame from '../../components/v2/ChalkPitchGame';
 
 export default function V2Login() {
   const { t } = useTranslation();
@@ -146,6 +147,14 @@ export default function V2Login() {
             </View>
           </AnimatedEntrance>
 
+          {Platform.OS === 'web' && (
+            <AnimatedEntrance delay={220} distance={24}>
+              <View style={styles.gameWrap}>
+                <ChalkPitchGame />
+              </View>
+            </AnimatedEntrance>
+          )}
+
           <Text style={styles.footer}>Powered by Eurekiano Solutions © 2026</Text>
         </ScrollView>
       </SafeAreaView>
@@ -167,4 +176,5 @@ const styles = StyleSheet.create({
   segmentTextActive: { color: C.brandDeep },
   link: { color: C.brandStrong, fontSize: 13.5, fontFamily: FONTS.bold, padding: 2 },
   footer: { textAlign: 'center', color: 'rgba(255,255,255,0.5)', fontSize: 12, fontFamily: FONTS.medium, marginTop: S.xxl },
+  gameWrap: { width: '100%', maxWidth: 440, alignSelf: 'center', marginTop: S.xxl },
 });

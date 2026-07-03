@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { C } from '../../components/v2/ui';
+import ChalkCursor from '../../components/v2/ChalkCursor';
 
 /**
  * V2 (redesign) navigation root. Self-contained auth gate so /v2 works as a
@@ -45,5 +46,10 @@ export default function V2Layout() {
     );
   }
 
-  return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg } }} />;
+  return (
+    <>
+      <ChalkCursor />
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg } }} />
+    </>
+  );
 }

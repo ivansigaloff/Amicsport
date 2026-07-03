@@ -1,4 +1,4 @@
-import { View, ViewStyle } from 'react-native';
+import { Animated, View, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { C, GRADIENTS, S } from '../theme';
 
@@ -6,6 +6,9 @@ import { C, GRADIENTS, S } from '../theme';
  * Pizarra del vestuario: banda superior en verde botella profundo con
  * geometría de tiza (círculo central y línea discontinua) de fondo.
  * Esquinas cuadradas.
+ *
+ * `parallax`: pásale el Animated.Value del scroll vertical y la geometría de
+ * tiza se desplaza a ~1/3 de la velocidad del contenido (profundidad sutil).
  */
 export default function GradientHero({
   children,
@@ -13,13 +16,18 @@ export default function GradientHero({
   style,
   topInset = 0,
   chalk = true,
+  parallax,
 }: {
   children?: React.ReactNode;
   colors?: readonly string[];
   style?: ViewStyle;
   topInset?: number;
   chalk?: boolean;
+  parallax?: Animated.Value;
 }) {
+  const chalkShift = parallax
+    ? parallax.interpolate({ inputRange: [0, 600], outputRange: [0, 210], extrapolateLeft: 'clamp' })
+    : 0;
   return (
     <LinearGradient
       colors={colors as any}
@@ -28,7 +36,13 @@ export default function GradientHero({
       style={[{ paddingTop: topInset + S.lg, paddingHorizontal: S.xl, paddingBottom: S.xl, overflow: 'hidden' }, style]}
     >
       {chalk && (
-        <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.28 }}>
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.28,
+            transform: [{ translateY: chalkShift }],
+          }}
+        >
           {/* círculo central saliendo por la derecha */}
           <View
             style={{
@@ -46,7 +60,7 @@ export default function GradientHero({
               borderTopWidth: 2, borderStyle: 'dashed', borderColor: C.chalkSoft,
             }}
           />
-        </View>
+        </Animated.View>
       )}
       {children}
     </LinearGradient>

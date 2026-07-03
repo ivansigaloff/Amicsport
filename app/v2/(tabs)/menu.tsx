@@ -1,10 +1,11 @@
-import { View, Text, StyleSheet, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Platform, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { GradientHero, SectionTitle, PressableScale, AnimatedEntrance, C, FONTS, R, S, SHADOW } from '../../../components/v2/ui';
+import { GradientHero, SectionTitle, PressableScale, AnimatedEntrance, C, FONTS, MOTION, R, S, SHADOW } from '../../../components/v2/ui';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -23,11 +24,17 @@ export default function V2Menu() {
   const router = useRouter();
   const changeLanguage = async (lng: string) => { await i18n.changeLanguage(lng); await AsyncStorage.setItem('@app_language', lng); };
   const langs: [string, string][] = [['es', 'ES'], ['en', 'EN'], ['ca', 'CA']];
+  const scrollY = useRef(new Animated.Value(0)).current;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={['left', 'right']}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 130 }}>
-        <GradientHero topInset={Platform.OS === 'web' ? S.xl : S.huge}>
+      <Animated.ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 130 }}
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: MOTION.useNative })}
+        scrollEventThrottle={16}
+      >
+        <GradientHero topInset={Platform.OS === 'web' ? S.xl : S.huge} parallax={scrollY}>
           <Text style={styles.heroTitle}>{t('menu.title')}</Text>
         </GradientHero>
 
@@ -58,7 +65,7 @@ export default function V2Menu() {
 
           <Text style={styles.version}>AmicSport v2.0.0{'\n'}Powered by Eurekiano Solutions © 2026</Text>
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
     </SafeAreaView>
   );
 }

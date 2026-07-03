@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, Switch, Alert, useWindowDimensions, Platform, Modal, LayoutChangeEvent } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, Switch, Alert, useWindowDimensions, Platform, Modal, LayoutChangeEvent, Animated } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -12,7 +12,7 @@ import { shareMultipleMatches, copyMultipleMatchUrls } from '../../../lib/share'
 import { parseMatchDate, toISODate, getMatchTiming, barcelonaNow } from '../../../lib/date';
 import {
   Card, Badge, Button, Skeleton, GradientHero, AnimatedEntrance, PressableScale,
-  C, FONTS, GRADIENTS, R, S, SHADOW, webOnly,
+  C, FONTS, GRADIENTS, MOTION, R, S, SHADOW, webOnly,
 } from '../../../components/v2/ui';
 
 const MapView = lazy(() => import('../../../components/MapView'));
@@ -141,6 +141,7 @@ export default function V2Matches() {
   const shareMode = shareIds.size > 0;
 
   const scrollRef = useRef<ScrollView>(null);
+  const scrollY = useRef(new Animated.Value(0)).current;
   const sectionY = useRef<Record<string, number>>({});
 
   const columns = width > 1280 ? 3 : width > 820 ? 2 : 1;
@@ -277,15 +278,17 @@ export default function V2Matches() {
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
-      <ScrollView
-        ref={scrollRef}
+      <Animated.ScrollView
+        ref={scrollRef as any}
         showsVerticalScrollIndicator={false}
         stickyHeaderIndices={[1]}
         contentContainerStyle={{ paddingBottom: 130 }}
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: MOTION.useNative })}
+        scrollEventThrottle={16}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchMatches(true)} tintColor={C.brand} colors={[C.brand]} />}
       >
         {/* Hero */}
-        <GradientHero topInset={Platform.OS === 'web' ? S.xl : S.huge} colors={GRADIENTS.inkBrand}>
+        <GradientHero topInset={Platform.OS === 'web' ? S.xl : S.huge} colors={GRADIENTS.inkBrand} parallax={scrollY}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <View style={{ flex: 1 }}>
               <Text style={styles.heroKicker}>{t('common.today')} · {new Date().toLocaleDateString(i18n.language === 'en' ? 'en-US' : i18n.language === 'ca' ? 'ca-ES' : 'es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</Text>
@@ -385,7 +388,7 @@ export default function V2Matches() {
             ))
           )}
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* Share action bar */}
       {shareMode && (
