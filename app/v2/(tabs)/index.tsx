@@ -74,13 +74,15 @@ function VerticalText({ text, style }: { text: string; style?: any }) {
   const [h, setH] = useState(0);
   return (
     <View
-      style={{ flex: 1, minHeight: 60, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}
-      onLayout={(e) => setH(e.nativeEvent.layout.height)}
+      style={{ flex: 1, minHeight: 150, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}
+      onLayout={(e) => setH(Math.round(e.nativeEvent.layout.height))}
     >
       {h > 0 && (
-        <Text numberOfLines={1} style={[style, { width: h - 6, transform: [{ rotate: '-90deg' }] }]}>
-          {text}
-        </Text>
+        // se rota un contenedor de medidas fijas (no el texto): RN-web capa el
+        // Text con numberOfLines a maxWidth 100% del padre y lo truncaría
+        <View key={h} style={{ width: h - 4, height: 20, transform: [{ rotate: '-90deg' }], alignItems: 'center', justifyContent: 'center' }}>
+          <Text numberOfLines={1} style={style}>{text}</Text>
+        </View>
       )}
     </View>
   );
@@ -129,7 +131,7 @@ function MatchCardV2({ item, index, expanded, expandedWidth, onExpand, onJoin, j
         {/* dos columnas verticales: campo girado + iconos de características */}
         <View style={{ flex: 1, alignSelf: 'stretch', flexDirection: 'row', alignItems: 'stretch' }}>
           <VerticalText text={item.title || item.venue} style={styles.spineTitle} />
-          <View style={{ width: 24, alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          <View style={{ width: 20, alignItems: 'center', justifyContent: 'center', gap: 8 }}>
             {item.is_female && <Ionicons name="female" size={14} color={C.textMuted} />}
             {item.is_mixed && <Ionicons name="people-outline" size={15} color={C.textMuted} />}
             {item.is_advanced && <Ionicons name="trophy-outline" size={14} color={C.textMuted} />}
@@ -154,6 +156,9 @@ function MatchCardV2({ item, index, expanded, expandedWidth, onExpand, onJoin, j
     : (free / item.max_players) * 100 <= 25 ? { label: t('matches.last_spots', 'Últimas plazas'), tone: 'warning' as const }
     : { label: t('matches.open', 'Abierto'), tone: 'success' as const };
 
+  // en el abanico móvil la ficha puede quedar estrecha: hora y paddings
+  // reducidos para que «08:00» no parta en dos líneas
+  const compactFicha = !!expandedWidth && expandedWidth < 260;
   return (
     <AnimatedEntrance index={Math.min(index, 4)} style={expandedWidth ? { width: expandedWidth } : undefined}>
       <Card
@@ -163,11 +168,11 @@ function MatchCardV2({ item, index, expanded, expandedWidth, onExpand, onJoin, j
         elevation="md"
         padded={false}
       >
-        <View style={{ padding: S.lg, paddingBottom: S.md }}>
+        <View style={{ padding: compactFicha ? S.md : S.lg, paddingBottom: S.md }}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: S.sm }}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.fichaHora}>{item.time}</Text>
-              <Text style={styles.fichaFecha}>
+              <Text style={[styles.fichaHora, compactFicha && { fontSize: 26, lineHeight: 28 }]}>{item.time}</Text>
+              <Text style={[styles.fichaFecha, compactFicha && { fontSize: 10.5, letterSpacing: 1 }]}>
                 {fecha}{item.distance && item.distance !== 'Apto' ? ` · ${item.distance}` : ''}
               </Text>
             </View>
@@ -556,6 +561,9 @@ export default function V2Matches() {
                 <View style={styles.sectionHeader}>
                   <View style={styles.sectionLine} />
                   <Text style={styles.sectionTitle}>{sec.title}</Text>
+                  {!isDesktop && sec.data.length > 3 && (
+                    <Text style={styles.moreHint}>+{sec.data.length - 3} →</Text>
+                  )}
                   <Text style={styles.sectionCount}>{sec.data.length}</Text>
                 </View>
                 {isDesktop ? (
@@ -591,12 +599,12 @@ export default function V2Matches() {
                       const expandedId = expandedByDay[sec.iso] ?? String(sec.data[0].id);
                       const isExpanded = String(m.id) === expandedId;
                       return (
-                        <View key={m.id} style={{ zIndex: isExpanded ? 60 : i + 1, marginLeft: i === 0 ? 0 : -10, flexDirection: 'row', alignItems: 'stretch' }}>
+                        <View key={m.id} style={{ zIndex: isExpanded ? 60 : i + 1, marginLeft: i === 0 ? 0 : -12, flexDirection: 'row', alignItems: 'stretch' }}>
                           <MatchCardV2
                             item={m}
                             index={Math.min(i, 6)}
                             expanded={isExpanded}
-                            expandedWidth={Math.max(270, Math.min(width - 2 * S.lg, 720) - (sec.data.length - 1) * 96 - 10)}
+                            expandedWidth={Math.max(214, Math.min(width - 2 * S.lg, 720) - Math.min(sec.data.length - 1, 2) * 72 - 6)}
                             onExpand={() => setExpandedByDay((prev) => ({ ...prev, [sec.iso]: String(m.id) }))}
                             onJoin={joinFromCard}
                             joining={joiningId === m.id}
@@ -721,20 +729,21 @@ const styles = StyleSheet.create({
   sectionLine: { width: 10, height: 14, backgroundColor: C.accent, borderWidth: 1.5, borderColor: C.ink },
   sectionTitle: { fontFamily: FONTS.extraBold, fontSize: 17, color: C.text, textTransform: 'capitalize', flex: 1 },
   sectionCount: { fontFamily: FONTS.monoMedium, fontSize: 11.5, color: C.textMuted, backgroundColor: C.surface, borderWidth: 1.5, borderColor: C.ink, paddingHorizontal: 8, paddingVertical: 2, borderRadius: R.pill, overflow: 'hidden' },
+  moreHint: { fontFamily: FONTS.monoMedium, fontSize: 11, color: C.textFaint, letterSpacing: 0.5, marginRight: 6 },
 
   cardDivider: { borderTopWidth: 1.5, borderStyle: 'dashed', borderColor: C.border, marginVertical: 10 },
   shareCheck: { position: 'absolute', top: 10, right: 10, width: 24, height: 24, borderWidth: 2, borderColor: C.ink, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
   // ---- lomo vertical (carta tapada en el abanico)
   spine: {
-    width: 106, alignItems: 'center',
+    width: 84, alignItems: 'center',
     backgroundColor: C.surface, borderWidth: 2, borderColor: C.ink,
-    paddingVertical: 12, paddingLeft: 12, paddingRight: 6, gap: 6,
+    paddingVertical: 8, paddingLeft: 12, paddingRight: 6, gap: 4,
     ...SHADOW.sm,
   },
   spineSelected: { borderColor: C.accentStrong, shadowColor: C.accentStrong },
-  spineTime: { fontFamily: FONTS.black, fontSize: 18, color: C.text, letterSpacing: 0.3 },
-  spineCount: { fontFamily: FONTS.monoMedium, fontSize: 12.5, letterSpacing: 0.3 },
-  spineTitle: { fontFamily: FONTS.bold, fontSize: 13, color: C.textMuted, letterSpacing: 0.2 },
+  spineTime: { fontFamily: FONTS.black, fontSize: 16, color: C.text, letterSpacing: 0.3 },
+  spineCount: { fontFamily: FONTS.monoMedium, fontSize: 11.5, letterSpacing: 0.3 },
+  spineTitle: { fontFamily: FONTS.bold, fontSize: 12.5, color: C.textMuted, letterSpacing: 0.2 },
   spineMeta: { fontFamily: FONTS.monoMedium, fontSize: 10, color: C.textMuted, letterSpacing: 0.3 },
   spineYou: { width: 18, height: 18, backgroundColor: C.accent, borderWidth: 1.5, borderColor: C.ink, alignItems: 'center', justifyContent: 'center' },
   shareCheckStrip: { width: 20, height: 20, borderWidth: 2, borderColor: C.ink, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
