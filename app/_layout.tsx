@@ -11,14 +11,24 @@ import { EnvironmentProvider } from '../hooks/use-env';
 import Constants from 'expo-constants';
 import CookieBanner from '../components/CookieBanner';
 import '../lib/i18n';
-import { 
-  useFonts, 
-  Montserrat_400Regular, 
-  Montserrat_500Medium, 
-  Montserrat_600SemiBold, 
+import {
+  useFonts,
+  Montserrat_400Regular,
+  Montserrat_500Medium,
+  Montserrat_600SemiBold,
   Montserrat_700Bold,
-  Montserrat_800ExtraBold 
+  Montserrat_800ExtraBold
 } from '@expo-google-fonts/montserrat';
+// V2 «La Convocatoria»
+import { Anton_400Regular } from '@expo-google-fonts/anton';
+import {
+  Archivo_400Regular,
+  Archivo_500Medium,
+  Archivo_600SemiBold,
+  Archivo_700Bold,
+  Archivo_800ExtraBold,
+} from '@expo-google-fonts/archivo';
+import { IBMPlexMono_400Regular, IBMPlexMono_500Medium } from '@expo-google-fonts/ibm-plex-mono';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -37,6 +47,14 @@ export default function RootLayout() {
     Montserrat_600SemiBold,
     Montserrat_700Bold,
     Montserrat_800ExtraBold,
+    Anton_400Regular,
+    Archivo_400Regular,
+    Archivo_500Medium,
+    Archivo_600SemiBold,
+    Archivo_700Bold,
+    Archivo_800ExtraBold,
+    IBMPlexMono_400Regular,
+    IBMPlexMono_500Medium,
   });
 
   useEffect(() => {

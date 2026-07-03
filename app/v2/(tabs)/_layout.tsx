@@ -29,8 +29,8 @@ function TabButton({ focused, label, icon, onPress }: { focused: boolean; label:
       accessibilityRole="button"
       accessibilityState={{ selected: focused }}
     >
-      {/* active top indicator */}
-      <Animated.View style={{ position: 'absolute', top: 0, height: 2.5, width: 30, backgroundColor: C.text, opacity: a, transform: [{ scaleX: a }] }} />
+      {/* cinta de capitán: indicador amarillo de pestaña activa */}
+      <Animated.View style={{ position: 'absolute', top: 0, height: 4, width: 34, backgroundColor: C.accent, opacity: a, transform: [{ scaleX: a }] }} />
       <Ionicons name={focused ? icon[0] : icon[1]} size={22} color={color} />
       <Text style={{ color, fontFamily: focused ? FONTS.bold : FONTS.medium, fontSize: 11, letterSpacing: 0.2 }}>{label}</Text>
     </Pressable>
@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'stretch',
     backgroundColor: C.surface,
-    borderTopWidth: 1,
-    borderTopColor: C.border,
+    borderTopWidth: 2,
+    borderTopColor: C.ink,
   },
 });

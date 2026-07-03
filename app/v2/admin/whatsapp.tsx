@@ -62,9 +62,9 @@ export default function V2AdminWhatsapp() {
 const styles = StyleSheet.create({
   empty: { textAlign: 'center', color: C.textFaint, marginTop: 40, fontFamily: FONTS.medium },
   row: { flexDirection: 'row' },
-  bubble: { maxWidth: '85%', borderRadius: R.md, padding: 12, borderWidth: 1 },
-  bubbleIn: { backgroundColor: C.surface, borderColor: C.border, borderTopLeftRadius: 4 },
-  bubbleOut: { backgroundColor: C.brandWash, borderColor: C.brandTint, borderTopRightRadius: 4 },
+  bubble: { maxWidth: '85%', borderRadius: R.md, padding: 12, borderWidth: 1.5 },
+  bubbleIn: { backgroundColor: C.surface, borderColor: C.ink, borderTopLeftRadius: 4 },
+  bubbleOut: { backgroundColor: C.brandWash, borderColor: C.ink, borderTopRightRadius: 4 },
   meta: { fontSize: 11, color: C.textMuted, marginBottom: 4, fontFamily: FONTS.medium },
   body: { fontSize: 15, color: C.text, fontFamily: FONTS.medium },
 });

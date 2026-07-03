@@ -27,17 +27,17 @@ export default function Field({ label, icon, secureToggle, rightElement, contain
 
   return (
     <View style={containerStyle}>
-      {label ? <Text style={{ color: C.textMuted, fontFamily: FONTS.semibold, fontSize: 13, marginBottom: 7, marginLeft: 2 }}>{label}</Text> : null}
+      {label ? <Text style={{ color: C.textMuted, fontFamily: FONTS.monoMedium, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 7, marginLeft: 2 }}>{label}</Text> : null}
       <Animated.View
         style={{
           flexDirection: 'row',
           alignItems: 'center',
           backgroundColor: C.surface,
           borderRadius: R.md,
-          borderWidth: 1.5,
+          borderWidth: 2,
           borderColor,
           paddingHorizontal: S.lg,
-          ...(focused ? { shadowColor: C.brand, shadowOpacity: 0.18, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 3 } : {}),
+          ...(focused ? { shadowColor: C.ink, shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 2, height: 2 }, elevation: 2 } : {}),
         }}
       >
         {icon && <Ionicons name={icon} size={19} color={focused ? C.brand : C.textFaint} style={{ marginRight: 10 }} />}

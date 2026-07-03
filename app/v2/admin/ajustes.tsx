@@ -65,9 +65,9 @@ export default function V2AdminSettings() {
 }
 
 const styles = StyleSheet.create({
-  infoBox: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', backgroundColor: C.brandWash, padding: S.lg, borderRadius: R.md },
+  infoBox: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', backgroundColor: C.brandWash, padding: S.lg, borderRadius: R.md, borderWidth: 1.5, borderStyle: 'dashed', borderColor: C.brandDeep },
   infoText: { flex: 1, color: C.brandDeep, fontFamily: FONTS.medium, fontSize: 13, lineHeight: 19 },
-  card: { backgroundColor: C.surface, borderRadius: R.lg, padding: S.lg, borderWidth: 1, borderColor: C.border, ...SHADOW.sm },
+  card: { backgroundColor: C.surface, borderRadius: R.lg, padding: S.lg, borderWidth: 2, borderColor: C.ink, ...SHADOW.sm },
   hint: { fontSize: 12, fontFamily: FONTS.regular, color: C.textMuted, marginTop: 6, marginLeft: 2 },
   divider: { height: 1, backgroundColor: C.border, marginVertical: S.lg },
 });

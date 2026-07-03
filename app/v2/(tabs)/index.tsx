@@ -46,8 +46,8 @@ function MatchCardV2({ item, index, isAdmin, shareMode, shareSelected, onPress, 
   const isFull = free <= 0;
   const { isStarted, isOver } = useMemo(() => getMatchTiming(item.dateISO, item.time), [item.dateISO, item.time]);
 
-  const cap = isOver ? { label: t('matches.finished') || 'Finalizado', tone: 'neutral' as const }
-    : isStarted ? { label: t('matches.in_progress') || 'En curso', tone: 'warning' as const }
+  const cap = isOver ? { label: t('matches.finished', 'Finalizado'), tone: 'neutral' as const }
+    : isStarted ? { label: t('matches.in_progress', 'En curso'), tone: 'warning' as const }
     : { label: `${item.computed_joined}/${item.max_players}`, tone: isFull ? 'danger' as const : pct <= 25 ? 'warning' as const : 'success' as const };
 
   const joined = item.userStatus?.isJoined || item.userStatus?.guestCount > 0;
@@ -93,8 +93,8 @@ function MatchCardV2({ item, index, isAdmin, shareMode, shareSelected, onPress, 
               <Text style={styles.cardTime}>{item.time}</Text>
               {joined && !shareMode && (
                 <View style={styles.joinedPill}>
-                  <Ionicons name="checkmark-circle" size={13} color={C.brandDeep} />
-                  <Text style={styles.joinedText}>{t('match_details.you_are_in') || 'Apuntado'}</Text>
+                  <Ionicons name="checkmark-circle" size={13} color={C.ink} />
+                  <Text style={styles.joinedText}>{t('match_details.you_are_in', 'Apuntado')}</Text>
                 </View>
               )}
             </View>
@@ -341,7 +341,7 @@ export default function V2Matches() {
 
         <View style={{ paddingHorizontal: S.lg, maxWidth: 1320, width: '100%', alignSelf: 'center' }}>
           {mapOpen && (
-            <View style={{ marginTop: S.md, borderRadius: R.lg, overflow: 'hidden', height: 300, ...SHADOW.sm }}>
+            <View style={{ marginTop: S.md, borderRadius: R.lg, overflow: 'hidden', height: 300, borderWidth: 2, borderColor: C.ink, ...SHADOW.sm }}>
               <Suspense fallback={<MapFallback />}>
                 <MapView matches={filtered} selectedVenue={null} selectedMatchId={null} onSelectVenue={() => {}} />
               </Suspense>
@@ -364,7 +364,7 @@ export default function V2Matches() {
           ) : sections.length === 0 ? (
             <View style={styles.empty}>
               <Ionicons name="football-outline" size={54} color={C.textFaint} />
-              <Text style={styles.emptyText}>{t('matches.no_matches') || 'No hay partidos'}</Text>
+              <Text style={styles.emptyText}>{t('matches.no_matches', 'No hay partidos')}</Text>
             </View>
           ) : (
             sections.map((sec) => (
@@ -470,47 +470,47 @@ function FilterRow({ icon, label, value, onChange, accent }: any) {
 }
 
 const styles = StyleSheet.create({
-  heroKicker: { color: 'rgba(255,255,255,0.7)', fontFamily: FONTS.semibold, fontSize: 12, textTransform: 'capitalize' },
-  heroTitle: { color: '#fff', fontFamily: FONTS.black, fontSize: 30, letterSpacing: -0.8, marginTop: 2 },
-  heroPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: R.pill },
-  heroPillText: { color: '#fff', fontFamily: FONTS.bold, fontSize: 12 },
-  heroIcon: { width: 38, height: 38, borderRadius: R.pill, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+  heroKicker: { color: C.chalkSoft, fontFamily: FONTS.monoMedium, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' },
+  heroTitle: { color: '#fff', fontFamily: FONTS.black, fontSize: 32, letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 3 },
+  heroPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1.5, borderColor: 'rgba(244,250,240,0.5)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: R.pill },
+  heroPillText: { color: '#fff', fontFamily: FONTS.monoMedium, fontSize: 12, letterSpacing: 0.5 },
+  heroIcon: { width: 38, height: 38, borderRadius: R.pill, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1.5, borderColor: 'rgba(244,250,240,0.5)', alignItems: 'center', justifyContent: 'center' },
 
-  stickyBar: { backgroundColor: C.bg, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: C.border },
+  stickyBar: { backgroundColor: C.bg, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 2, borderBottomColor: C.ink },
   stickyActions: { flexDirection: 'row', gap: 8, paddingRight: S.lg, paddingLeft: 4 },
-  chipBtn: { width: 40, height: 40, borderRadius: R.md, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center', ...SHADOW.sm },
-  chipBtnActive: { backgroundColor: C.brand, borderColor: C.brand },
+  chipBtn: { width: 40, height: 40, borderRadius: R.md, backgroundColor: C.surface, borderWidth: 1.5, borderColor: C.ink, alignItems: 'center', justifyContent: 'center', ...SHADOW.sm },
+  chipBtnActive: { backgroundColor: C.brand, borderColor: C.ink },
 
-  dayBubble: { width: 52, height: 64, borderRadius: R.md, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center', gap: 2 },
-  dayBubbleSel: { backgroundColor: C.ink800, borderColor: C.ink800 },
-  dayWeekday: { fontFamily: FONTS.semibold, fontSize: 10, color: C.textFaint, textTransform: 'uppercase' },
-  dayNum: { fontFamily: FONTS.extraBold, fontSize: 17, color: C.text },
+  dayBubble: { width: 52, height: 64, borderRadius: R.md, backgroundColor: C.surface, borderWidth: 1.5, borderColor: C.ink, alignItems: 'center', justifyContent: 'center', gap: 2, ...SHADOW.sm },
+  dayBubbleSel: { backgroundColor: C.ink800, borderColor: C.ink },
+  dayWeekday: { fontFamily: FONTS.monoMedium, fontSize: 9.5, letterSpacing: 0.5, color: C.textFaint, textTransform: 'uppercase' },
+  dayNum: { fontFamily: FONTS.black, fontSize: 19, letterSpacing: 0.3, color: C.text },
   dayDot: { width: 6, height: 6, marginTop: 1 },
   dayMine: { position: 'absolute', top: 5, right: 5 },
 
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: S.xl, marginBottom: S.md },
-  sectionLine: { width: 4, height: 18, borderRadius: 2, backgroundColor: C.brand },
+  sectionLine: { width: 10, height: 14, backgroundColor: C.accent, borderWidth: 1.5, borderColor: C.ink },
   sectionTitle: { fontFamily: FONTS.extraBold, fontSize: 17, color: C.text, textTransform: 'capitalize', flex: 1 },
-  sectionCount: { fontFamily: FONTS.bold, fontSize: 12, color: C.textFaint, backgroundColor: C.surfaceAlt, paddingHorizontal: 9, paddingVertical: 3, borderRadius: R.pill, overflow: 'hidden' },
+  sectionCount: { fontFamily: FONTS.monoMedium, fontSize: 11.5, color: C.textMuted, backgroundColor: C.surface, borderWidth: 1.5, borderColor: C.ink, paddingHorizontal: 8, paddingVertical: 2, borderRadius: R.pill, overflow: 'hidden' },
 
   cardTitle: { flex: 1, fontFamily: FONTS.extraBold, fontSize: 16, color: C.text, letterSpacing: -0.3 },
   cardVenue: { color: C.textMuted, fontFamily: FONTS.medium, fontSize: 13, flex: 1 },
   cardDivider: { height: 1, backgroundColor: C.border, marginVertical: 12 },
-  cardTime: { fontFamily: FONTS.bold, fontSize: 15, color: C.text },
-  cardPrice: { fontFamily: FONTS.black, fontSize: 18, color: C.brandDeep },
-  joinedPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: C.brandWash, paddingHorizontal: 8, paddingVertical: 3, borderRadius: R.pill, marginLeft: 4 },
-  joinedText: { color: C.brandDeep, fontFamily: FONTS.bold, fontSize: 10.5 },
-  shareCheck: { position: 'absolute', top: 10, right: 10, width: 24, height: 24, borderWidth: 2, borderColor: C.borderStrong, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
+  cardTime: { fontFamily: FONTS.black, fontSize: 17, letterSpacing: 0.5, color: C.text },
+  cardPrice: { fontFamily: FONTS.monoMedium, fontSize: 16, color: C.brandDeep },
+  joinedPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: C.accent, borderWidth: 1, borderColor: C.ink, paddingHorizontal: 8, paddingVertical: 3, borderRadius: R.pill, marginLeft: 4 },
+  joinedText: { color: C.ink, fontFamily: FONTS.bold, fontSize: 10.5 },
+  shareCheck: { position: 'absolute', top: 10, right: 10, width: 24, height: 24, borderWidth: 2, borderColor: C.ink, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
 
   empty: { alignItems: 'center', paddingVertical: 70, gap: 12 },
   emptyText: { color: C.textMuted, fontFamily: FONTS.semibold, fontSize: 15 },
 
-  shareBar: { position: 'absolute', bottom: 100, left: 16, right: 16, maxWidth: 460, alignSelf: 'center', backgroundColor: C.surface, borderRadius: R.pill, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 12, gap: 10, ...SHADOW.lg, borderWidth: 1, borderColor: C.border },
+  shareBar: { position: 'absolute', bottom: 100, left: 16, right: 16, maxWidth: 460, alignSelf: 'center', backgroundColor: C.surface, borderRadius: R.pill, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 12, gap: 10, ...SHADOW.lg, borderWidth: 2, borderColor: C.ink },
   shareClose: { width: 36, height: 36, backgroundColor: C.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   shareCount: { fontFamily: FONTS.bold, fontSize: 14, color: C.text, flex: 1, textAlign: 'center' },
 
   modalOverlay: { flex: 1, backgroundColor: C.overlay, justifyContent: 'flex-end' },
-  sheet: { backgroundColor: C.surface, borderTopLeftRadius: R.xl, borderTopRightRadius: R.xl, padding: S.xl, paddingBottom: S.huge, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' } : {}) },
+  sheet: { backgroundColor: C.surface, borderTopLeftRadius: R.xl, borderTopRightRadius: R.xl, borderTopWidth: 2, borderLeftWidth: 2, borderRightWidth: 2, borderColor: C.ink, padding: S.xl, paddingBottom: S.huge, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' } : {}) },
   sheetHandle: { width: 40, height: 5, borderRadius: 3, backgroundColor: C.borderStrong, alignSelf: 'center', marginBottom: S.lg },
   sheetTitle: { fontFamily: FONTS.extraBold, fontSize: 20, color: C.text, marginBottom: S.lg },
   filterRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10 },

@@ -1,4 +1,4 @@
-import { View, Text, ActivityIndicator, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { C, FONTS, R, S, SHADOW, GRADIENTS, Variant } from '../theme';
@@ -29,18 +29,20 @@ const GRAD: Partial<Record<Variant, readonly string[]>> = {
 const FG: Record<Variant, string> = {
   brand: C.onBrand,
   ink: C.onInk,
-  lime: C.ink,
+  lime: C.ink,     // texto tinta sobre tarjeta amarilla
   danger: '#FFFFFF',
-  ghost: C.brandStrong,
+  ghost: C.text,
   outline: C.text,
 };
 
 const SIZES = {
-  sm: { h: 40, px: S.lg, font: 13, icon: 16, gap: 6 },
-  md: { h: 52, px: S.xl, font: 15, icon: 18, gap: 8 },
-  lg: { h: 58, px: S.xxl, font: 16, icon: 20, gap: 10 },
+  sm: { h: 40, px: S.lg, font: 12.5, icon: 16, gap: 6 },
+  md: { h: 52, px: S.xl, font: 14, icon: 18, gap: 8 },
+  lg: { h: 58, px: S.xxl, font: 15, icon: 20, gap: 10 },
 };
 
+/** Botón «letterpress»: relleno plano, borde de tinta 2px, sombra dura y
+ *  rótulo en mayúsculas. ghost = trazo discontinuo sin sombra. */
 export default function Button({
   title,
   onPress,
@@ -57,12 +59,14 @@ export default function Button({
   const fg = FG[variant];
   const grad = GRAD[variant];
   const isDisabled = disabled || loading;
+  const isGhost = variant === 'ghost';
+  const isOutline = variant === 'outline';
 
   const outer: ViewStyle = {
     borderRadius: R.md,
-    opacity: isDisabled ? 0.55 : 1,
+    opacity: isDisabled ? 0.5 : 1,
     ...(full ? { alignSelf: 'stretch' } : { alignSelf: 'flex-start' }),
-    ...(variant === 'brand' ? SHADOW.brand : variant === 'ghost' || variant === 'outline' ? {} : SHADOW.sm),
+    ...(isGhost ? {} : isOutline ? SHADOW.sm : SHADOW.md),
   };
 
   const fill: ViewStyle = {
@@ -73,8 +77,10 @@ export default function Button({
     alignItems: 'center',
     justifyContent: 'center',
     gap: sz.gap,
-    ...(variant === 'ghost' ? { backgroundColor: C.brandWash } : {}),
-    ...(variant === 'outline' ? { backgroundColor: C.surface, borderWidth: 1.5, borderColor: C.borderStrong } : {}),
+    borderWidth: 2,
+    borderColor: C.ink,
+    ...(isGhost ? { backgroundColor: 'transparent', borderStyle: 'dashed' as const } : {}),
+    ...(isOutline ? { backgroundColor: C.surface } : {}),
   };
 
   const content = (
@@ -104,5 +110,5 @@ export default function Button({
 }
 
 const styles = StyleSheet.create({
-  label: { fontFamily: FONTS.bold, letterSpacing: 0.2 },
+  label: { fontFamily: FONTS.extraBold, letterSpacing: 0.8, textTransform: 'uppercase' },
 });

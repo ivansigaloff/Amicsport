@@ -17,7 +17,7 @@ export default function Skeleton({
   const v = useShimmer();
   const backgroundColor = v.interpolate({
     inputRange: [0, 1],
-    outputRange: ['#E6EDF5', '#F1F5FB'],
+    outputRange: ['#E3E8D6', '#F0F3E5'],
   });
   return (
     <Animated.View style={[{ width: width as any, height, borderRadius: radius, backgroundColor }, style]} />

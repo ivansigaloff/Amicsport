@@ -64,13 +64,13 @@ export default function V2Menu() {
 }
 
 const styles = StyleSheet.create({
-  heroTitle: { color: '#fff', fontSize: 28, fontFamily: FONTS.black, letterSpacing: -0.6 },
+  heroTitle: { color: '#fff', fontSize: 30, fontFamily: FONTS.black, letterSpacing: 0.5, textTransform: 'uppercase' },
   langWrap: { flexDirection: 'row', gap: 10 },
-  langBtn: { flex: 1, height: 50, borderRadius: R.md, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center', ...SHADOW.sm },
-  langBtnActive: { backgroundColor: C.ink800, borderColor: C.ink800 },
-  langText: { fontFamily: FONTS.black, fontSize: 15, color: C.textMuted },
+  langBtn: { flex: 1, height: 50, borderRadius: R.md, backgroundColor: C.surface, borderWidth: 1.5, borderColor: C.ink, alignItems: 'center', justifyContent: 'center', ...SHADOW.sm },
+  langBtnActive: { backgroundColor: C.ink800, borderColor: C.ink },
+  langText: { fontFamily: FONTS.black, fontSize: 15, letterSpacing: 0.5, color: C.textMuted },
   langTextActive: { color: '#fff' },
-  item: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, padding: 14, borderRadius: R.md, borderWidth: 1, borderColor: C.border, gap: 14, ...SHADOW.sm },
+  item: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, padding: 14, borderRadius: R.md, borderWidth: 1.5, borderColor: C.ink, gap: 14, ...SHADOW.sm },
   itemIcon: { width: 40, height: 40, borderRadius: R.sm, alignItems: 'center', justifyContent: 'center' },
   itemLabel: { flex: 1, fontFamily: FONTS.bold, fontSize: 15, color: C.text },
   version: { textAlign: 'center', color: C.textFaint, fontFamily: FONTS.medium, fontSize: 12, marginTop: S.huge, lineHeight: 18 },

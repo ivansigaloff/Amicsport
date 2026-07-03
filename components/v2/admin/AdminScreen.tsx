@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../../lib/supabase';
 import { computeIsAdmin } from '../../../lib/auth';
-import { PressableScale, C, FONTS, GRADIENTS, R, S } from '../ui';
+import { PressableScale, C, FONTS, GRADIENTS, R, S, SHADOW } from '../ui';
 
 /**
  * Frame for every V2 admin screen: admin-only gate (UI guard — RLS still
@@ -88,10 +88,10 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.bg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, backgroundColor: C.bg },
   noAccess: { color: C.textMuted, fontFamily: FONTS.semibold, fontSize: 16 },
-  backLink: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: R.md, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border },
+  backLink: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: R.md, backgroundColor: C.surface, borderWidth: 2, borderColor: C.ink, ...SHADOW.sm },
   backLinkText: { color: C.text, fontFamily: FONTS.bold },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: S.lg, paddingVertical: S.md, backgroundColor: C.surface },
-  iconBtn: { width: 40, height: 40, borderRadius: R.md, backgroundColor: C.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
+  iconBtn: { width: 40, height: 40, borderRadius: R.md, backgroundColor: C.surface, borderWidth: 1.5, borderColor: C.ink, alignItems: 'center', justifyContent: 'center' },
   title: { fontFamily: FONTS.extraBold, fontSize: 19, color: C.text, letterSpacing: -0.4 },
   subtitle: { fontFamily: FONTS.medium, fontSize: 12.5, color: C.textMuted, marginTop: 1 },
   hairline: { height: 3, width: '100%' },

@@ -69,13 +69,16 @@ export function usePressable(opts: { scaleTo?: number; hoverLift?: boolean } = {
   const { scaleTo = MOTION.pressScale, hoverLift = true } = opts;
   const scale = useRef(new Animated.Value(1)).current;
   const lift = useRef(new Animated.Value(0)).current;
+  const press = useRef(new Animated.Value(0)).current;
 
   const spring = (v: Animated.Value, toValue: number) =>
     Animated.spring(v, { toValue, useNativeDriver: NATIVE, speed: 28, bounciness: 6 }).start();
 
   const handlers = {
-    onPressIn: () => spring(scale, scaleTo),
-    onPressOut: () => spring(scale, 1),
+    // al pulsar, el elemento se desplaza hacia abajo-derecha: "se hunde" en
+    // su sombra dura (el gesto firma de La Convocatoria)
+    onPressIn: () => { spring(scale, scaleTo); spring(press, 1); },
+    onPressOut: () => { spring(scale, 1); spring(press, 0); },
     ...(Platform.OS === 'web' && hoverLift
       ? {
           onHoverIn: () => spring(lift, 1),
@@ -84,12 +87,14 @@ export function usePressable(opts: { scaleTo?: number; hoverLift?: boolean } = {
       : {}),
   };
 
+  const pressShift = press.interpolate({ inputRange: [0, 1], outputRange: [0, 2] });
+  const liftShift = lift.interpolate({ inputRange: [0, 1], outputRange: [0, MOTION.hoverLift] });
+
   const animatedStyle = {
     transform: [
       { scale },
-      {
-        translateY: lift.interpolate({ inputRange: [0, 1], outputRange: [0, MOTION.hoverLift] }),
-      },
+      { translateX: pressShift },
+      { translateY: Animated.add(liftShift, pressShift) },
     ],
   };
 

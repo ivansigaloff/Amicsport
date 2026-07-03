@@ -1,7 +1,7 @@
 import { View, Text } from 'react-native';
 import { C, FONTS, S } from '../theme';
 
-/** Small uppercase section label with an optional right-aligned action. */
+/** Rótulo de sección en mono mayúscula — anotación de pizarra. */
 export default function SectionTitle({
   children,
   right,
@@ -13,7 +13,7 @@ export default function SectionTitle({
 }) {
   return (
     <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: S.md, marginTop: S.sm }, style]}>
-      <Text style={{ color: C.textFaint, fontFamily: FONTS.bold, fontSize: 12, letterSpacing: 1.2, textTransform: 'uppercase' }}>
+      <Text style={{ color: C.textMuted, fontFamily: FONTS.monoMedium, fontSize: 11.5, letterSpacing: 2, textTransform: 'uppercase' }}>
         {children}
       </Text>
       {right}
