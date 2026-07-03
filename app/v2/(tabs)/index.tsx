@@ -53,7 +53,10 @@ const AVAIL_TONE = (joinedCount: number, max: number) => {
   return C.availFree;
 };
 
-function LineupDots({ joined, max, mine }: { joined: number; max: number; mine: number }) {
+// Alineación de puntos con el contador fluyendo justo detrás del último
+// punto (misma fila con wrap: si no caben, saltan a una segunda línea sin
+// salirse de la ficha).
+function LineupDots({ joined, max, mine, count, countColor }: { joined: number; max: number; mine: number; count: string; countColor: string }) {
   const dots = [];
   for (let i = 0; i < Math.min(max, 22); i++) {
     const filled = i < joined;
@@ -65,7 +68,12 @@ function LineupDots({ joined, max, mine }: { joined: number; max: number; mine: 
       />
     );
   }
-  return <View style={styles.dotsRow}>{dots}</View>;
+  return (
+    <View style={styles.dotsRow}>
+      {dots}
+      <Text style={[styles.fichaCount, { color: countColor, marginLeft: 4 }]}>{count}</Text>
+    </View>
+  );
 }
 
 // Texto girado -90° para el lomo vertical (lee de abajo arriba, como el
@@ -130,7 +138,7 @@ function MatchCardV2({ item, index, expanded, expandedWidth, onExpand, onJoin, j
         )}
         {/* dos columnas verticales: campo girado + iconos de características */}
         <View style={{ flex: 1, alignSelf: 'stretch', flexDirection: 'row', alignItems: 'stretch' }}>
-          <VerticalText text={item.title || item.venue} style={styles.spineTitle} />
+          <VerticalText text={item.venue} style={styles.spineTitle} />
           <View style={{ width: 20, alignItems: 'center', justifyContent: 'center', gap: 8 }}>
             {item.is_female && <Ionicons name="female" size={14} color={C.textMuted} />}
             {item.is_mixed && <Ionicons name="people-outline" size={15} color={C.textMuted} />}
@@ -168,7 +176,7 @@ function MatchCardV2({ item, index, expanded, expandedWidth, onExpand, onJoin, j
         elevation="md"
         padded={false}
       >
-        <View style={{ padding: compactFicha ? S.md : S.lg, paddingBottom: S.md }}>
+        <View style={{ padding: compactFicha ? S.md : S.lg, paddingBottom: S.md, minHeight: 300 }}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: S.sm }}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.fichaHora, compactFicha && { fontSize: 26, lineHeight: 28 }]}>{item.time}</Text>
@@ -179,7 +187,7 @@ function MatchCardV2({ item, index, expanded, expandedWidth, onExpand, onJoin, j
             <View style={{ alignItems: 'flex-end', gap: 8 }}>
               <Badge label={estado.label} tone={estado.tone} icon={estado.icon as any} />
               <PressableScale onPress={() => onPress(item.id)} style={styles.verFicha}>
-                <Text style={styles.verFichaText}>{t('matches.see_card', 'Ver ficha')}</Text>
+                <Text style={styles.verFichaText}>{compactFicha ? t('matches.see', 'Ver') : t('matches.see_card', 'Ver ficha')}</Text>
                 <Ionicons name="arrow-forward" size={12} color={C.text} />
               </PressableScale>
             </View>
@@ -191,10 +199,8 @@ function MatchCardV2({ item, index, expanded, expandedWidth, onExpand, onJoin, j
             </View>
           )}
 
-          <Text style={styles.fichaTitle} numberOfLines={1}>{item.title || item.venue}</Text>
-          {!!item.venue && item.venue !== item.title && (
-            <Text style={styles.fichaDir} numberOfLines={1}>{item.venue}</Text>
-          )}
+          {/* solo el nombre del campo — el título del partido vive en el detalle */}
+          <Text style={styles.fichaTitle} numberOfLines={1}>{item.venue}</Text>
 
           {(joined || item.is_female || item.is_mixed || item.is_private || item.is_advanced) && (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
@@ -207,14 +213,18 @@ function MatchCardV2({ item, index, expanded, expandedWidth, onExpand, onJoin, j
             </View>
           )}
 
+          <View style={{ flexGrow: 1 }} />
           <View style={styles.cardDivider} />
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: S.md }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, flexWrap: 'wrap' }}>
-              <LineupDots joined={item.computed_joined} max={item.max_players} mine={mineCount} />
-              <Text style={[styles.fichaCount, { color: availColor === C.availLow ? C.warning : availColor }]}>
-                {item.computed_joined}/{item.max_players}
-              </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: S.md }}>
+            <View style={{ flex: 1 }}>
+              <LineupDots
+                joined={item.computed_joined}
+                max={item.max_players}
+                mine={mineCount}
+                count={`${item.computed_joined}/${item.max_players}`}
+                countColor={availColor === C.availLow ? C.warning : availColor}
+              />
             </View>
             <Text style={styles.fichaPrice}>
               {Number(item.price).toFixed(2).replace('.', ',')}<Text style={styles.fichaEur}> EUR</Text>
@@ -393,7 +403,9 @@ export default function V2Matches() {
       // el año solo cuando no es el actual — evita que un partido lejano
       // (p. ej. seeds de test en 2027) parezca de este año
       const sameYear = d.getFullYear() === new Date().getFullYear();
-      const title = isToday ? t('common.today') : d.toLocaleDateString(i18n.language === 'en' ? 'en-US' : i18n.language === 'ca' ? 'ca-ES' : 'es-ES', { weekday: 'long', day: 'numeric', month: 'long', ...(sameYear ? {} : { year: 'numeric' }) });
+      // solo la primera letra en mayúscula («Sábado, 4 de julio», no «4 De Julio»)
+      const raw = isToday ? t('common.today') : d.toLocaleDateString(i18n.language === 'en' ? 'en-US' : i18n.language === 'ca' ? 'ca-ES' : 'es-ES', { weekday: 'long', day: 'numeric', month: 'long', ...(sameYear ? {} : { year: 'numeric' }) });
+      const title = raw.charAt(0).toUpperCase() + raw.slice(1);
       return { iso, title, data: grouped[iso] };
     });
   }, [filtered, i18n.language, todayISO, t]);
@@ -598,8 +610,10 @@ export default function V2Matches() {
                     {sec.data.map((m: any, i: number) => {
                       const expandedId = expandedByDay[sec.iso] ?? String(sec.data[0].id);
                       const isExpanded = String(m.id) === expandedId;
+                      // z decreciente hacia la derecha: cada carta pisa a la
+                      // siguiente y su sombra dura queda visible sobre ella
                       return (
-                        <View key={m.id} style={{ zIndex: isExpanded ? 60 : i + 1, marginLeft: i === 0 ? 0 : -12, flexDirection: 'row', alignItems: 'stretch' }}>
+                        <View key={m.id} style={{ zIndex: isExpanded ? 60 : sec.data.length - i, marginLeft: i === 0 ? 0 : -12, flexDirection: 'row', alignItems: 'stretch' }}>
                           <MatchCardV2
                             item={m}
                             index={Math.min(i, 6)}
@@ -727,7 +741,7 @@ const styles = StyleSheet.create({
 
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: S.xl, marginBottom: S.md },
   sectionLine: { width: 10, height: 14, backgroundColor: C.accent, borderWidth: 1.5, borderColor: C.ink },
-  sectionTitle: { fontFamily: FONTS.extraBold, fontSize: 17, color: C.text, textTransform: 'capitalize', flex: 1 },
+  sectionTitle: { fontFamily: FONTS.extraBold, fontSize: 17, color: C.text, flex: 1 },
   sectionCount: { fontFamily: FONTS.monoMedium, fontSize: 11.5, color: C.textMuted, backgroundColor: C.surface, borderWidth: 1.5, borderColor: C.ink, paddingHorizontal: 8, paddingVertical: 2, borderRadius: R.pill, overflow: 'hidden' },
   moreHint: { fontFamily: FONTS.monoMedium, fontSize: 11, color: C.textFaint, letterSpacing: 0.5, marginRight: 6 },
 
@@ -751,7 +765,6 @@ const styles = StyleSheet.create({
   fichaHora: { fontFamily: FONTS.black, fontSize: 34, lineHeight: 36, color: C.text, letterSpacing: 0.5 },
   fichaFecha: { fontFamily: FONTS.monoMedium, fontSize: 11.5, letterSpacing: 1.6, color: C.textMuted, textTransform: 'uppercase', marginTop: 2 },
   fichaTitle: { fontFamily: FONTS.extraBold, fontSize: 17, color: C.text, letterSpacing: -0.3, marginTop: 8 },
-  fichaDir: { fontFamily: FONTS.medium, fontSize: 13, color: C.textMuted, marginTop: 2 },
   verFicha: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     borderWidth: 1.5, borderStyle: 'dashed', borderColor: C.ink,
@@ -769,8 +782,8 @@ const styles = StyleSheet.create({
   },
   stampText: { fontFamily: FONTS.black, fontSize: 15, color: C.danger, letterSpacing: 1.5, textTransform: 'uppercase' },
   // ---- puntitos de alineación
-  dotsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, alignItems: 'center' },
-  dot: { width: 10, height: 10, borderRadius: 5 },
+  dotsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 3, alignItems: 'center' },
+  dot: { width: 9, height: 9, borderRadius: 4.5 },
   dotFilled: { backgroundColor: C.brand, borderWidth: 1, borderColor: C.brandDeep },
   dotMine: { backgroundColor: C.accent, borderWidth: 1.5, borderColor: C.ink },
   dotFree: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: C.textFaint },
