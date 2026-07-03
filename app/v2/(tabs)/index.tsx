@@ -68,7 +68,25 @@ function LineupDots({ joined, max, mine }: { joined: number; max: number; mine: 
   return <View style={styles.dotsRow}>{dots}</View>;
 }
 
-function MatchCardV2({ item, index, expanded, onExpand, onJoin, joining, shareMode, shareSelected, onPress, onToggleShare }: any) {
+// Texto girado -90° para el lomo vertical (lee de abajo arriba, como el
+// canto de un libro). Mide su contenedor para dimensionar el texto girado.
+function VerticalText({ text, style }: { text: string; style?: any }) {
+  const [h, setH] = useState(0);
+  return (
+    <View
+      style={{ flex: 1, minHeight: 60, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}
+      onLayout={(e) => setH(e.nativeEvent.layout.height)}
+    >
+      {h > 0 && (
+        <Text numberOfLines={1} style={[style, { width: h - 6, transform: [{ rotate: '-90deg' }] }]}>
+          {text}
+        </Text>
+      )}
+    </View>
+  );
+}
+
+function MatchCardV2({ item, index, expanded, expandedWidth, onExpand, onJoin, joining, shareMode, shareSelected, onPress, onToggleShare }: any) {
   const { t, i18n } = useTranslation();
   const free = item.max_players - item.computed_joined;
   const isFull = free <= 0;
@@ -93,39 +111,32 @@ function MatchCardV2({ item, index, expanded, onExpand, onJoin, joining, shareMo
     else onExpand();
   };
 
-  // ------- lomo (carta tapada): toda la info básica en dos líneas -------
+  // ------- lomo vertical (carta tapada en el abanico): hora arriba,
+  // plazas debajo, campo girado y características al pie -------
   if (!expanded) {
     const countColor = isOver ? C.textFaint : availColor === C.availLow ? C.warning : availColor;
     return (
-      <PressableScale onPress={handleTap} onLongPress={() => onToggleShare(item.id)} style={[styles.strip, shareSelected && styles.stripSelected]}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <Text style={styles.stripTime}>{item.time}</Text>
-          <Text style={styles.stripTitle} numberOfLines={1}>{item.title || item.venue}</Text>
-          {joined && (
-            <View style={styles.stripYou}>
-              <Ionicons name="checkmark" size={11} color={C.ink} />
-            </View>
-          )}
+      <PressableScale onPress={handleTap} onLongPress={() => onToggleShare(item.id)} style={[styles.spine, shareSelected && styles.spineSelected]}>
+        <Text style={styles.spineTime}>{item.time}</Text>
+        <Text style={[styles.spineCount, { color: countColor }]}>
+          {isOver ? 'FIN' : `${item.computed_joined}/${item.max_players}`}
+        </Text>
+        {joined && (
+          <View style={styles.spineYou}>
+            <Ionicons name="checkmark" size={11} color={C.ink} />
+          </View>
+        )}
+        <VerticalText text={item.title || item.venue} style={styles.spineTitle} />
+        <View style={{ alignItems: 'center', gap: 5 }}>
+          {item.is_female && <Ionicons name="female" size={12} color={C.textMuted} />}
+          {item.is_mixed && <Ionicons name="people-outline" size={13} color={C.textMuted} />}
+          {item.is_advanced && <Ionicons name="trophy-outline" size={12} color={C.textMuted} />}
+          {item.is_private && <Ionicons name="lock-closed-outline" size={12} color={C.textMuted} />}
           {shareMode && (
             <View style={[styles.shareCheckStrip, shareSelected && { backgroundColor: C.brand, borderColor: C.brand }]}>
               {shareSelected && <Ionicons name="checkmark" size={13} color="#fff" />}
             </View>
           )}
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 5 }}>
-          <View style={[styles.stripDotBase, { backgroundColor: countColor }]} />
-          <Text style={[styles.stripCount, { color: countColor }]}>
-            {isOver ? t('matches.finished', 'Finalizado').toUpperCase() : `${item.computed_joined}/${item.max_players}`}
-          </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            {item.is_female && <Ionicons name="female" size={12} color={C.textMuted} />}
-            {item.is_mixed && <Ionicons name="people-outline" size={13} color={C.textMuted} />}
-            {item.is_advanced && <Ionicons name="trophy-outline" size={12} color={C.textMuted} />}
-            {item.is_private && <Ionicons name="lock-closed-outline" size={12} color={C.textMuted} />}
-            {!!item.distance && item.distance !== 'Apto' && <Text style={styles.stripMeta}>{item.distance}</Text>}
-          </View>
-          <View style={{ flex: 1 }} />
-          <Text style={styles.stripPrice}>{Number(item.price).toFixed(2).replace('.', ',')} €</Text>
         </View>
       </PressableScale>
     );
@@ -133,7 +144,7 @@ function MatchCardV2({ item, index, expanded, onExpand, onJoin, joining, shareMo
 
   // ------- carta destapada: la ficha completa -------
   return (
-    <AnimatedEntrance index={Math.min(index, 4)}>
+    <AnimatedEntrance index={Math.min(index, 4)} style={expandedWidth ? { width: expandedWidth } : undefined}>
       <Card
         onPress={handleTap}
         onLongPress={() => onToggleShare(item.id)}
@@ -520,17 +531,24 @@ export default function V2Matches() {
                   <Text style={styles.sectionTitle}>{sec.title}</Text>
                   <Text style={styles.sectionCount}>{sec.data.length}</Text>
                 </View>
-                {/* baraja del día: una carta destapada, el resto lomos tapados */}
-                <View style={{ maxWidth: 720, width: '100%' }}>
+                {/* baraja del día: abanico horizontal — lomos verticales
+                    tapados y la carta destapada ocupando el resto */}
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={{ maxWidth: 720 }}
+                  contentContainerStyle={{ alignItems: 'stretch', paddingBottom: 8, paddingRight: 8 }}
+                >
                   {sec.data.map((m: any, i: number) => {
                     const expandedId = expandedByDay[sec.iso] ?? String(sec.data[0].id);
                     const isExpanded = String(m.id) === expandedId;
                     return (
-                      <View key={m.id} style={{ zIndex: isExpanded ? 60 : sec.data.length - i, marginTop: i === 0 ? 0 : -8 }}>
+                      <View key={m.id} style={{ zIndex: isExpanded ? 60 : i + 1, marginLeft: i === 0 ? 0 : -10, flexDirection: 'row', alignItems: 'stretch' }}>
                         <MatchCardV2
                           item={m}
                           index={Math.min(i, 6)}
                           expanded={isExpanded}
+                          expandedWidth={Math.max(270, Math.min(width - 2 * S.lg, 720) - (sec.data.length - 1) * 56 - 10)}
                           onExpand={() => setExpandedByDay((prev) => ({ ...prev, [sec.iso]: String(m.id) }))}
                           onJoin={joinFromCard}
                           joining={joiningId === m.id}
@@ -542,7 +560,7 @@ export default function V2Matches() {
                       </View>
                     );
                   })}
-                </View>
+                </ScrollView>
               </View>
             ))
           )}
@@ -657,20 +675,18 @@ const styles = StyleSheet.create({
 
   cardDivider: { borderTopWidth: 1.5, borderStyle: 'dashed', borderColor: C.border, marginVertical: 12 },
   shareCheck: { position: 'absolute', top: 10, right: 10, width: 24, height: 24, borderWidth: 2, borderColor: C.ink, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
-  // ---- lomo (carta tapada)
-  strip: {
+  // ---- lomo vertical (carta tapada en el abanico)
+  spine: {
+    width: 66, alignItems: 'center',
     backgroundColor: C.surface, borderWidth: 2, borderColor: C.ink,
-    paddingHorizontal: S.lg, paddingVertical: 11, paddingTop: 17,
+    paddingVertical: 12, paddingLeft: 6, paddingRight: 2, gap: 6,
     ...SHADOW.sm,
   },
-  stripSelected: { borderColor: C.accentStrong, shadowColor: C.accentStrong },
-  stripTime: { fontFamily: FONTS.black, fontSize: 19, color: C.text, letterSpacing: 0.5 },
-  stripTitle: { flex: 1, fontFamily: FONTS.bold, fontSize: 14, color: C.text, letterSpacing: -0.2 },
-  stripYou: { width: 18, height: 18, backgroundColor: C.accent, borderWidth: 1.5, borderColor: C.ink, alignItems: 'center', justifyContent: 'center' },
-  stripCount: { fontFamily: FONTS.monoMedium, fontSize: 13, letterSpacing: 0.5 },
-  stripDotBase: { width: 8, height: 8, borderWidth: 1, borderColor: C.ink },
-  stripMeta: { fontFamily: FONTS.monoMedium, fontSize: 11, color: C.textMuted, letterSpacing: 0.5 },
-  stripPrice: { fontFamily: FONTS.monoMedium, fontSize: 12.5, color: C.textMuted },
+  spineSelected: { borderColor: C.accentStrong, shadowColor: C.accentStrong },
+  spineTime: { fontFamily: FONTS.black, fontSize: 15.5, color: C.text, letterSpacing: 0.3 },
+  spineCount: { fontFamily: FONTS.monoMedium, fontSize: 11, letterSpacing: 0.3 },
+  spineTitle: { fontFamily: FONTS.bold, fontSize: 12, color: C.textMuted, letterSpacing: 0.2 },
+  spineYou: { width: 18, height: 18, backgroundColor: C.accent, borderWidth: 1.5, borderColor: C.ink, alignItems: 'center', justifyContent: 'center' },
   shareCheckStrip: { width: 20, height: 20, borderWidth: 2, borderColor: C.ink, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
   // ---- ficha (carta destapada)
   fichaHora: { fontFamily: FONTS.black, fontSize: 42, lineHeight: 44, color: C.text, letterSpacing: 0.5 },

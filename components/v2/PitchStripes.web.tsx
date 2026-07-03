@@ -19,8 +19,8 @@ const CSS = `
   background:repeating-linear-gradient(0deg,transparent 0 72px,${INK}.055) 72px 144px);
 }
 #amic-field-bg svg{position:absolute;overflow:visible}
-#amic-field-bg .geo{fill:none;stroke:${INK}.10);stroke-width:2;stroke-dasharray:10 12}
-#amic-field-bg .spot{fill:${INK}.10);stroke:none}
+#amic-field-bg .geo{fill:none;stroke:${INK}.17);stroke-width:2.5;stroke-dasharray:10 12}
+#amic-field-bg .spot{fill:${INK}.17);stroke:none}
 `;
 
 const SVG = `

@@ -39,24 +39,40 @@ export default function GradientHero({
         <Animated.View
           pointerEvents="none"
           style={{
-            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.28,
+            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.4,
             transform: [{ translateY: chalkShift }],
           }}
         >
-          {/* círculo central saliendo por la derecha */}
+          {/* círculo central grande saliendo por la derecha */}
           <View
             style={{
-              position: 'absolute', right: -80, top: -70,
-              width: 220, height: 220, borderRadius: 110,
+              position: 'absolute', right: -110, top: -110,
+              width: 320, height: 320, borderRadius: 160,
               borderWidth: 2, borderStyle: 'dashed', borderColor: C.chalkSoft,
             }}
           />
           {/* punto de penalti */}
-          <View style={{ position: 'absolute', right: 26, top: 36, width: 6, height: 6, borderRadius: 3, backgroundColor: C.chalkSoft }} />
+          <View style={{ position: 'absolute', right: 44, top: 44, width: 6, height: 6, borderRadius: 3, backgroundColor: C.chalkSoft }} />
+          {/* cuarto de córner inferior izquierdo */}
+          <View
+            style={{
+              position: 'absolute', left: -70, bottom: -70,
+              width: 140, height: 140, borderRadius: 70,
+              borderWidth: 2, borderStyle: 'dashed', borderColor: C.chalkSoft,
+            }}
+          />
+          {/* área de penalti asomando por abajo */}
+          <View
+            style={{
+              position: 'absolute', left: '30%', bottom: -34,
+              width: 170, height: 90,
+              borderWidth: 2, borderStyle: 'dashed', borderColor: C.chalkSoft,
+            }}
+          />
           {/* línea de banda inferior */}
           <View
             style={{
-              position: 'absolute', left: -10, right: '45%', bottom: 12,
+              position: 'absolute', left: -10, right: '58%', bottom: 12,
               borderTopWidth: 2, borderStyle: 'dashed', borderColor: C.chalkSoft,
             }}
           />
