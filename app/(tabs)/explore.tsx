@@ -161,7 +161,7 @@ export default function ProfileScreen() {
           )}
 
           <TouchableOpacity style={[styles.actionButton, styles.logoutButton]} onPress={handleLogout}>
-            <View style={[styles.actionIconContainer, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
+            <View style={[styles.actionIconContainer, { backgroundColor: 'rgba(214, 52, 21, 0.1)' }]}>
               <Ionicons name="log-out-outline" size={22} color={COLORS.DANGER} />
             </View>
             <Text style={[styles.actionText, styles.logoutText]}>{t('profile.action_logout')}</Text>
@@ -252,8 +252,8 @@ const styles = StyleSheet.create({
   
   logoutButton: { 
     marginTop: 20, 
-    backgroundColor: 'rgba(239, 68, 68, 0.05)', 
-    borderColor: 'rgba(239, 68, 68, 0.1)',
+    backgroundColor: 'rgba(214, 52, 21, 0.05)', 
+    borderColor: 'rgba(214, 52, 21, 0.1)',
   },
   logoutText: { color: COLORS.DANGER }
 });

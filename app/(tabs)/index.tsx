@@ -23,8 +23,8 @@ import { COLORS, SHADOWS, FONTS, SIZES } from '../../constants/theme';
 // demand (mobile) — see `mapDeferReady` / `isMapExpanded` below.
 const MapView = lazy(() => import('../../components/MapView'));
 const MapFallback = () => (
-  <View style={{ flex: 1, minHeight: 220, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC', borderRadius: 24 }}>
-    <ActivityIndicator size="large" color="#556080" />
+  <View style={{ flex: 1, minHeight: 220, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAFBF4', borderRadius: 0 }}>
+    <ActivityIndicator size="large" color="#4A6353" />
   </View>
 );
 
@@ -71,7 +71,7 @@ const parseDateString = (dateStr: string) => {
 };
 
 
-const AVAIL_COLORS = { GREEN: '#10B981', YELLOW: '#F59E0B', RED: '#EF4444', INDIGO: '#FFB81C' };
+const AVAIL_COLORS = { GREEN: '#17713A', YELLOW: '#EDAF00', RED: '#D63415', INDIGO: '#FFC91F' };
 
 /** Best availability color for a set of matches: green (>25% free) > yellow (>0) > red (full). */
 const getAvailabilityColor = (mList: any[]) => {
@@ -101,9 +101,9 @@ const MatchCard = memo(({ item, fetchMatches, onSelectMatch, isDesktop, isSelect
   const isFull = freeSlots <= 0;
 
   const getStatusConfig = () => {
-    if (isFull) return { text: t('common.full'), color: '#EF4444', bg: '#FEE2E2' };
-    if (freePct <= 25) return { text: t('common.open'), color: '#F59E0B', bg: '#FEF3C7' };
-    return { text: t('common.open'), color: '#10B981', bg: '#DCFCE7' };
+    if (isFull) return { text: t('common.full'), color: '#D63415', bg: '#FADFD6' };
+    if (freePct <= 25) return { text: t('common.open'), color: '#EDAF00', bg: '#FFEFC2' };
+    return { text: t('common.open'), color: '#17713A', bg: '#E1EDDA' };
   };
 
   const status = getStatusConfig();
@@ -187,13 +187,13 @@ const MatchCard = memo(({ item, fetchMatches, onSelectMatch, isDesktop, isSelect
           </Text>
           <View style={[
             styles.slotsBadgeMinimal, 
-            isStarted && !isOver && { backgroundColor: '#FEF3C7', borderColor: '#FDE68A' },
-            isOver && { backgroundColor: '#F1F5F9', borderColor: '#E2E8F0' }
+            isStarted && !isOver && { backgroundColor: '#FFEFC2', borderColor: '#FFD54A' },
+            isOver && { backgroundColor: '#EFF2E4', borderColor: '#DDE3CE' }
           ]}>
             <Text style={[
               styles.slotsBadgeTextMinimal, 
-              isStarted && !isOver && { color: '#B45309' },
-              isOver && { color: '#64748B' }
+              isStarted && !isOver && { color: '#8A6700' },
+              isOver && { color: '#4A6353' }
             ]}>
               {isOver 
                 ? (t('matches.finished') || 'Finalizado') 
@@ -205,28 +205,28 @@ const MatchCard = memo(({ item, fetchMatches, onSelectMatch, isDesktop, isSelect
 
         <View style={styles.cardStatusRow}>
           {item.distance && item.distance !== 'Apto' && (
-            <View style={[styles.statusTagMinimal, {backgroundColor: '#F1F5F9', borderColor: '#E2E8F0'}]}>
-              <Text style={[styles.statusTagTextMinimal, {color: '#64748B'}]}>{item.distance.toUpperCase()}</Text>
+            <View style={[styles.statusTagMinimal, {backgroundColor: '#EFF2E4', borderColor: '#DDE3CE'}]}>
+              <Text style={[styles.statusTagTextMinimal, {color: '#4A6353'}]}>{item.distance.toUpperCase()}</Text>
             </View>
           )}
           {item.is_private && (
-            <View style={[styles.statusTagMinimal, {backgroundColor: '#F1F5F9', borderColor: '#E2E8F0'}]}>
+            <View style={[styles.statusTagMinimal, {backgroundColor: '#EFF2E4', borderColor: '#DDE3CE'}]}>
               <Text style={styles.statusTagTextMinimal}>{t('common.private').toUpperCase()}</Text>
             </View>
           )}
           {item.is_female && (
-            <View style={[styles.statusTagMinimal, {backgroundColor: '#F1F5F9', borderColor: '#E2E8F0'}]}>
-              <Text style={[styles.statusTagTextMinimal, {color: '#64748B'}]}>{t('common.female').toUpperCase()}</Text>
+            <View style={[styles.statusTagMinimal, {backgroundColor: '#EFF2E4', borderColor: '#DDE3CE'}]}>
+              <Text style={[styles.statusTagTextMinimal, {color: '#4A6353'}]}>{t('common.female').toUpperCase()}</Text>
             </View>
           )}
           {item.is_mixed && (
-            <View style={[styles.statusTagMinimal, {backgroundColor: '#F1F5F9', borderColor: '#E2E8F0'}]}>
-              <Text style={[styles.statusTagTextMinimal, {color: '#64748B'}]}>{t('common.mixed').toUpperCase()}</Text>
+            <View style={[styles.statusTagMinimal, {backgroundColor: '#EFF2E4', borderColor: '#DDE3CE'}]}>
+              <Text style={[styles.statusTagTextMinimal, {color: '#4A6353'}]}>{t('common.mixed').toUpperCase()}</Text>
             </View>
           )}
           {item.is_advanced && (
-            <View style={[styles.statusTagMinimal, {backgroundColor: '#F1F5F9', borderColor: '#E2E8F0'}]}>
-              <Text style={[styles.statusTagTextMinimal, {color: '#64748B'}]}>{t('common.advanced').toUpperCase()}</Text>
+            <View style={[styles.statusTagMinimal, {backgroundColor: '#EFF2E4', borderColor: '#DDE3CE'}]}>
+              <Text style={[styles.statusTagTextMinimal, {color: '#4A6353'}]}>{t('common.advanced').toUpperCase()}</Text>
             </View>
           )}
         </View>
@@ -235,7 +235,7 @@ const MatchCard = memo(({ item, fetchMatches, onSelectMatch, isDesktop, isSelect
 
         <View style={styles.cardFooterRowMinimal}>
           <View style={styles.timeContainerMinimal}>
-            <Ionicons name="time-outline" size={18} color="#0F172A" />
+            <Ionicons name="time-outline" size={18} color="#0D2015" />
             <Text style={styles.timeTextMinimal}>{item.time}</Text>
           </View>
           <Text style={styles.priceTextMinimal}>{Number(item.price).toFixed(2)}€</Text>
@@ -249,7 +249,7 @@ const MatchCard = memo(({ item, fetchMatches, onSelectMatch, isDesktop, isSelect
             <Switch 
               value={add7Days} 
               onValueChange={setAdd7Days} 
-              trackColor={{ false: '#E2E8F0', true: '#94A3B8' }} 
+              trackColor={{ false: '#DDE3CE', true: '#84957F' }} 
               thumbColor={'#FFF'} 
             />
           </View>
@@ -633,14 +633,14 @@ export default function MatchesScreen() {
             customStyles: {
               container: {
                 backgroundColor: availabilityColor, // Solid circle
-                borderRadius: 20,
+                borderRadius: 0,
                 justifyContent: 'center',
                 alignItems: 'center',
                 borderWidth: isSelectedDay ? 2 : 0,
                 borderColor: AVAIL_COLORS.INDIGO
               },
               text: {
-                color: '#0F172A', // Keep original dark color
+                color: '#0D2015', // Keep original dark color
                 fontWeight: '700'
               }
             }
@@ -798,15 +798,15 @@ export default function MatchesScreen() {
                 style={styles.langSelectorBtn}
               >
                 <Text style={styles.langSelectorText}>{i18n.language.toUpperCase()}</Text>
-                <Ionicons name="chevron-down" size={14} color="#0F172A" />
+                <Ionicons name="chevron-down" size={14} color="#0D2015" />
               </TouchableOpacity>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <TouchableOpacity onPress={() => setIsFilterModalVisible(true)}>
-                <Ionicons name="options-outline" size={24} color={ (filterFemale || filterMixed || filterPrivate || filterAdvanced || filterMorning || filterEvening) ? '#10B981' : '#0F172A' } />
+                <Ionicons name="options-outline" size={24} color={ (filterFemale || filterMixed || filterPrivate || filterAdvanced || filterMorning || filterEvening) ? '#17713A' : '#0D2015' } />
               </TouchableOpacity>
               <TouchableOpacity onPress={() => fetchMatches(true)}>
-                <Ionicons name="refresh-outline" size={24} color="#0F172A" />
+                <Ionicons name="refresh-outline" size={24} color="#0D2015" />
               </TouchableOpacity>
             </View>
           </View>
@@ -858,7 +858,7 @@ export default function MatchesScreen() {
 
                           {participations && (
                             <View style={styles.joinedIndicator}>
-                              <Ionicons name="football" size={16} color="#0F172A" />
+                              <Ionicons name="football" size={16} color="#0D2015" />
                             </View>
                           )}
                         </TouchableOpacity>
@@ -868,7 +868,7 @@ export default function MatchesScreen() {
                 />
                 
                 <TouchableOpacity onPress={() => setIsCalendarExpanded(true)} style={styles.expandInScroll}>
-                   <Ionicons name="add-circle-outline" size={24} color="#0F172A" />
+                   <Ionicons name="add-circle-outline" size={24} color="#0D2015" />
                 </TouchableOpacity>
 
                 {/* Floating Tooltip outside FlatList clipping context */}
@@ -903,18 +903,18 @@ export default function MatchesScreen() {
             <View style={styles.calendarWrapper}>
               <View style={styles.sectionHeaderCompact}>
                 <TouchableOpacity onPress={() => setIsCalendarExpanded(false)} style={styles.toggleBtn}>
-                  <Ionicons name="remove-circle-outline" size={24} color="#FFB81C" />
+                  <Ionicons name="remove-circle-outline" size={24} color="#FFC91F" />
                 </TouchableOpacity>
               </View>
               <Calendar
                 theme={{
                   backgroundColor: '#FFFFFF', calendarBackground: '#FFFFFF',
-                  textSectionTitleColor: '#64748B', selectedDayBackgroundColor: '#0F172A',
-                  selectedDayTextColor: '#FFFFFF', todayTextColor: '#0F172A',
-                  dayTextColor: '#0F172A', textDisabledColor: '#CBD5E1',
-                  dotColor: '#0F172A', selectedDotColor: '#FFFFFF',
-                  arrowColor: '#0F172A', monthTextColor: '#0F172A',
-                  indicatorColor: '#0F172A', textDayFontWeight: '500',
+                  textSectionTitleColor: '#4A6353', selectedDayBackgroundColor: '#0D2015',
+                  selectedDayTextColor: '#FFFFFF', todayTextColor: '#0D2015',
+                  dayTextColor: '#0D2015', textDisabledColor: '#DDE3CE',
+                  dotColor: '#0D2015', selectedDotColor: '#FFFFFF',
+                  arrowColor: '#0D2015', monthTextColor: '#0D2015',
+                  indicatorColor: '#0D2015', textDayFontWeight: '500',
                   textMonthFontWeight: '700', textDayHeaderFontWeight: '600'
                 }}
                 markingType={'custom'}
@@ -928,14 +928,14 @@ export default function MatchesScreen() {
               {(selectedDateFilter || selectedVenueFilter) && (
                 <TouchableOpacity style={styles.clearFilterButton} onPress={clearAllFilters}>
                   <Text style={styles.clearFilterText}>{t('matches.show_all_matches')}</Text>
-                  <Ionicons name="close-circle" size={16} color="#0F172A" style={{ marginLeft: 6 }} />
+                  <Ionicons name="close-circle" size={16} color="#0D2015" style={{ marginLeft: 6 }} />
                 </TouchableOpacity>
               )}
             </View>
           )}
 
           {loading && !refreshing ? (
-            <ActivityIndicator size="large" color="#0F172A" style={{ marginTop: 50 }} />
+            <ActivityIndicator size="large" color="#0D2015" style={{ marginTop: 50 }} />
           ) : (
             <SectionList
               ref={sectionListRef}
@@ -966,7 +966,7 @@ export default function MatchesScreen() {
                 <View>
                   {listTruncated && (
                     <View style={styles.truncationBanner}>
-                      <Ionicons name="information-circle-outline" size={16} color="#92400E" />
+                      <Ionicons name="information-circle-outline" size={16} color="#8A6700" />
                       <Text style={styles.truncationText}>{t('matches.matches_truncated')}</Text>
                     </View>
                   )}
@@ -977,7 +977,7 @@ export default function MatchesScreen() {
                           <Text style={styles.sectionTitleSmall}>{t('matches.map_title')}</Text>
                         </View>
                         <TouchableOpacity onPress={() => setIsMapExpanded(!isMapExpanded)} style={styles.toggleBtn}>
-                          <Ionicons name={isMapExpanded ? 'remove-circle-outline' : 'add-circle-outline'} size={24} color="#0F172A" />
+                          <Ionicons name={isMapExpanded ? 'remove-circle-outline' : 'add-circle-outline'} size={24} color="#0D2015" />
                         </TouchableOpacity>
                       </View>
                       {isMapExpanded && (
@@ -1001,14 +1001,14 @@ export default function MatchesScreen() {
                         style={styles.adminActionBtn}
                         onPress={() => router.push((env === 'dev' ? '/dev' : '') + '/admin/crear-partido' as any)}
                       >
-                        <Ionicons name="add-circle-outline" size={18} color="#0F172A" />
+                        <Ionicons name="add-circle-outline" size={18} color="#0D2015" />
                         <Text style={styles.adminActionText}>{t('matches.create_match')}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity 
                         style={[styles.adminActionBtn, { marginLeft: 12 }]}
                         onPress={() => router.push((env === 'dev' ? '/dev' : '') + '/admin/jugadores' as any)}
                       >
-                        <Ionicons name="people-outline" size={18} color="#0F172A" />
+                        <Ionicons name="people-outline" size={18} color="#0D2015" />
                         <Text style={styles.adminActionText}>{t('matches.player_agenda')}</Text>
                       </TouchableOpacity>
                     </View>
@@ -1017,7 +1017,7 @@ export default function MatchesScreen() {
               }
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
-              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchMatches(true)} tintColor="#0F172A" progressBackgroundColor="#FFFFFF" colors={['#0F172A']} />}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchMatches(true)} tintColor="#0D2015" progressBackgroundColor="#FFFFFF" colors={['#0D2015']} />}
             />
           )}
         </View>
@@ -1033,7 +1033,7 @@ export default function MatchesScreen() {
               />
             ) : (
               <View style={styles.emptyDetails}>
-                <Ionicons name="football-outline" size={64} color="#0F172A" />
+                <Ionicons name="football-outline" size={64} color="#0D2015" />
                 <Text style={styles.emptyDetailsText}>{t('matches.select_match_placeholder')}</Text>
               </View>
             )}
@@ -1062,7 +1062,7 @@ export default function MatchesScreen() {
       {isShareMode && (
         <View style={styles.shareBar}>
           <TouchableOpacity onPress={cancelShareMode} style={styles.shareBarCancel}>
-            <Ionicons name="close" size={20} color="#64748B" />
+            <Ionicons name="close" size={20} color="#4A6353" />
           </TouchableOpacity>
           <Text style={styles.shareBarText}>{shareSelectedIds.size} {t('matches.selected')}</Text>
           <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -1070,12 +1070,12 @@ export default function MatchesScreen() {
               <Ionicons name="link-outline" size={18} color="#FFF" />
               {!isSmallScreen && <Text style={styles.shareBarBtnText}>{t('matches.copy_link')}</Text>}
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleShareSelected} style={[styles.shareBarBtn, { backgroundColor: '#10B981' }, isSmallScreen && { paddingHorizontal: 12 }]}>
+            <TouchableOpacity onPress={handleShareSelected} style={[styles.shareBarBtn, { backgroundColor: '#17713A' }, isSmallScreen && { paddingHorizontal: 12 }]}>
               <Ionicons name="share-outline" size={18} color="#FFF" />
               {!isSmallScreen && <Text style={styles.shareBarBtnText}>{t('common.share')}</Text>}
             </TouchableOpacity>
             {isAdmin && (
-              <TouchableOpacity onPress={handleBulkDelete} style={[styles.shareBarBtn, { backgroundColor: '#EF4444' }, isSmallScreen && { paddingHorizontal: 12 }]}>
+              <TouchableOpacity onPress={handleBulkDelete} style={[styles.shareBarBtn, { backgroundColor: '#D63415' }, isSmallScreen && { paddingHorizontal: 12 }]}>
                 <Ionicons name="trash-outline" size={18} color="#FFF" />
                 {!isSmallScreen && <Text style={styles.shareBarBtnText}>{t('common.delete')}</Text>}
               </TouchableOpacity>
@@ -1090,67 +1090,67 @@ export default function MatchesScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{t('matches.filters')}</Text>
               <TouchableOpacity onPress={() => setIsFilterModalVisible(false)}>
-                <Ionicons name="close" size={28} color="#94A3B8" />
+                <Ionicons name="close" size={28} color="#84957F" />
               </TouchableOpacity>
             </View>
 
             <ScrollView>
               {isAdmin && (
-                <View style={[styles.filterRow, { borderBottomWidth: 1, borderBottomColor: '#F1F5F9', paddingBottom: 15, marginBottom: 15 }]}>
+                <View style={[styles.filterRow, { borderBottomWidth: 1, borderBottomColor: '#EFF2E4', paddingBottom: 15, marginBottom: 15 }]}>
                   <View style={styles.filterLabelCol}>
-                    <Ionicons name="time" size={20} color="#64748B" />
-                    <Text style={[styles.filterLabelText, { color: '#0F172A', fontFamily: FONTS.BOLD }]}>{t('matches.show_past')}</Text>
+                    <Ionicons name="time" size={20} color="#4A6353" />
+                    <Text style={[styles.filterLabelText, { color: '#0D2015', fontFamily: FONTS.BOLD }]}>{t('matches.show_past')}</Text>
                   </View>
-                  <Switch value={showPastMatches} onValueChange={setShowPastMatches} trackColor={{ false: '#E2E8F0', true: '#94A3B8' }} />
+                  <Switch value={showPastMatches} onValueChange={setShowPastMatches} trackColor={{ false: '#DDE3CE', true: '#84957F' }} />
                 </View>
               )}
               <View style={styles.filterRow}>
                 <View style={styles.filterLabelCol}>
-                  <Ionicons name="female" size={20} color="#FFB81C" />
+                  <Ionicons name="female" size={20} color="#FFC91F" />
                   <Text style={styles.filterLabelText}>{t('common.female')}</Text>
                 </View>
-                <Switch value={filterFemale} onValueChange={setFilterFemale} trackColor={{ false: '#E2E8F0', true: '#FFB81C' }} />
+                <Switch value={filterFemale} onValueChange={setFilterFemale} trackColor={{ false: '#DDE3CE', true: '#FFC91F' }} />
               </View>
 
               <View style={styles.filterRow}>
                 <View style={styles.filterLabelCol}>
-                  <Ionicons name="male-female" size={20} color="#FFB81C" />
+                  <Ionicons name="male-female" size={20} color="#FFC91F" />
                   <Text style={styles.filterLabelText}>{t('common.mixed')}</Text>
                 </View>
-                <Switch value={filterMixed} onValueChange={setFilterMixed} trackColor={{ false: '#E2E8F0', true: '#FFB81C' }} />
+                <Switch value={filterMixed} onValueChange={setFilterMixed} trackColor={{ false: '#DDE3CE', true: '#FFC91F' }} />
               </View>
 
               <View style={styles.filterRow}>
                 <View style={styles.filterLabelCol}>
-                  <Ionicons name="lock-closed" size={20} color="#FFB81C" />
+                  <Ionicons name="lock-closed" size={20} color="#FFC91F" />
                   <Text style={styles.filterLabelText}>{t('common.private')}</Text>
                 </View>
-                <Switch value={filterPrivate} onValueChange={setFilterPrivate} trackColor={{ false: '#E2E8F0', true: '#FFB81C' }} />
+                <Switch value={filterPrivate} onValueChange={setFilterPrivate} trackColor={{ false: '#DDE3CE', true: '#FFC91F' }} />
               </View>
 
               <View style={styles.filterRow}>
                 <View style={styles.filterLabelCol}>
-                  <Ionicons name="trophy" size={20} color="#FFB81C" />
+                  <Ionicons name="trophy" size={20} color="#FFC91F" />
                   <Text style={styles.filterLabelText}>{t('common.advanced')}</Text>
                 </View>
-                <Switch value={filterAdvanced} onValueChange={setFilterAdvanced} trackColor={{ false: '#E2E8F0', true: '#FFB81C' }} />
+                <Switch value={filterAdvanced} onValueChange={setFilterAdvanced} trackColor={{ false: '#DDE3CE', true: '#FFC91F' }} />
               </View>
 
               <Text style={[styles.label, { marginTop: 20 }]}>{t('matches.timeslot')}</Text>
               <View style={styles.filterRow}>
                 <View style={styles.filterLabelCol}>
-                  <Ionicons name="sunny-outline" size={20} color="#FFB81C" />
+                  <Ionicons name="sunny-outline" size={20} color="#FFC91F" />
                   <Text style={styles.filterLabelText}>{t('common.morning')} (00:00 - 18:00)</Text>
                 </View>
-                <Switch value={filterMorning} onValueChange={setFilterMorning} trackColor={{ false: '#E2E8F0', true: '#FFB81C' }} />
+                <Switch value={filterMorning} onValueChange={setFilterMorning} trackColor={{ false: '#DDE3CE', true: '#FFC91F' }} />
               </View>
 
               <View style={styles.filterRow}>
                 <View style={styles.filterLabelCol}>
-                  <Ionicons name="moon-outline" size={20} color="#FFB81C" />
+                  <Ionicons name="moon-outline" size={20} color="#FFC91F" />
                   <Text style={styles.filterLabelText}>{t('common.afternoon_night')} (18:00 - 00:00)</Text>
                 </View>
-                <Switch value={filterEvening} onValueChange={setFilterEvening} trackColor={{ false: '#E2E8F0', true: '#FFB81C' }} />
+                <Switch value={filterEvening} onValueChange={setFilterEvening} trackColor={{ false: '#DDE3CE', true: '#FFC91F' }} />
               </View>
 
               <TouchableOpacity 
@@ -1171,7 +1171,7 @@ export default function MatchesScreen() {
                   setFilterEvening(false);
                 }}
               >
-                <Text style={{ color: '#64748B', fontWeight: '600' }}>{t('matches.clear_filters')}</Text>
+                <Text style={{ color: '#4A6353', fontWeight: '600' }}>{t('matches.clear_filters')}</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
@@ -1189,22 +1189,22 @@ export default function MatchesScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{t('menu.language_section')}</Text>
               <TouchableOpacity onPress={() => setIsLangModalVisible(false)}>
-                <Ionicons name="close" size={28} color="#94A3B8" />
+                <Ionicons name="close" size={28} color="#84957F" />
               </TouchableOpacity>
             </View>
             
             <View style={{ gap: 12 }}>
               <TouchableOpacity style={styles.langOption} onPress={() => changeLanguage('es')}>
                 <Text style={[styles.langOptionText, i18n.language === 'es' && styles.langOptionTextActive]}>Castellano (ES)</Text>
-                {i18n.language === 'es' && <Ionicons name="checkmark" size={20} color="#FFB81C" />}
+                {i18n.language === 'es' && <Ionicons name="checkmark" size={20} color="#FFC91F" />}
               </TouchableOpacity>
               <TouchableOpacity style={styles.langOption} onPress={() => changeLanguage('en')}>
                 <Text style={[styles.langOptionText, i18n.language === 'en' && styles.langOptionTextActive]}>English (EN)</Text>
-                {i18n.language === 'en' && <Ionicons name="checkmark" size={20} color="#FFB81C" />}
+                {i18n.language === 'en' && <Ionicons name="checkmark" size={20} color="#FFC91F" />}
               </TouchableOpacity>
               <TouchableOpacity style={styles.langOption} onPress={() => changeLanguage('ca')}>
                 <Text style={[styles.langOptionText, i18n.language === 'ca' && styles.langOptionTextActive]}>Català (CA)</Text>
-                {i18n.language === 'ca' && <Ionicons name="checkmark" size={20} color="#FFB81C" />}
+                {i18n.language === 'ca' && <Ionicons name="checkmark" size={20} color="#FFC91F" />}
               </TouchableOpacity>
             </View>
           </View>
@@ -1235,23 +1235,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#FEF3C7',
-    borderColor: '#FDE68A',
+    backgroundColor: '#FFEFC2',
+    borderColor: '#FFD54A',
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 0,
     paddingVertical: 8,
     paddingHorizontal: 12,
     marginBottom: 12,
   },
-  truncationText: { flex: 1, color: '#92400E', fontSize: 12, fontFamily: FONTS.MEDIUM },
+  truncationText: { flex: 1, color: '#8A6700', fontSize: 12, fontFamily: FONTS.MEDIUM },
 
   // MATCH CARD MINIMAL
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FAFBF4',
     marginBottom: 16,
     borderRadius: 0,
-    borderWidth: 1,
-    borderColor: '#000000',
+    borderWidth: 2,
+    borderColor: '#0D2015',
+    shadowColor: '#0D2015',
+    shadowOffset: { width: 3, height: 3 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 3,
   },
   cardInternal: {
     padding: 0,
@@ -1266,17 +1271,17 @@ const styles = StyleSheet.create({
   cardTitleLine: {
     fontSize: 18,
     fontFamily: FONTS.BOLD,
-    color: '#0F172A',
+    color: '#0D2015',
     flex: 1,
   },
   slotsBadgeMinimal: {
-    backgroundColor: '#F0FDF4',
+    backgroundColor: '#E1EDDA',
     paddingHorizontal: 12,
     paddingVertical: 2,
-    borderRadius: 15,
+    borderRadius: 0,
   },
   slotsBadgeTextMinimal: {
-    color: '#16A34A',
+    color: '#1B8244',
     fontSize: 13,
     fontFamily: FONTS.MEDIUM,
   },
@@ -1288,20 +1293,20 @@ const styles = StyleSheet.create({
     gap: 6
   },
   statusTagMinimal: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#EFF2E4',
     paddingHorizontal: 8,
     paddingVertical: 2,
     alignSelf: 'flex-start',
-    borderRadius: 4,
+    borderRadius: 0,
   },
   statusTagTextMinimal: {
     fontSize: 11,
-    color: '#64748B',
+    color: '#4A6353',
     fontFamily: FONTS.BOLD,
   },
   cardDivider: {
     height: 1,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: '#DDE3CE',
   },
   cardFooterRowMinimal: {
     flexDirection: 'row',
@@ -1317,12 +1322,12 @@ const styles = StyleSheet.create({
   },
   timeTextMinimal: {
     fontSize: 16,
-    color: '#0F172A',
+    color: '#0D2015',
     fontFamily: FONTS.SEMI_BOLD,
   },
   priceTextMinimal: {
     fontSize: 16,
-    color: '#64748B',
+    color: '#4A6353',
     fontFamily: FONTS.REGULAR,
   },
   
@@ -1349,7 +1354,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.SECONDARY,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8
+    borderRadius: 0
   },
   priceText: { 
     color: COLORS.TEXT_WHITE, 
@@ -1398,7 +1403,7 @@ const styles = StyleSheet.create({
   applyButton: { 
     backgroundColor: COLORS.PRIMARY, 
     padding: 18, 
-    borderRadius: 16, 
+    borderRadius: 0, 
     alignItems: 'center',
     ...SHADOWS.MEDIUM
   },
@@ -1421,7 +1426,7 @@ const styles = StyleSheet.create({
   duplicateButton: { 
     backgroundColor: COLORS.SECONDARY, 
     padding: 14, 
-    borderRadius: 12, 
+    borderRadius: 0, 
     flexDirection: 'row', 
     justifyContent: 'center', 
     alignItems: 'center',
@@ -1435,7 +1440,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.CARD_BG,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 10,
+    borderRadius: 0,
     marginLeft: 10,
     borderWidth: 1,
     borderColor: COLORS.BORDER,
@@ -1523,7 +1528,7 @@ const styles = StyleSheet.create({
   cardShareSelected: { 
     borderColor: COLORS.SUCCESS, 
     borderWidth: 2, 
-    backgroundColor: '#F0FDF4' 
+    backgroundColor: '#E1EDDA' 
   },
   calendarWrapper: { 
     marginBottom: 20, 
@@ -1556,7 +1561,7 @@ const styles = StyleSheet.create({
   dayBubble: { 
     width: 48, 
     height: 48, 
-    borderRadius: 24, 
+    borderRadius: 0, 
     justifyContent: 'center', 
     alignItems: 'center', 
     backgroundColor: COLORS.CARD_BG, 
@@ -1566,8 +1571,8 @@ const styles = StyleSheet.create({
     ...SHADOWS.SMALL 
   },
   dayBubbleSelected: { 
-    backgroundColor: '#0F172A', 
-    borderColor: '#0F172A' 
+    backgroundColor: '#0D2015', 
+    borderColor: '#0D2015' 
   },
   dayText: { fontSize: 12, fontFamily: FONTS.BOLD, color: COLORS.TEXT_MUTED },
   dayTextSelected: { color: COLORS.TEXT_WHITE },
@@ -1591,12 +1596,12 @@ const styles = StyleSheet.create({
   joinedListBadge: { 
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#DCFCE7', 
+    backgroundColor: '#E1EDDA', 
     paddingHorizontal: 8, 
     paddingVertical: 4, 
-    borderRadius: 8, 
+    borderRadius: 0, 
     borderWidth: 1, 
-    borderColor: '#BBF7D0',
+    borderColor: '#CFE3D2',
     gap: 4
   },
   joinedListBadgeText: { 
@@ -1615,7 +1620,7 @@ const styles = StyleSheet.create({
     gap: 12, 
     backgroundColor: COLORS.CARD_BG, 
     padding: 12, 
-    borderRadius: 20,
+    borderRadius: 0,
     ...SHADOWS.LARGE
   },
   shareBarText: { flex: 1, fontSize: 14, fontFamily: FONTS.BOLD, color: COLORS.TEXT_MAIN, marginLeft: 8 },
@@ -1626,14 +1631,14 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.PRIMARY, 
     paddingHorizontal: 16, 
     paddingVertical: 10, 
-    borderRadius: 12, 
+    borderRadius: 0, 
     gap: 8 
   },
   shareBarBtnText: { color: "#FFF", fontSize: 13, fontFamily: FONTS.BOLD },
   shareToggleBtn: { 
     width: 32, 
     height: 32, 
-    borderRadius: 8, 
+    borderRadius: 0, 
     justifyContent: 'center', 
     alignItems: 'center', 
     backgroundColor: COLORS.BACKGROUND, 
@@ -1646,7 +1651,7 @@ const styles = StyleSheet.create({
   },
   horizontalScrollContent: { paddingHorizontal: 4, alignItems: 'center' },
   expandInScroll: { paddingHorizontal: 8, height: 48, justifyContent: 'center', alignItems: 'center' },
-  tooltipContainer: { position: 'absolute', backgroundColor: COLORS.SECONDARY, borderRadius: 8, maxWidth: 220 },
+  tooltipContainer: { position: 'absolute', backgroundColor: COLORS.SECONDARY, borderRadius: 0, maxWidth: 220 },
   tooltipTitle: { color: COLORS.TEXT_WHITE, fontSize: 12, fontFamily: FONTS.BOLD, marginBottom: 4 },
   tooltipText: { color: COLORS.TEXT_WHITE, fontSize: 11, fontFamily: FONTS.REGULAR, lineHeight: 16 },
   tooltipArrow: { position: 'absolute', bottom: -6, left: 20, width: 0, height: 0, borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 6, borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: COLORS.SECONDARY },

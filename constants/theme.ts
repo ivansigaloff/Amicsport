@@ -1,36 +1,39 @@
 import { Platform } from 'react-native';
 
+// Paleta «La Convocatoria»: papel tiza, verde botella, césped y tarjeta
+// amarilla — misma piel que /v2 (components/v2/theme.ts), con los nombres
+// de token históricos de v1 para no tocar cada pantalla.
 export const COLORS = {
   // Brand Colors
-  PRIMARY: '#FFB81C', // Code10 Orange
-  PRIMARY_LIGHT: '#FFD370',
-  PRIMARY_DARK: '#E59A00',
-  
-  SECONDARY: '#0F172A', // Slate 900
-  ACCENT: '#FFB81C', 
-  
+  PRIMARY: '#FFC91F', // tarjeta amarilla
+  PRIMARY_LIGHT: '#FFD54A',
+  PRIMARY_DARK: '#EDAF00',
+
+  SECONDARY: '#0D2015', // verde botella (tinta)
+  ACCENT: '#FFC91F',
+
   // Semantic Colors
-  SUCCESS: '#10B981', // Emerald 500
-  DANGER: '#EF4444', // Red 500
-  DANGER_LIGHT: '#FEE2E2', // Red 100
-  WARNING: '#FFB81C',
-  WARNING_LIGHT: '#FEF3C7', // Amber 100
-  INFO: '#3B82F6', // Blue 500
-  
+  SUCCESS: '#17713A', // césped
+  DANGER: '#D63415', // tarjeta roja
+  DANGER_LIGHT: '#FADFD6',
+  WARNING: '#EDAF00',
+  WARNING_LIGHT: '#FFEFC2',
+  INFO: '#16606B',
+
   // Backgrounds
-  BACKGROUND: '#E2E8F0', // Slate 200
-  CARD_BG: '#FFFFFF',
-  MODAL_OVERLAY: 'rgba(15, 23, 42, 0.7)',
-  
+  BACKGROUND: '#F1F3EA', // papel tiza
+  CARD_BG: '#FAFBF4',
+  MODAL_OVERLAY: 'rgba(13, 32, 21, 0.7)',
+
   // Text
-  TEXT_MAIN: '#0F172A', // Slate 900
-  TEXT_MUTED: '#64748B', // Slate 500
-  TEXT_LIGHT: '#94A3B8', // Slate 400
+  TEXT_MAIN: '#14251A',
+  TEXT_MUTED: '#4A6353',
+  TEXT_LIGHT: '#84957F',
   TEXT_WHITE: '#FFFFFF',
-  
+
   // Borders
-  BORDER: '#E2E8F0', // Slate 200
-  BORDER_LIGHT: '#F1F5F9', // Slate 100
+  BORDER: '#DDE3CE',
+  BORDER_LIGHT: '#EFF2E4',
 };
 
 // Light/dark palette consumed by the Expo template helpers (useThemeColor,
@@ -57,40 +60,42 @@ export const Colors = {
 };
 
 export const SHADOWS = {
+  // sombras duras de tinta (sin difuminado), firma del estilo Convocatoria
   SMALL: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowColor: '#0D2015',
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
     elevation: 2,
   },
   MEDIUM: {
-    shadowColor: '#4F46E5',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowColor: '#0D2015',
+    shadowOffset: { width: 3, height: 3 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 3,
   },
   LARGE: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowColor: '#0D2015',
+    shadowOffset: { width: 5, height: 5 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 5,
   },
 };
 
+// esquinas cuadradas
 export const SIZES = {
-  RADIUS_SMALL: 12,
-  RADIUS_MEDIUM: 20,
-  RADIUS_LARGE: 32,
+  RADIUS_SMALL: 0,
+  RADIUS_MEDIUM: 0,
+  RADIUS_LARGE: 0,
   PADDING: 20,
 };
 
 export const FONTS = {
-  BOLD: 'Montserrat_700Bold',
-  EXTRA_BOLD: 'Montserrat_800ExtraBold',
-  SEMI_BOLD: 'Montserrat_600SemiBold',
-  MEDIUM: 'Montserrat_500Medium',
-  REGULAR: 'Montserrat_400Regular',
+  BOLD: 'Archivo_700Bold',
+  EXTRA_BOLD: 'Archivo_800ExtraBold',
+  SEMI_BOLD: 'Archivo_600SemiBold',
+  MEDIUM: 'Archivo_500Medium',
+  REGULAR: 'Archivo_400Regular',
 };

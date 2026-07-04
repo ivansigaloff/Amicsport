@@ -66,7 +66,7 @@ export default function ResetPasswordScreen() {
           <SafeAreaView style={styles.safeArea}>
             <View style={styles.container}>
               <View style={styles.headerContainer}>
-                <Ionicons name="checkmark-circle" size={80} color="#10B981" />
+                <Ionicons name="checkmark-circle" size={80} color="#17713A" />
                 <Text style={styles.title}>¡Todo listo!</Text>
                 <Text style={styles.subtitle}>Tu contraseña ha sido actualizada correctamente. Ya puedes acceder con tus nuevas credenciales.</Text>
                 <TouchableOpacity style={[styles.loginButton, { width: '100%', marginTop: 30 }]} onPress={() => router.replace('/login')}>
@@ -90,7 +90,7 @@ export default function ResetPasswordScreen() {
           <SafeAreaView style={styles.safeArea}>
             <View style={styles.container}>
               <View style={styles.headerContainer}>
-                <Ionicons name="alert-circle" size={80} color="#EF4444" />
+                <Ionicons name="alert-circle" size={80} color="#D63415" />
                 <Text style={styles.title}>Enlace Caducado</Text>
                 <Text style={styles.subtitle}>Este enlace de recuperación ya no es válido o ha expirado. Por favor, solicita uno nuevo.</Text>
                 <TouchableOpacity style={[styles.loginButton, { width: '100%', marginTop: 30 }]} onPress={() => router.replace('/login')}>
@@ -105,7 +105,7 @@ export default function ResetPasswordScreen() {
   }
 
   if (sessionValid === null) {
-     return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color="#556080" /></View>;
+     return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color="#4A6353" /></View>;
   }
 
   return (
@@ -116,7 +116,7 @@ export default function ResetPasswordScreen() {
       <View style={styles.overlay}>
         <SafeAreaView style={styles.safeArea}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/login')}>
-            <Ionicons name="arrow-back" size={24} color="#556080" />
+            <Ionicons name="arrow-back" size={24} color="#4A6353" />
             <Text style={styles.backText}>Volver</Text>
           </TouchableOpacity>
 
@@ -131,26 +131,26 @@ export default function ResetPasswordScreen() {
 
             <View style={styles.formContainer}>
               <View style={styles.inputGroup}>
-                <Ionicons name="lock-closed-outline" size={20} color="#94A3B8" style={styles.inputIcon} />
+                <Ionicons name="lock-closed-outline" size={20} color="#84957F" style={styles.inputIcon} />
                 <TextInput 
                   style={styles.input}
                   placeholder="Nueva contraseña (8+ car, Mayús, Núm, Simb)"
-                  placeholderTextColor="#64748B"
+                  placeholderTextColor="#4A6353"
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
                 />
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
-                  <Ionicons name={showPassword ? "eye-outline" : "eye-off-outline"} size={20} color="#94A3B8" />
+                  <Ionicons name={showPassword ? "eye-outline" : "eye-off-outline"} size={20} color="#84957F" />
                 </TouchableOpacity>
               </View>
 
               <View style={styles.inputGroup}>
-                <Ionicons name="lock-closed-outline" size={20} color="#94A3B8" style={styles.inputIcon} />
+                <Ionicons name="lock-closed-outline" size={20} color="#84957F" style={styles.inputIcon} />
                 <TextInput 
                   style={styles.input}
                   placeholder="Confirmar contraseña"
-                  placeholderTextColor="#64748B"
+                  placeholderTextColor="#4A6353"
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   secureTextEntry={!showPassword}
@@ -181,17 +181,17 @@ const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(255, 255, 255, 0.92)' },
   safeArea: { flex: 1 },
   backButton: { flexDirection: 'row', alignItems: 'center', padding: 20, marginTop: 10 },
-  backText: { color: '#556080', fontSize: 16, fontWeight: '700', marginLeft: 8 },
+  backText: { color: '#4A6353', fontSize: 16, fontWeight: '700', marginLeft: 8 },
   container: { flex: 1, padding: 32, justifyContent: 'center' },
   headerContainer: { alignItems: 'center', marginBottom: 40 },
-  logoContainer: { width: 84, height: 84, borderRadius: 42, backgroundColor: '#556080', justifyContent: 'center', alignItems: 'center', marginBottom: 20, shadowColor: '#556080', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 12 },
-  title: { fontSize: 32, fontWeight: '900', color: '#0F172A', textAlign: 'center' },
-  subtitle: { fontSize: 16, color: '#64748B', marginTop: 8, fontWeight: '600', textAlign: 'center' },
+  logoContainer: { width: 84, height: 84, borderRadius: 42, backgroundColor: '#4A6353', justifyContent: 'center', alignItems: 'center', marginBottom: 20, shadowColor: '#4A6353', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 12 },
+  title: { fontSize: 32, fontWeight: '900', color: '#0D2015', textAlign: 'center' },
+  subtitle: { fontSize: 16, color: '#4A6353', marginTop: 8, fontWeight: '600', textAlign: 'center' },
   formContainer: { width: '100%' },
-  inputGroup: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 20, marginBottom: 20, paddingHorizontal: 20, borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 4, elevation: 2 },
+  inputGroup: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 20, marginBottom: 20, paddingHorizontal: 20, borderWidth: 1, borderColor: '#EFF2E4', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 4, elevation: 2 },
   inputIcon: { marginRight: 12 },
-  input: { flex: 1, height: 60, color: '#0F172A', fontSize: 16, fontWeight: '500' },
+  input: { flex: 1, height: 60, color: '#0D2015', fontSize: 16, fontWeight: '500' },
   eyeIcon: { padding: 10 },
-  loginButton: { backgroundColor: '#556080', height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', marginTop: 10, shadowColor: '#556080', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 6 },
+  loginButton: { backgroundColor: '#4A6353', height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', marginTop: 10, shadowColor: '#4A6353', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 6 },
   loginButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900', letterSpacing: 1 }
 });

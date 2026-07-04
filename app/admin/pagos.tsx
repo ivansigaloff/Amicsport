@@ -22,11 +22,11 @@ const STATUS_LABELS: Record<PaymentStatus, string> = {
 };
 
 const STATUS_COLORS: Record<PaymentStatus, string> = {
-  PENDING:              '#F59E0B',
-  SUCCEEDED:            '#10B981',
-  FAILED:               '#EF4444',
+  PENDING:              '#EDAF00',
+  SUCCEEDED:            '#17713A',
+  FAILED:               '#D63415',
   CANCELED:             '#6B7280',
-  REFUNDED:             '#3B82F6',
+  REFUNDED:             '#16606B',
   PARTIALLY_REFUNDED:   '#8B5CF6',
   EXPIRED:              '#9CA3AF',
   PENDING_REFUND_ADMIN: '#F97316',
@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
   statusText: { fontSize: 11, fontFamily: FONTS.BOLD },
   cardRow: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
   cardAmount: { fontSize: 16, fontFamily: FONTS.EXTRA_BOLD, color: COLORS.TEXT_MAIN },
-  cardRefunded: { fontSize: 12, fontFamily: FONTS.MEDIUM, color: '#3B82F6' },
+  cardRefunded: { fontSize: 12, fontFamily: FONTS.MEDIUM, color: '#16606B' },
   cardMeta: { fontSize: 12, fontFamily: FONTS.REGULAR, color: COLORS.TEXT_MUTED },
   refundBtn: { marginTop: 12, borderWidth: 1, borderColor: COLORS.DANGER, borderRadius: 8, paddingVertical: 8, alignItems: 'center' },
   refundBtnText: { fontSize: 13, fontFamily: FONTS.BOLD, color: COLORS.DANGER },

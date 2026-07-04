@@ -54,7 +54,7 @@ export default function PaymentReturn() {
           </>
         ) : (
           <>
-            <View style={[styles.iconCircle, { backgroundColor: isSuccess ? '#D1FAE5' : '#FEE2E2' }]}>
+            <View style={[styles.iconCircle, { backgroundColor: isSuccess ? '#D1FAE5' : '#FADFD6' }]}>
               <Ionicons
                 name={isSuccess ? 'checkmark-circle' : 'close-circle'}
                 size={72}

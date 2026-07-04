@@ -104,15 +104,15 @@ export default function ManagePlayersScreen() {
 
   // Admin-only route guard (RLS already protects the data; this blocks the UI).
   if (authorized === null || (authorized && loading)) {
-    return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color="#0F172A" /></View>;
+    return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color="#0D2015" /></View>;
   }
   if (authorized === false) {
     return (
       <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 }}>
-        <Ionicons name="lock-closed-outline" size={48} color="#94A3B8" />
-        <Text style={{ color: '#64748B', fontSize: 16, textAlign: 'center' }}>Solo accesible para administradores</Text>
+        <Ionicons name="lock-closed-outline" size={48} color="#84957F" />
+        <Text style={{ color: '#4A6353', fontSize: 16, textAlign: 'center' }}>Solo accesible para administradores</Text>
         <TouchableOpacity onPress={() => router.replace('/(tabs)' as any)}>
-          <Text style={{ color: '#0F172A', fontWeight: '700' }}>Volver</Text>
+          <Text style={{ color: '#0D2015', fontWeight: '700' }}>Volver</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
@@ -122,7 +122,7 @@ export default function ManagePlayersScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={24} color="#0F172A" />
+          <Ionicons name="chevron-back" size={24} color="#0D2015" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Directorio de Jugadores</Text>
         <TouchableOpacity style={styles.addButton} onPress={() => setShowModal(true)}>
@@ -140,7 +140,7 @@ export default function ManagePlayersScreen() {
             contentContainerStyle={{ paddingBottom: 40 }}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <Ionicons name="book-outline" size={64} color="#CBD5E1" />
+                <Ionicons name="book-outline" size={64} color="#DDE3CE" />
                 <Text style={styles.emptyText}>No tienes jugadores manuales en tu directorio.</Text>
                 <TouchableOpacity onPress={() => setShowModal(true)} style={styles.emptyBtn}>
                   <Text style={styles.emptyBtnText}>+ Añadir el primero</Text>
@@ -171,7 +171,7 @@ export default function ManagePlayersScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Nuevo Jugador</Text>
               <TouchableOpacity onPress={() => setShowModal(false)}>
-                <Ionicons name="close" size={28} color="#64748B" />
+                <Ionicons name="close" size={28} color="#4A6353" />
               </TouchableOpacity>
             </View>
             
@@ -182,7 +182,7 @@ export default function ManagePlayersScreen() {
                 value={newPlayerName} 
                 onChangeText={setNewPlayerName} 
                 placeholder="Ej. Martín López" 
-                placeholderTextColor="#94A3B8" 
+                placeholderTextColor="#84957F" 
                 autoCapitalize="words"
                 autoFocus
               />
@@ -206,20 +206,20 @@ export default function ManagePlayersScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Confirmar Borrado</Text>
               <TouchableOpacity onPress={() => { setShowDeleteConfirm(false); setPlayerToDelete(null); }}>
-                <Ionicons name="close" size={28} color="#94A3B8" />
+                <Ionicons name="close" size={28} color="#84957F" />
               </TouchableOpacity>
             </View>
             
-            <Text style={{ fontSize: 16, color: '#64748B', lineHeight: 24, marginBottom: 32 }}>
-              ¿Estás seguro de que quieres eliminar a <Text style={{fontWeight: '800', color: '#0F172A'}}>{playerToDelete?.name}</Text> de tu directorio de jugadores?
+            <Text style={{ fontSize: 16, color: '#4A6353', lineHeight: 24, marginBottom: 32 }}>
+              ¿Estás seguro de que quieres eliminar a <Text style={{fontWeight: '800', color: '#0D2015'}}>{playerToDelete?.name}</Text> de tu directorio de jugadores?
             </Text>
 
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <TouchableOpacity 
-                style={{ flex: 1, backgroundColor: '#F1F5F9', padding: 16, borderRadius: 16, alignItems: 'center' }}
+                style={{ flex: 1, backgroundColor: '#EFF2E4', padding: 16, borderRadius: 16, alignItems: 'center' }}
                 onPress={() => { setShowDeleteConfirm(false); setPlayerToDelete(null); }}
               >
-                <Text style={{ fontWeight: '700', color: '#64748B' }}>CANCELAR</Text>
+                <Text style={{ fontWeight: '700', color: '#4A6353' }}>CANCELAR</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={{ flex: 1, backgroundColor: '#C05E5E', padding: 16, borderRadius: 16, alignItems: 'center' }}
@@ -237,30 +237,30 @@ export default function ManagePlayersScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', backgroundColor: '#FFFFFF' },
-  backButton: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
-  addButton: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#FFB81C', justifyContent: 'center', alignItems: 'center', shadowColor: '#FFB81C', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 4 },
-  headerTitle: { fontSize: 20, fontWeight: '800', color: '#0F172A' },
+  safeArea: { flex: 1, backgroundColor: '#FAFBF4' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#EFF2E4', backgroundColor: '#FFFFFF' },
+  backButton: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#EFF2E4', justifyContent: 'center', alignItems: 'center' },
+  addButton: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#FFC91F', justifyContent: 'center', alignItems: 'center', shadowColor: '#FFC91F', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 4 },
+  headerTitle: { fontSize: 20, fontWeight: '800', color: '#0D2015' },
   container: { flex: 1, padding: 24 },
-  playerCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', padding: 16, borderRadius: 20, marginBottom: 16, borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
-  playerAvatarLarge: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
-  initialText: { color: '#FFB81C', fontSize: 20, fontWeight: '800' },
+  playerCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', padding: 16, borderRadius: 20, marginBottom: 16, borderWidth: 1, borderColor: '#EFF2E4', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+  playerAvatarLarge: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#EFF2E4', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
+  initialText: { color: '#FFC91F', fontSize: 20, fontWeight: '800' },
   playerInfo: { flex: 1 },
-  playerName: { color: '#0F172A', fontSize: 17, fontWeight: '700' },
-  playerSub: { color: '#64748B', fontSize: 14, marginTop: 4, fontWeight: '500' },
+  playerName: { color: '#0D2015', fontSize: 17, fontWeight: '700' },
+  playerSub: { color: '#4A6353', fontSize: 14, marginTop: 4, fontWeight: '500' },
   deleteBtn: { padding: 10, backgroundColor: '#FEF2F2', borderRadius: 12 },
   emptyContainer: { alignItems: 'center', justifyContent: 'center', marginTop: 100 },
-  emptyText: { color: '#64748B', fontSize: 16, marginTop: 16, marginBottom: 24, textAlign: 'center', fontWeight: '500', maxWidth: '80%' },
-  emptyBtn: { paddingHorizontal: 24, paddingVertical: 14, backgroundColor: '#F1F5F9', borderRadius: 20, borderWidth: 1, borderColor: '#E0E7FF' },
-  emptyBtnText: { color: '#FFB81C', fontWeight: '800' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.7)', justifyContent: 'flex-end' },
+  emptyText: { color: '#4A6353', fontSize: 16, marginTop: 16, marginBottom: 24, textAlign: 'center', fontWeight: '500', maxWidth: '80%' },
+  emptyBtn: { paddingHorizontal: 24, paddingVertical: 14, backgroundColor: '#EFF2E4', borderRadius: 20, borderWidth: 1, borderColor: '#E0E7FF' },
+  emptyBtnText: { color: '#FFC91F', fontWeight: '800' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(13, 32, 21, 0.7)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, paddingBottom: 50 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  modalTitle: { fontSize: 22, fontWeight: '900', color: '#0F172A' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#EFF2E4' },
+  modalTitle: { fontSize: 22, fontWeight: '900', color: '#0D2015' },
   formGroup: { marginBottom: 24 },
-  label: { fontSize: 14, color: '#64748B', marginBottom: 10, fontWeight: '700' },
-  input: { backgroundColor: '#F8FAFC', borderRadius: 16, borderWidth: 1, borderColor: '#F1F5F9', color: '#0F172A', fontSize: 16, padding: 18, fontWeight: '500' },
-  submitButton: { backgroundColor: '#FFB81C', padding: 20, borderRadius: 20, alignItems: 'center', marginTop: 10, shadowColor: '#FFB81C', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 6 },
+  label: { fontSize: 14, color: '#4A6353', marginBottom: 10, fontWeight: '700' },
+  input: { backgroundColor: '#FAFBF4', borderRadius: 16, borderWidth: 1, borderColor: '#EFF2E4', color: '#0D2015', fontSize: 16, padding: 18, fontWeight: '500' },
+  submitButton: { backgroundColor: '#FFC91F', padding: 20, borderRadius: 20, alignItems: 'center', marginTop: 10, shadowColor: '#FFC91F', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 6 },
   submitButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900', letterSpacing: 0.5 },
 });
