@@ -158,7 +158,7 @@ const shortName = (full: string) => {
   return `${short}${suffix}`;
 };
 
-function PlayerRow({ p, sty, striped, userId, t, onRemove, setCheckin, setShirtColor, setPaid, isAdmin }: any) {
+function PlayerRow({ p, sty, striped, userId, t, setCheckin, setShirtColor, setPaid, isAdmin }: any) {
   const checkedIn = !!p.checked_in;
   const paid = !!p.paid;
   const color = p.shirt_color;
@@ -196,12 +196,7 @@ function PlayerRow({ p, sty, striped, userId, t, onRemove, setCheckin, setShirtC
           <Ionicons name={paid ? 'cash' : 'cash-outline'} size={20} color={paid ? COLORS.SUCCESS : DISABLED} />
         </TouchableOpacity>
       )}
-
-      {onRemove && (
-        <TouchableOpacity onPress={onRemove} style={styles.iconBtn} {...tip(t('match_details.manage.remove'))}>
-          <Ionicons name="trash-outline" size={16} color={COLORS.DANGER} />
-        </TouchableOpacity>
-      )}
+      {/* borrar solo en la vista ampliada — la compacta es para gestionar el campo */}
     </View>
   );
 }
@@ -535,7 +530,6 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
             striped={colorOf(p) === 'unassigned'}
             userId={userId}
             t={t}
-            onRemove={p.user_id !== userId ? () => removeParticipant(p) : undefined}
             setCheckin={setCheckin}
             setShirtColor={setShirtColor}
             setPaid={setPaid}
