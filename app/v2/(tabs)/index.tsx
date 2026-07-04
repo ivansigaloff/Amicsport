@@ -625,7 +625,10 @@ export default function V2Matches() {
                           {!isExpanded && (
                             <>
                               <View pointerEvents="none" style={{ position: 'absolute', right: -3, top: 3, bottom: -3, width: 3, backgroundColor: C.ink }} />
-                              <View pointerEvents="none" style={{ position: 'absolute', left: 24, right: -3, bottom: -3, height: 3, backgroundColor: C.ink }} />
+                              {/* el borde visible del lomo está en x=14 (solape); la
+                                  sombra arranca a 3px de él como en la ficha, dejando
+                                  una muesca mínima con la sombra de la carta anterior */}
+                              <View pointerEvents="none" style={{ position: 'absolute', left: 20, right: -3, bottom: -3, height: 3, backgroundColor: C.ink }} />
                             </>
                           )}
                           <MatchCardV2
