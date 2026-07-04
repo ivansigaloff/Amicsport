@@ -617,10 +617,11 @@ export default function V2Matches() {
                     {sec.data.map((m: any, i: number) => {
                       const expandedId = expandedByDay[sec.iso] ?? String(sec.data[0].id);
                       const isExpanded = String(m.id) === expandedId;
-                      // solape con z decreciente: cada carta pisa a la siguiente,
-                      // y su sombra dura completa queda visible sobre ella
+                      // solape con z decreciente + escalonado por abajo: cada
+                      // solapada acaba antes que la anterior, así su sombra se
+                      // corta y se ve dónde empieza cada carta
                       return (
-                        <View key={m.id} style={{ zIndex: isExpanded ? 60 : sec.data.length - i, marginLeft: i === 0 ? 0 : -14, flexDirection: 'row', alignItems: 'stretch' }}>
+                        <View key={m.id} style={{ zIndex: isExpanded ? 60 : sec.data.length - i, marginLeft: i === 0 ? 0 : -14, marginBottom: isExpanded ? 0 : 10 + i * 6, flexDirection: 'row', alignItems: 'stretch' }}>
                           <MatchCardV2
                             item={m}
                             index={Math.min(i, 6)}
