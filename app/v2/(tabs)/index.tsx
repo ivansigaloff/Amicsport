@@ -617,15 +617,15 @@ export default function V2Matches() {
                     {sec.data.map((m: any, i: number) => {
                       const expandedId = expandedByDay[sec.iso] ?? String(sec.data[0].id);
                       const isExpanded = String(m.id) === expandedId;
-                      // hueco de 7px entre cartas: la sombra dura (3px) de cada
-                      // una se corta antes de tocar a la siguiente
+                      // solape con z decreciente: cada carta pisa a la siguiente,
+                      // y su sombra dura completa queda visible sobre ella
                       return (
-                        <View key={m.id} style={{ marginLeft: i === 0 ? 0 : 7, flexDirection: 'row', alignItems: 'stretch' }}>
+                        <View key={m.id} style={{ zIndex: isExpanded ? 60 : sec.data.length - i, marginLeft: i === 0 ? 0 : -14, flexDirection: 'row', alignItems: 'stretch' }}>
                           <MatchCardV2
                             item={m}
                             index={Math.min(i, 6)}
                             expanded={isExpanded}
-                            expandedWidth={Math.max(210, Math.min(width - 2 * S.lg, 720) - Math.min(sec.data.length - 1, 2) * 91 - 6)}
+                            expandedWidth={Math.max(210, Math.min(width - 2 * S.lg, 720) - Math.min(sec.data.length - 1, 2) * 82 - 8)}
                             onExpand={() => setExpandedByDay((prev) => ({ ...prev, [sec.iso]: String(m.id) }))}
                             onJoin={joinFromCard}
                             joining={joiningId === m.id}
@@ -757,10 +757,12 @@ const styles = StyleSheet.create({
   cardDivider: { borderTopWidth: 1.5, borderStyle: 'dashed', borderColor: C.border, marginVertical: 10 },
   shareCheck: { position: 'absolute', top: 10, right: 10, width: 24, height: 24, borderWidth: 2, borderColor: C.ink, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
   // ---- lomo vertical (carta tapada en el abanico)
+  // 14px del lado izquierdo quedan bajo la carta anterior: el ancho y el
+  // paddingLeft lo compensan para que el contenido se vea entero
   spine: {
-    width: 84, alignItems: 'center',
+    width: 96, alignItems: 'center',
     backgroundColor: C.surface, borderWidth: 2, borderColor: C.ink,
-    paddingVertical: 8, paddingLeft: 12, paddingRight: 6, gap: 4,
+    paddingVertical: 8, paddingLeft: 20, paddingRight: 6, gap: 4,
     ...SHADOW.md, // misma sombra que la ficha destapada
   },
   spineSelected: { borderColor: C.accentStrong, shadowColor: C.accentStrong },
