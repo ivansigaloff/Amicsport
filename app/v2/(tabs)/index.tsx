@@ -147,6 +147,7 @@ function MatchCardV2({ item, index, expanded, expandedWidth, onExpand, onJoin, j
             {!!item.distance && item.distance !== 'Apto' && <Text style={styles.spineMeta}>{item.distance}</Text>}
           </View>
         </View>
+        <Text style={styles.spinePrice}>{Number(item.price).toFixed(2).replace('.', ',')}€</Text>
         {shareMode && (
           <View style={[styles.shareCheckStrip, shareSelected && { backgroundColor: C.brand, borderColor: C.brand }]}>
             {shareSelected && <Ionicons name="checkmark" size={13} color="#fff" />}
@@ -751,13 +752,14 @@ const styles = StyleSheet.create({
     width: 84, alignItems: 'center',
     backgroundColor: C.surface, borderWidth: 2, borderColor: C.ink,
     paddingVertical: 8, paddingLeft: 12, paddingRight: 6, gap: 4,
-    ...SHADOW.sm,
+    ...SHADOW.md, // misma sombra que la ficha destapada
   },
   spineSelected: { borderColor: C.accentStrong, shadowColor: C.accentStrong },
   spineTime: { fontFamily: FONTS.black, fontSize: 16, color: C.text, letterSpacing: 0.3 },
   spineCount: { fontFamily: FONTS.monoMedium, fontSize: 11.5, letterSpacing: 0.3 },
   spineTitle: { fontFamily: FONTS.bold, fontSize: 14.5, color: C.text, letterSpacing: 0.2 },
   spineMeta: { fontFamily: FONTS.monoMedium, fontSize: 10, color: C.textMuted, letterSpacing: 0.3 },
+  spinePrice: { fontFamily: FONTS.monoMedium, fontSize: 11.5, color: C.text, marginTop: 2 },
   spineYou: { width: 18, height: 18, backgroundColor: C.accent, borderWidth: 1.5, borderColor: C.ink, alignItems: 'center', justifyContent: 'center' },
   shareCheckStrip: { width: 20, height: 20, borderWidth: 2, borderColor: C.ink, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
   // ---- ficha (carta destapada)
