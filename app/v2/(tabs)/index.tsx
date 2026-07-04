@@ -88,7 +88,7 @@ function VerticalText({ text, style }: { text: string; style?: any }) {
       {h > 0 && (
         // se rota un contenedor de medidas fijas (no el texto): RN-web capa el
         // Text con numberOfLines a maxWidth 100% del padre y lo truncaría
-        <View key={h} style={{ width: h - 4, height: 20, transform: [{ rotate: '-90deg' }], alignItems: 'center', justifyContent: 'center' }}>
+        <View key={h} style={{ width: h - 4, height: 24, transform: [{ rotate: '-90deg' }], alignItems: 'center', justifyContent: 'center' }}>
           <Text numberOfLines={1} style={style}>{text}</Text>
         </View>
       )}
@@ -176,7 +176,7 @@ function MatchCardV2({ item, index, expanded, expandedWidth, onExpand, onJoin, j
         elevation="md"
         padded={false}
       >
-        <View style={{ padding: compactFicha ? S.md : S.lg, paddingBottom: S.md, minHeight: 300 }}>
+        <View style={{ padding: compactFicha ? S.md : S.lg, paddingBottom: S.md, minHeight: 272 }}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: S.sm }}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.fichaHora, compactFicha && { fontSize: 26, lineHeight: 28 }]}>{item.time}</Text>
@@ -757,7 +757,7 @@ const styles = StyleSheet.create({
   spineSelected: { borderColor: C.accentStrong, shadowColor: C.accentStrong },
   spineTime: { fontFamily: FONTS.black, fontSize: 16, color: C.text, letterSpacing: 0.3 },
   spineCount: { fontFamily: FONTS.monoMedium, fontSize: 11.5, letterSpacing: 0.3 },
-  spineTitle: { fontFamily: FONTS.bold, fontSize: 12.5, color: C.textMuted, letterSpacing: 0.2 },
+  spineTitle: { fontFamily: FONTS.bold, fontSize: 14.5, color: C.text, letterSpacing: 0.2 },
   spineMeta: { fontFamily: FONTS.monoMedium, fontSize: 10, color: C.textMuted, letterSpacing: 0.3 },
   spineYou: { width: 18, height: 18, backgroundColor: C.accent, borderWidth: 1.5, borderColor: C.ink, alignItems: 'center', justifyContent: 'center' },
   shareCheckStrip: { width: 20, height: 20, borderWidth: 2, borderColor: C.ink, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
@@ -774,8 +774,9 @@ const styles = StyleSheet.create({
   fichaCount: { fontFamily: FONTS.monoMedium, fontSize: 13.5, letterSpacing: 0.5 },
   fichaPrice: { fontFamily: FONTS.monoMedium, fontSize: 17, color: C.text },
   fichaEur: { fontSize: 10.5, color: C.textMuted, letterSpacing: 0.5 },
+  // en la banda media derecha: no tapa ni la hora ni el badge/VER
   stamp: {
-    position: 'absolute', right: 104, top: 8, zIndex: 5,
+    position: 'absolute', right: 12, top: 96, zIndex: 5,
     borderWidth: 2.5, borderColor: C.danger, backgroundColor: C.surface,
     paddingHorizontal: 10, paddingVertical: 3,
     transform: [{ rotate: '-8deg' }],
