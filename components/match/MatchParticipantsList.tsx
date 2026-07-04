@@ -140,43 +140,47 @@ function TrackerPicker({ value, onChange, availableOptions, p, t }: { value: num
 
 // One compact player row, tinted by its color group. The management controls
 // (check-in / shirt color / paid) are active for admins.
-function PlayerRow({ p, sty, striped, userId, t, onRemove, setCheckin, setShirtColor, setPaid, setDeviceNumber, availableTrackerOptions, isAdmin }: any) {
+// «Nombre A.» con el sufijo de invitado reducido al mínimo
+// («Ivan Sigaloff (invitado 2)» → «Ivan S. ·2», «... (invitado)» → «Ivan S. ·inv»).
+const shortName = (full: string) => {
+  if (!full) return full;
+  const m = full.match(/^(.*?)\s*(\(.*\))?$/);
+  const base = (m?.[1] || full).trim();
+  const suffixRaw = m?.[2] || '';
+  let suffix = '';
+  if (suffixRaw) {
+    const num = suffixRaw.match(/\d+/)?.[0];
+    if (/invitado/i.test(suffixRaw)) suffix = num ? ` ·${num}` : ' ·inv';
+    else suffix = ` ${suffixRaw}`;
+  }
+  const parts = base.split(/\s+/);
+  const short = parts.length > 1 ? `${parts[0]} ${parts[1].charAt(0)}.` : base;
+  return `${short}${suffix}`;
+};
+
+function PlayerRow({ p, sty, striped, userId, t, onRemove, setCheckin, setShirtColor, setPaid, isAdmin }: any) {
   const checkedIn = !!p.checked_in;
   const paid = !!p.paid;
   const color = p.shirt_color;
   const isSelf = p.user_id === userId;
-  // En pantallas estrechas los controles fijos (tracker + camisetas + pagado +
-  // quitar) no dejan sitio al nombre: la fila pasa a dos líneas.
+  // La fila compacta es SIEMPRE de una línea: sin selector GPS (vive en la
+  // vista ampliada) y con el nombre abreviado si la pantalla es estrecha.
   const { width } = useWindowDimensions();
   const narrow = width < 560;
+  const rawName = `${p.user_name}${isSelf ? ` (${t('match_details.self_joined')})` : ''}`;
+  const displayName = narrow ? shortName(rawName) : rawName;
 
-  const identity = (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+  return (
+    <View style={[styles.playerRow, { backgroundColor: sty.bg, borderLeftColor: sty.accent, borderBottomColor: sty.divider }]} {...stripeRef(striped)}>
       <TouchableOpacity onPress={() => setCheckin(p, !checkedIn)} style={styles.iconBtn} {...tip(t('match_details.manage.checkin'))}>
         <Ionicons name={checkedIn ? 'checkmark-circle' : 'ellipse-outline'} size={22} color={checkedIn ? COLORS.SUCCESS : DISABLED} />
       </TouchableOpacity>
+
       <View style={styles.miniAvatar}>
         <Text style={styles.miniAvatarText}>{p.user_name?.charAt(0).toUpperCase() || 'P'}</Text>
       </View>
-      <Text style={[styles.playerName, { color: sty.text }]} numberOfLines={1}>
-        {p.user_name}{isSelf ? ` (${t('match_details.self_joined')})` : ''}
-      </Text>
-    </View>
-  );
 
-  const controls = (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, justifyContent: narrow ? 'flex-end' : undefined }}>
-      {isAdmin && setDeviceNumber && (
-        <View style={{ marginRight: 8 }}>
-          <TrackerPicker
-            value={p.device_number ?? null}
-            onChange={(val) => setDeviceNumber(p, val)}
-            availableOptions={availableTrackerOptions}
-            p={p}
-            t={t}
-          />
-        </View>
-      )}
+      <Text style={[styles.playerName, { color: sty.text }]} numberOfLines={1}>{displayName}</Text>
 
       <View style={styles.colorPick}>
         <TouchableOpacity onPress={() => setShirtColor(p, color === 'white' ? null : 'white')} style={[styles.colorChip, styles.colorChipWhite, color === 'white' && styles.colorChipActive]} {...tip(t('match_details.manage.section_white'))}>
@@ -198,20 +202,6 @@ function PlayerRow({ p, sty, striped, userId, t, onRemove, setCheckin, setShirtC
           <Ionicons name="trash-outline" size={16} color={COLORS.DANGER} />
         </TouchableOpacity>
       )}
-    </View>
-  );
-
-  return (
-    <View
-      style={[
-        styles.playerRow,
-        { backgroundColor: sty.bg, borderLeftColor: sty.accent, borderBottomColor: sty.divider },
-        narrow && { flexDirection: 'column', alignItems: 'stretch', gap: 4 },
-      ]}
-      {...stripeRef(striped)}
-    >
-      {identity}
-      {controls}
     </View>
   );
 }
@@ -405,6 +395,17 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
                   {p.device_number != null ? ` · GPS ${p.device_number}` : ''}
                 </Text>
               </View>
+              {isAdmin && setDeviceNumber && (
+                <View style={{ marginRight: 8 }}>
+                  <TrackerPicker
+                    value={p.device_number ?? null}
+                    onChange={(val: number | null) => setDeviceNumber(p, val)}
+                    availableOptions={availableTrackerOptions}
+                    p={p}
+                    t={t}
+                  />
+                </View>
+              )}
               {isAdmin && p.user_id !== userId && (
                 <TouchableOpacity onPress={() => removeParticipant(p)} style={styles.removeBtn}>
                   <Ionicons name="trash-outline" size={18} color={COLORS.DANGER} />
@@ -538,8 +539,6 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
             setCheckin={setCheckin}
             setShirtColor={setShirtColor}
             setPaid={setPaid}
-            setDeviceNumber={setDeviceNumber}
-            availableTrackerOptions={availableTrackerOptions}
             isAdmin={isAdmin}
           />
         ))}
@@ -590,7 +589,7 @@ const styles = StyleSheet.create({
   miniAvatar: { width: 28, height: 28, borderRadius: 0, backgroundColor: COLORS.PRIMARY_LIGHT, justifyContent: 'center', alignItems: 'center' },
   miniAvatarText: { fontSize: 13, fontFamily: FONTS.BOLD, color: COLORS.PRIMARY },
   playerName: { flex: 1, fontSize: 14, fontFamily: FONTS.SEMI_BOLD },
-  iconBtn: { padding: 6, minWidth: 34, alignItems: 'center', justifyContent: 'center' },
+  iconBtn: { padding: 5, minWidth: 30, alignItems: 'center', justifyContent: 'center' },
   disabledCtrl: { opacity: 0.4 },
   colorPick: { flexDirection: 'row', gap: 4 },
   colorChip: { width: 26, height: 26, borderRadius: 0, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
