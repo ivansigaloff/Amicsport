@@ -10,6 +10,8 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { EnvironmentProvider } from '../hooks/use-env';
 import Constants from 'expo-constants';
 import CookieBanner from '../components/CookieBanner';
+import ChalkCursor from '../components/v2/ChalkCursor';
+import PitchStripes from '../components/v2/PitchStripes';
 import '../lib/i18n';
 import {
   useFonts,
@@ -121,6 +123,9 @@ export default function RootLayout() {
           <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
         </Stack>
         <CookieBanner />
+        {/* estética global «La Convocatoria»: cursor de tiza + fondo de campo */}
+        <ChalkCursor />
+        <PitchStripes />
         <StatusBar style="auto" />
       </ThemeProvider>
     </EnvironmentProvider>

@@ -490,6 +490,12 @@ export default function V2Matches() {
               <Text style={styles.heroTitle}>{t('matches.title')}</Text>
             </View>
             <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+              <PressableScale onPress={() => setMapOpen((v) => !v)} style={[styles.heroIcon, mapOpen && styles.heroIconActive]}>
+                <Ionicons name="map-outline" size={18} color={mapOpen ? C.ink : '#fff'} />
+              </PressableScale>
+              <PressableScale onPress={() => setFilterOpen(true)} style={[styles.heroIcon, anyFilter && styles.heroIconActive]}>
+                <Ionicons name="options-outline" size={18} color={anyFilter ? C.ink : '#fff'} />
+              </PressableScale>
               <PressableScale onPress={() => setLangOpen(true)} style={styles.heroPill}>
                 <Text style={styles.heroPillText}>{i18n.language.toUpperCase()}</Text>
                 <Ionicons name="chevron-down" size={13} color="#fff" />
@@ -527,14 +533,6 @@ export default function V2Matches() {
               );
             }}
           />
-          <View style={styles.stickyActions}>
-            <PressableScale onPress={() => setMapOpen((v) => !v)} style={[styles.chipBtn, mapOpen && styles.chipBtnActive]}>
-              <Ionicons name="map-outline" size={17} color={mapOpen ? '#fff' : C.text} />
-            </PressableScale>
-            <PressableScale onPress={() => setFilterOpen(true)} style={[styles.chipBtn, anyFilter && styles.chipBtnActive]}>
-              <Ionicons name="options-outline" size={17} color={anyFilter ? '#fff' : C.text} />
-            </PressableScale>
-          </View>
         </View>
 
         <View
@@ -726,6 +724,7 @@ const styles = StyleSheet.create({
   heroPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1.5, borderColor: 'rgba(244,250,240,0.5)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: R.pill },
   heroPillText: { color: '#fff', fontFamily: FONTS.monoMedium, fontSize: 12, letterSpacing: 0.5 },
   heroIcon: { width: 38, height: 38, borderRadius: R.pill, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1.5, borderColor: 'rgba(244,250,240,0.5)', alignItems: 'center', justifyContent: 'center' },
+  heroIconActive: { backgroundColor: C.accent, borderColor: C.ink },
 
   stickyBar: { backgroundColor: C.bg, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 2, borderBottomColor: C.ink },
   stickyActions: { flexDirection: 'row', gap: 8, paddingRight: S.lg, paddingLeft: 4 },

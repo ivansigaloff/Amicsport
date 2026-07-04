@@ -3,8 +3,6 @@ import { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { C } from '../../components/v2/ui';
-import ChalkCursor from '../../components/v2/ChalkCursor';
-import PitchStripes from '../../components/v2/PitchStripes';
 
 /**
  * V2 (redesign) navigation root. Self-contained auth gate so /v2 works as a
@@ -47,11 +45,7 @@ export default function V2Layout() {
     );
   }
 
-  return (
-    <>
-      <ChalkCursor />
-      <PitchStripes />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg } }} />
-    </>
-  );
+  // El cursor de tiza y el fondo de campo se montan en el layout raíz
+  // (app/_layout.tsx) — la estética es global desde que v1 comparte piel.
+  return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg } }} />;
 }

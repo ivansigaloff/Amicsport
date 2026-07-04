@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, Alert, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { COLORS, SHADOWS, FONTS } from '../../constants/theme';
@@ -145,20 +145,27 @@ function PlayerRow({ p, sty, striped, userId, t, onRemove, setCheckin, setShirtC
   const paid = !!p.paid;
   const color = p.shirt_color;
   const isSelf = p.user_id === userId;
-  return (
-    <View style={[styles.playerRow, { backgroundColor: sty.bg, borderLeftColor: sty.accent, borderBottomColor: sty.divider }]} {...stripeRef(striped)}>
+  // En pantallas estrechas los controles fijos (tracker + camisetas + pagado +
+  // quitar) no dejan sitio al nombre: la fila pasa a dos líneas.
+  const { width } = useWindowDimensions();
+  const narrow = width < 560;
+
+  const identity = (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
       <TouchableOpacity onPress={() => setCheckin(p, !checkedIn)} style={styles.iconBtn} {...tip(t('match_details.manage.checkin'))}>
         <Ionicons name={checkedIn ? 'checkmark-circle' : 'ellipse-outline'} size={22} color={checkedIn ? COLORS.SUCCESS : DISABLED} />
       </TouchableOpacity>
-
       <View style={styles.miniAvatar}>
         <Text style={styles.miniAvatarText}>{p.user_name?.charAt(0).toUpperCase() || 'P'}</Text>
       </View>
-
       <Text style={[styles.playerName, { color: sty.text }]} numberOfLines={1}>
         {p.user_name}{isSelf ? ` (${t('match_details.self_joined')})` : ''}
       </Text>
+    </View>
+  );
 
+  const controls = (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, justifyContent: narrow ? 'flex-end' : undefined }}>
       {isAdmin && setDeviceNumber && (
         <View style={{ marginRight: 8 }}>
           <TrackerPicker
@@ -191,6 +198,20 @@ function PlayerRow({ p, sty, striped, userId, t, onRemove, setCheckin, setShirtC
           <Ionicons name="trash-outline" size={16} color={COLORS.DANGER} />
         </TouchableOpacity>
       )}
+    </View>
+  );
+
+  return (
+    <View
+      style={[
+        styles.playerRow,
+        { backgroundColor: sty.bg, borderLeftColor: sty.accent, borderBottomColor: sty.divider },
+        narrow && { flexDirection: 'column', alignItems: 'stretch', gap: 4 },
+      ]}
+      {...stripeRef(striped)}
+    >
+      {identity}
+      {controls}
     </View>
   );
 }
