@@ -491,9 +491,12 @@ export default function V2Matches() {
               <Text style={styles.heroTitle}>{t('matches.title')}</Text>
             </View>
             <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-              <PressableScale onPress={() => setMapOpen((v) => !v)} style={[styles.heroIcon, mapOpen && styles.heroIconActive]}>
-                <Ionicons name="map-outline" size={18} color={mapOpen ? C.ink : '#fff'} />
-              </PressableScale>
+              {/* en móvil: sin mapa y sin refrescar (pull-to-refresh) */}
+              {isDesktop && (
+                <PressableScale onPress={() => setMapOpen((v) => !v)} style={[styles.heroIcon, mapOpen && styles.heroIconActive]}>
+                  <Ionicons name="map-outline" size={18} color={mapOpen ? C.ink : '#fff'} />
+                </PressableScale>
+              )}
               <PressableScale onPress={() => setFilterOpen(true)} style={[styles.heroIcon, anyFilter && styles.heroIconActive]}>
                 <Ionicons name="options-outline" size={18} color={anyFilter ? C.ink : '#fff'} />
               </PressableScale>
@@ -501,24 +504,22 @@ export default function V2Matches() {
                 <Text style={styles.heroPillText}>{i18n.language.toUpperCase()}</Text>
                 <Ionicons name="chevron-down" size={13} color="#fff" />
               </PressableScale>
-              <PressableScale onPress={() => fetchMatches(true)} style={styles.heroIcon}><Ionicons name="refresh" size={19} color="#fff" /></PressableScale>
+              {isDesktop && (
+                <PressableScale onPress={() => fetchMatches(true)} style={styles.heroIcon}><Ionicons name="refresh" size={19} color="#fff" /></PressableScale>
+              )}
             </View>
           </View>
         </GradientHero>
 
-        {/* Sticky date strip + filter */}
+        {/* Sticky date strip + calendario fijo al final */}
         <View style={styles.stickyBar}>
           <FlatList
             horizontal
             showsHorizontalScrollIndicator={false}
             data={dayList}
             keyExtractor={(d) => d.dateString}
+            style={{ flex: 1 }}
             contentContainerStyle={{ paddingHorizontal: S.lg, paddingVertical: 10, gap: 8 }}
-            ListHeaderComponent={
-              <PressableScale onPress={() => setCalendarOpen(true)} style={[styles.dayBubble, { backgroundColor: C.surfaceAlt, borderColor: C.border }]}>
-                <Ionicons name="calendar-outline" size={20} color={C.brandDeep} />
-              </PressableScale>
-            }
             renderItem={({ item }) => {
               const sel = selectedDate === item.dateString;
               const dm = matchesByDate[item.dateString] || [];
@@ -534,6 +535,12 @@ export default function V2Matches() {
               );
             }}
           />
+          {/* siempre visible, no se desplaza con los días */}
+          <View style={styles.stickyCal}>
+            <PressableScale onPress={() => setCalendarOpen(true)} style={[styles.dayBubble, { backgroundColor: C.surfaceAlt, borderColor: C.border }]}>
+              <Ionicons name="calendar-outline" size={20} color={C.brandDeep} />
+            </PressableScale>
+          </View>
         </View>
 
         <View
@@ -550,8 +557,9 @@ export default function V2Matches() {
 
           {isAdmin && (
             <View style={{ flexDirection: 'row', gap: 10, marginTop: S.md }}>
-              <Button title={t('matches.create_match')} icon="add" variant="brand" size="sm" onPress={() => router.push('/v2/admin/crear-partido' as any)} />
-              <Button title={t('matches.player_agenda')} icon="people-outline" variant="outline" size="sm" onPress={() => router.push('/v2/admin/jugadores' as any)} />
+              {/* flex 1 en ambos: siempre caben, repartiendo el ancho */}
+              <Button title={t('matches.create_match')} icon="add" variant="brand" size="sm" onPress={() => router.push('/v2/admin/crear-partido' as any)} style={{ flex: 1 }} />
+              <Button title={t('matches.player_agenda')} icon="people-outline" variant="outline" size="sm" onPress={() => router.push('/v2/admin/jugadores' as any)} style={{ flex: 1 }} />
             </View>
           )}
 
@@ -609,15 +617,15 @@ export default function V2Matches() {
                     {sec.data.map((m: any, i: number) => {
                       const expandedId = expandedByDay[sec.iso] ?? String(sec.data[0].id);
                       const isExpanded = String(m.id) === expandedId;
-                      // z decreciente hacia la derecha: cada carta pisa a la
-                      // siguiente y su sombra dura queda visible sobre ella
+                      // hueco de 7px entre cartas: la sombra dura (3px) de cada
+                      // una se corta antes de tocar a la siguiente
                       return (
-                        <View key={m.id} style={{ zIndex: isExpanded ? 60 : sec.data.length - i, marginLeft: i === 0 ? 0 : -12, flexDirection: 'row', alignItems: 'stretch' }}>
+                        <View key={m.id} style={{ marginLeft: i === 0 ? 0 : 7, flexDirection: 'row', alignItems: 'stretch' }}>
                           <MatchCardV2
                             item={m}
                             index={Math.min(i, 6)}
                             expanded={isExpanded}
-                            expandedWidth={Math.max(214, Math.min(width - 2 * S.lg, 720) - Math.min(sec.data.length - 1, 2) * 72 - 6)}
+                            expandedWidth={Math.max(210, Math.min(width - 2 * S.lg, 720) - Math.min(sec.data.length - 1, 2) * 91 - 6)}
                             onExpand={() => setExpandedByDay((prev) => ({ ...prev, [sec.iso]: String(m.id) }))}
                             onJoin={joinFromCard}
                             joining={joiningId === m.id}
@@ -726,6 +734,7 @@ const styles = StyleSheet.create({
   heroPillText: { color: '#fff', fontFamily: FONTS.monoMedium, fontSize: 12, letterSpacing: 0.5 },
   heroIcon: { width: 38, height: 38, borderRadius: R.pill, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1.5, borderColor: 'rgba(244,250,240,0.5)', alignItems: 'center', justifyContent: 'center' },
   heroIconActive: { backgroundColor: C.accent, borderColor: C.ink },
+  stickyCal: { paddingRight: S.lg, paddingVertical: 10, borderLeftWidth: 1.5, borderLeftColor: C.border, paddingLeft: 10, justifyContent: 'center' },
 
   stickyBar: { backgroundColor: C.bg, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 2, borderBottomColor: C.ink },
   stickyActions: { flexDirection: 'row', gap: 8, paddingRight: S.lg, paddingLeft: 4 },
