@@ -26,6 +26,11 @@ const MapFallback = () => (
 );
 
 const UPCOMING_LIMIT = 500;
+// La vista de próximos parte de una ventana rodante: sin ella se traían (y se
+// montaban) hasta 500 filas sin tope de fecha en cada focus de la pestaña,
+// incluidos seeds lejanos. 90 días cubre de sobra lo navegable y acota el
+// payload y el coste de montaje de la lista.
+const UPCOMING_WINDOW_DAYS = 90;
 const parseDateString = (d: string) => toISODate(parseMatchDate(d));
 
 const availColor = (mList: any[]): string => {
@@ -305,11 +310,14 @@ export default function V2Matches() {
     meRef.current = { id: user?.id ?? null, name: safeUserName };
     const matchCols = 'id, title, venue, location_url, date, match_date, time, price, max_players, joined_players, level, distance, created_at, is_female, is_mixed, is_private, is_advanced, requires_payment';
     const today = new Date().toISOString().split('T')[0];
+    const windowEnd = new Date();
+    windowEnd.setDate(windowEnd.getDate() + UPCOMING_WINDOW_DAYS);
+    const windowEndISO = windowEnd.toISOString().split('T')[0];
     const includePast = showPastRef.current;
 
     let q = supabase.from('matches').select(`${matchCols}, match_participants(count)`);
     if (includePast) q = q.order('created_at', { ascending: false }).limit(500);
-    else q = q.gte('match_date', today).order('match_date', { ascending: true }).order('time', { ascending: true }).limit(UPCOMING_LIMIT);
+    else q = q.gte('match_date', today).lte('match_date', windowEndISO).order('match_date', { ascending: true }).order('time', { ascending: true }).limit(UPCOMING_LIMIT);
 
     const partsPromise = user
       ? supabase.from('match_participants')

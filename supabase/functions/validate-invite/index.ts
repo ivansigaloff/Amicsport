@@ -80,8 +80,13 @@ serve(async (req) => {
     const userId = userData.user.id;
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-    // Rate-limit invite-code attempts (V1) keyed by client IP (fallback userId).
-    const rlKey = (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || userId;
+    // Rate-limit invite-code attempts, keyed by the authenticated user id. The
+    // JWT is verified above, so userId cannot be spoofed. We deliberately do NOT
+    // key on X-Forwarded-For: its left-most value is client-controlled (the
+    // trusted proxy appends the real client IP to the right), so an attacker
+    // could rotate the header on every request to dodge the limiter and
+    // brute-force the invite codes.
+    const rlKey = userId;
     if (await isInviteBlocked(admin, rlKey)) {
         return jsonResponse({ error: 'too_many_attempts' }, 429);
     }
