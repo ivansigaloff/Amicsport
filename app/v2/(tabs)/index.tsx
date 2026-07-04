@@ -617,11 +617,17 @@ export default function V2Matches() {
                     {sec.data.map((m: any, i: number) => {
                       const expandedId = expandedByDay[sec.iso] ?? String(sec.data[0].id);
                       const isExpanded = String(m.id) === expandedId;
-                      // solape con z decreciente + escalonado por abajo: cada
-                      // solapada acaba antes que la anterior, así su sombra se
-                      // corta y se ve dónde empieza cada carta
+                      // solape con z decreciente; la solapada lleva sombra manual:
+                      // banda derecha completa (como la ficha) y banda inferior
+                      // recortada para que abajo no se forme una línea continua
                       return (
-                        <View key={m.id} style={{ zIndex: isExpanded ? 60 : sec.data.length - i, marginLeft: i === 0 ? 0 : -14, marginBottom: isExpanded ? 0 : 10 + i * 6, flexDirection: 'row', alignItems: 'stretch' }}>
+                        <View key={m.id} style={{ zIndex: isExpanded ? 60 : sec.data.length - i, marginLeft: i === 0 ? 0 : -14, flexDirection: 'row', alignItems: 'stretch' }}>
+                          {!isExpanded && (
+                            <>
+                              <View pointerEvents="none" style={{ position: 'absolute', right: -3, top: 3, bottom: -3, width: 3, backgroundColor: C.ink }} />
+                              <View pointerEvents="none" style={{ position: 'absolute', left: 24, right: -3, bottom: -3, height: 3, backgroundColor: C.ink }} />
+                            </>
+                          )}
                           <MatchCardV2
                             item={m}
                             index={Math.min(i, 6)}
@@ -759,12 +765,12 @@ const styles = StyleSheet.create({
   shareCheck: { position: 'absolute', top: 10, right: 10, width: 24, height: 24, borderWidth: 2, borderColor: C.ink, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
   // ---- lomo vertical (carta tapada en el abanico)
   // 14px del lado izquierdo quedan bajo la carta anterior: el ancho y el
-  // paddingLeft lo compensan para que el contenido se vea entero
+  // paddingLeft lo compensan para que el contenido se vea entero. La sombra
+  // va dibujada a mano en el render (derecha completa, inferior recortada).
   spine: {
     width: 96, alignItems: 'center',
     backgroundColor: C.surface, borderWidth: 2, borderColor: C.ink,
     paddingVertical: 8, paddingLeft: 20, paddingRight: 6, gap: 4,
-    ...SHADOW.md, // misma sombra que la ficha destapada
   },
   spineSelected: { borderColor: C.accentStrong, shadowColor: C.accentStrong },
   spineTime: { fontFamily: FONTS.black, fontSize: 16, color: C.text, letterSpacing: 0.3 },
