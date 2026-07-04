@@ -230,6 +230,7 @@ export const useMatchActions = (matchDataHook: MatchDataHook, fromTable: (t: str
   const setCheckin = (p: Participant, value: boolean) => setParticipantField(p, { checked_in: value });
   const setShirtColor = (p: Participant, color: 'white' | 'black' | null) => setParticipantField(p, { shirt_color: color });
   const setPaid = (p: Participant, value: boolean) => setParticipantField(p, { paid: value });
+  const setDeviceNumber = (p: Participant, value: number | null) => setParticipantField(p, { device_number: value });
 
   const executeDelete = async (asComponent?: boolean, onDeleteSuccess?: () => void) => {
     setActing(true);
@@ -265,5 +266,5 @@ export const useMatchActions = (matchDataHook: MatchDataHook, fromTable: (t: str
     }
   };
 
-  return { toggleJoin, addGuest, removeParticipant, removeDummyPlayer, setCheckin, setShirtColor, setPaid, executeDelete, acting, setActing, showAlert, initiatePayment };
+  return { toggleJoin, addGuest, removeParticipant, removeDummyPlayer, setCheckin, setShirtColor, setPaid, setDeviceNumber, executeDelete, acting, setActing, showAlert, initiatePayment };
 };

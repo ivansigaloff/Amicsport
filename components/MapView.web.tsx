@@ -41,7 +41,8 @@ export default function MapView({ matches, selectedVenue, selectedMatchId, onSel
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: GOOGLE_MAPS_API_KEY,
-    libraries: ['places'] as any
+    version: '3.64',
+    libraries: ['places', 'visualization'] as any
   });
 
   // Lazy-init from the persisted cache so previously geocoded venues render instantly.
@@ -220,8 +221,8 @@ export default function MapView({ matches, selectedVenue, selectedMatchId, onSel
   if (!isLoaded) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color="#556080" />
-        <Text style={{color: '#64748B', marginTop: 10, fontWeight: '600'}}>Cargando mapa interactivo...</Text>
+        <ActivityIndicator size="large" color="#4A6353" />
+        <Text style={{color: '#4A6353', marginTop: 10, fontWeight: '600'}}>Cargando mapa interactivo...</Text>
       </View>
     );
   }
@@ -279,8 +280,8 @@ export default function MapView({ matches, selectedVenue, selectedMatchId, onSel
                       height: '36px',
                       borderRadius: '50%',
                       backgroundColor: item.max_free_percent === 0 
-                        ? '#EF4444' 
-                        : (item.max_free_percent > 25 ? '#10B981' : '#F59E0B'),
+                        ? '#D63415' 
+                        : (item.max_free_percent > 25 ? '#17713A' : '#EDAF00'),
                       display: 'flex',
                       justifyContent: 'center',
                       alignItems: 'center',
@@ -289,7 +290,7 @@ export default function MapView({ matches, selectedVenue, selectedMatchId, onSel
                       boxShadow: isSelected ? '0 8px 24px rgba(85, 96, 128, 0.4)' : '0 4px 12px rgba(0,0,0,0.15)',
                       fontSize: '20px',
                       lineHeight: '1',
-                      border: isSelected ? '3px solid #556080' : '2px solid white',
+                      border: isSelected ? '3px solid #4A6353' : '2px solid white',
                     }}>
                       ⚽
                     </div>
@@ -327,9 +328,9 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 24,
     overflow: 'hidden',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FAFBF4',
     borderWidth: 1,
-    borderColor: '#E2E8F0'
+    borderColor: '#DDE3CE'
   },
   resetContainer: {
     position: 'absolute',
@@ -345,7 +346,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: '#EFF2E4',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -353,13 +354,13 @@ const styles = StyleSheet.create({
     elevation: 8
   },
   resetText: {
-    color: '#0F172A',
+    color: '#0D2015',
     fontWeight: '800',
     fontSize: 14,
     maxWidth: '65%'
   },
   clearMapText: {
-    color: '#556080',
+    color: '#4A6353',
     fontWeight: '800',
     fontSize: 14
   }

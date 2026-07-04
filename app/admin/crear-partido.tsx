@@ -80,7 +80,7 @@ export default function CreateMatchScreen() {
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [loadingSaveLocation, setLoadingSaveLocation] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
-  const [statusColor, setStatusColor] = useState('#64748B');
+  const [statusColor, setStatusColor] = useState('#4A6353');
 
   // New Category Flags
   const [isFemale, setIsFemale] = useState(false);
@@ -161,7 +161,8 @@ export default function CreateMatchScreen() {
   const { isLoaded: isMapsLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: GOOGLE_MAPS_API_KEY,
-    libraries: ['places'] as any
+    version: '3.64', // debe coincidir con MapView.web y GPSMatchViewer.web — el loader global explota si dos llamadas difieren
+    libraries: ['places', 'visualization'] as any
   });
 
   const fetchVenuePhoto = async (venueName: string, url?: string): Promise<string | null> => {
@@ -194,7 +195,7 @@ export default function CreateMatchScreen() {
         
         if (v1Res.status === 403) {
           setStatusMsg('Error 403: La API "Places API (New)" no está habilitada en tu consola de Google.');
-          setStatusColor('#EF4444');
+          setStatusColor('#D63415');
         }
 
         const v1Data = await v1Res.json();
@@ -277,7 +278,7 @@ export default function CreateMatchScreen() {
     if (!venue) return Alert.alert('Aviso', 'Introduce un nombre de ubicación antes de guardar.');
     setLoadingSaveLocation(true);
     setStatusMsg('Buscando foto en Google Maps...');
-    setStatusColor('#FFB81C');
+    setStatusColor('#FFC91F');
     
     try {
       // Fetch photo URL from Google (prioritizing the link)
@@ -285,7 +286,7 @@ export default function CreateMatchScreen() {
       const photoUrl = await fetchVenuePhoto(venue, locationUrl);
       
       setStatusMsg(`Paso 2: Google devolvió: ${photoUrl ? photoUrl.substring(0, 60) + '...' : 'NADA (null)'}`);
-      setStatusColor(photoUrl ? '#10B981' : '#F59E0B');
+      setStatusColor(photoUrl ? '#17713A' : '#EDAF00');
       
       // Check if venue already exists to preserve existing photo if the new one is null
       const { data: existing } = await supabase.from(fromTable('saved_locations')).select('image_url').eq('name', venue).single();
@@ -305,17 +306,17 @@ export default function CreateMatchScreen() {
       
       if (error) {
         setStatusMsg(`Error al guardar: ${error.message}`);
-        setStatusColor('#EF4444');
+        setStatusColor('#D63415');
       } else {
         if (finalPhotoUrl) setVenueImageUrl(finalPhotoUrl);
         await fetchLocations();
         const savedImgUrl = upsertResult?.[0]?.image_url;
         setStatusMsg(`✅ Guardado OK. image_url en DB: ${savedImgUrl ? savedImgUrl.substring(0, 50) + '...' : 'VACÍO'}`);
-        setStatusColor(savedImgUrl ? '#10B981' : '#F59E0B');
+        setStatusColor(savedImgUrl ? '#17713A' : '#EDAF00');
       }
     } catch (err: any) {
       setStatusMsg(`Error inesperado: ${err.message || 'Desconocido'}`);
-      setStatusColor('#EF4444');
+      setStatusColor('#D63415');
     } finally {
       setLoadingSaveLocation(false);
     }
@@ -363,6 +364,8 @@ export default function CreateMatchScreen() {
       distance: distance || 'Apto', // game format (e.g. "7 vs 7"), derived from spots
       location_url: locationUrl,
       image_url: venueImageUrl || 'https://images.unsplash.com/photo-1543351611-58f69d7c1781?q=80&w=600&auto=format&fit=crop',
+      is_female: isFemale,
+      is_mixed: isMixed,
       is_private: isPrivate,
       is_advanced: isAdvanced,
       cancellation_hours: parseInt(cancellationHours) || 12,
@@ -408,15 +411,15 @@ export default function CreateMatchScreen() {
   };
 
   if (authorized === null) {
-    return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color="#0F172A" /></View>;
+    return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color="#0D2015" /></View>;
   }
   if (authorized === false) {
     return (
       <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 }}>
-        <Ionicons name="lock-closed-outline" size={48} color="#94A3B8" />
-        <Text style={{ color: '#64748B', fontSize: 16, textAlign: 'center' }}>Solo accesible para administradores</Text>
+        <Ionicons name="lock-closed-outline" size={48} color="#84957F" />
+        <Text style={{ color: '#4A6353', fontSize: 16, textAlign: 'center' }}>Solo accesible para administradores</Text>
         <TouchableOpacity onPress={() => router.replace('/(tabs)' as any)}>
-          <Text style={{ color: '#0F172A', fontWeight: '700' }}>Volver</Text>
+          <Text style={{ color: '#0D2015', fontWeight: '700' }}>Volver</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
@@ -426,7 +429,7 @@ export default function CreateMatchScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={24} color="#0F172A" />
+          <Ionicons name="chevron-back" size={24} color="#0D2015" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{editId ? 'Editar Partido' : 'Agendar Partido'}</Text>
 
@@ -437,7 +440,7 @@ export default function CreateMatchScreen() {
         
         <View style={styles.formGroup}>
           <Text style={styles.label}>Título del Evento (Opcional)</Text>
-          <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="Ej. Amistoso de verano" placeholderTextColor="#64748B" />
+          <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="Ej. Amistoso de verano" placeholderTextColor="#4A6353" />
           <Text style={{color: '#C05E5E', fontSize: 12, marginTop: 6, fontWeight: '500'}}>
              Si lo dejas vacío, el nombre del partido será la Ubicación por defecto.
           </Text>
@@ -445,20 +448,20 @@ export default function CreateMatchScreen() {
 
         {/* Ubicación del Recinto with dropdown and save button */}
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Ubicación del Recinto <Text style={{color: '#EF4444'}}>*</Text></Text>
+          <Text style={styles.label}>Ubicación del Recinto <Text style={{color: '#D63415'}}>*</Text></Text>
           <View style={styles.row}>
             <TextInput
               style={[styles.input, { flex: 1 }]}
               value={venue}
               onChangeText={setVenue}
               placeholder="Ej. Pista Municipal Sants"
-              placeholderTextColor="#64748B"
+              placeholderTextColor="#4A6353"
             />
             <TouchableOpacity style={styles.smallButton} onPress={() => setShowLocationModal(true)}>
-              <Ionicons name="list" size={20} color="#FFB81C" />
+              <Ionicons name="list" size={20} color="#FFC91F" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.smallButton} onPress={handleSaveLocation} disabled={loadingSaveLocation}>
-              <Ionicons name="save" size={20} color="#FFB81C" />
+              <Ionicons name="save" size={20} color="#FFC91F" />
             </TouchableOpacity>
           </View>
           {statusMsg ? (
@@ -485,7 +488,7 @@ export default function CreateMatchScreen() {
                 </TouchableOpacity>
               </View>
               <TouchableOpacity onPress={() => setVenueImageUrl('')}>
-                <Ionicons name="close-circle" size={24} color="#94A3B8" />
+                <Ionicons name="close-circle" size={24} color="#84957F" />
               </TouchableOpacity>
             </View>
           ) : null}
@@ -498,14 +501,14 @@ export default function CreateMatchScreen() {
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Seleccionar Ubicación Guardada</Text>
                 <TouchableOpacity onPress={() => setShowLocationModal(false)}>
-                  <Ionicons name="close" size={28} color="#94A3B8" />
+                  <Ionicons name="close" size={28} color="#84957F" />
                 </TouchableOpacity>
               </View>
               {loadingLocations ? (
                 <ActivityIndicator color="#C05E5E" style={{marginVertical: 30}} />
               ) : savedLocations.length === 0 ? (
                 <View style={{alignItems: 'center', marginVertical: 40}}>
-                  <Text style={{color: '#94A3B8'}}>No hay ubicaciones guardadas.</Text>
+                  <Text style={{color: '#84957F'}}>No hay ubicaciones guardadas.</Text>
                 </View>
               ) : (
                 <FlatList
@@ -529,7 +532,7 @@ export default function CreateMatchScreen() {
                               style={{ width: 40, height: 40, borderRadius: 10 }} 
                             />
                           ) : (
-                            <Ionicons name="business" size={20} color="#FFB81C" />
+                            <Ionicons name="business" size={20} color="#FFC91F" />
                           )}
                         </View>
                         <View style={styles.dirPlayerInfo}>
@@ -557,20 +560,20 @@ export default function CreateMatchScreen() {
         {/* Cajas Interactivas para abrir Modales Puros (Cross-Platform Bug-Free) */}
         <View style={styles.row}>
           <View style={[styles.formGroup, { flex: 1, marginRight: 10 }]}>
-            <Text style={styles.label}>Fecha <Text style={{color: '#EF4444'}}>*</Text></Text>
-            <TouchableOpacity style={[styles.pickerBox, date && {backgroundColor: '#FFB81C'}]} onPress={() => setShowDateModal(true)}>
-              <Ionicons name="calendar-outline" size={20} color={date ? "#FFF" : "#64748B"} style={{marginRight: 8}} />
-              <Text style={{color: date ? '#FFF' : '#64748B', flex: 1, fontWeight: '600'}} numberOfLines={1}>
+            <Text style={styles.label}>Fecha <Text style={{color: '#D63415'}}>*</Text></Text>
+            <TouchableOpacity style={[styles.pickerBox, date && {backgroundColor: '#FFC91F'}]} onPress={() => setShowDateModal(true)}>
+              <Ionicons name="calendar-outline" size={20} color={date ? "#FFF" : "#4A6353"} style={{marginRight: 8}} />
+              <Text style={{color: date ? '#FFF' : '#4A6353', flex: 1, fontWeight: '600'}} numberOfLines={1}>
                 {date || 'Seleccionar día'}
               </Text>
             </TouchableOpacity>
           </View>
 
           <View style={[styles.formGroup, { flex: 1, marginLeft: 10 }]}>
-            <Text style={styles.label}>Hora <Text style={{color: '#EF4444'}}>*</Text></Text>
+            <Text style={styles.label}>Hora <Text style={{color: '#D63415'}}>*</Text></Text>
             <TouchableOpacity style={styles.pickerBox} onPress={() => setShowTimeModal(true)}>
-              <Ionicons name="time-outline" size={20} color={time ? "#FFB81C" : "#94A3B8"} style={{marginRight: 8}} />
-              <Text style={{color: time ? '#0F172A' : '#94A3B8', flex: 1, fontWeight: '500'}}>
+              <Ionicons name="time-outline" size={20} color={time ? "#FFC91F" : "#84957F"} style={{marginRight: 8}} />
+              <Text style={{color: time ? '#0D2015' : '#84957F', flex: 1, fontWeight: '500'}}>
                 {time || 'Elegir hora'}
               </Text>
             </TouchableOpacity>
@@ -588,21 +591,21 @@ export default function CreateMatchScreen() {
                 if (parseFloat(val) > 0) setRequiresPayment(true);
               }}
               keyboardType="numeric"
-              placeholderTextColor="#64748B"
+              placeholderTextColor="#4A6353"
             />
           </View>
           <View style={[styles.formGroup, { flex: 1, marginLeft: 10 }]}>
             <Text style={styles.label}>Plazas Máximas</Text>
-            <TextInput style={styles.input} value={maxPlayers} onChangeText={setMaxPlayers} keyboardType="numeric" placeholderTextColor="#64748B" />
+            <TextInput style={styles.input} value={maxPlayers} onChangeText={setMaxPlayers} keyboardType="numeric" placeholderTextColor="#4A6353" />
           </View>
         </View>
 
         <View style={[styles.formGroup, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Ionicons name="card" size={20} color="#FFB81C" />
+            <Ionicons name="card" size={20} color="#FFC91F" />
             <Text style={styles.label}>Requiere Pago</Text>
           </View>
-          <Switch value={requiresPayment} onValueChange={setRequiresPayment} trackColor={{ false: '#E2E8F0', true: '#FFB81C' }} />
+          <Switch value={requiresPayment} onValueChange={setRequiresPayment} trackColor={{ false: '#DDE3CE', true: '#FFC91F' }} />
         </View>
 
         {requiresPayment && (
@@ -614,9 +617,9 @@ export default function CreateMatchScreen() {
               onChangeText={setPaymentDeadlineHours}
               keyboardType="numeric"
               placeholder="24"
-              placeholderTextColor="#64748B"
+              placeholderTextColor="#4A6353"
             />
-            <Text style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>
+            <Text style={{ fontSize: 12, color: '#4A6353', marginTop: 4 }}>
               Los jugadores deben pagar antes de estas horas o perderán la plaza.
             </Text>
           </View>
@@ -625,7 +628,7 @@ export default function CreateMatchScreen() {
         <View style={styles.row}>
           <View style={[styles.formGroup, { flex: 1, marginRight: 10 }]}>
             <Text style={styles.label}>Nivel esperado</Text>
-            <TextInput style={styles.input} value={level} onChangeText={setLevel} placeholder="Amateur..." placeholderTextColor="#64748B" />
+            <TextInput style={styles.input} value={level} onChangeText={setLevel} placeholder="Amateur..." placeholderTextColor="#4A6353" />
           </View>
           
           <View style={[styles.formGroup, { flex: 1, marginLeft: 10 }]}>
@@ -635,7 +638,7 @@ export default function CreateMatchScreen() {
               value={distance}
               onChangeText={(v) => { setDistance(v); setFormatEdited(true); }}
               placeholder="7 vs 7"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor="#84957F"
             />
           </View>
         </View>
@@ -647,7 +650,7 @@ export default function CreateMatchScreen() {
             value={locationUrl}
             onChangeText={setLocationUrl}
             placeholder="https://maps.google.com/..."
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor="#84957F"
             keyboardType="url"
             autoCapitalize="none"
           />
@@ -659,34 +662,34 @@ export default function CreateMatchScreen() {
         <View style={styles.categoriesContainer}>
           <View style={styles.categoryRow}>
             <View style={styles.categoryLabelRow}>
-              <Ionicons name="female" size={20} color="#FFB81C" />
+              <Ionicons name="female" size={20} color="#FFC91F" />
               <Text style={styles.categoryLabel}>Femenino</Text>
             </View>
-            <Switch value={isFemale} onValueChange={setIsFemale} trackColor={{ false: '#E2E8F0', true: '#FFB81C' }} />
+            <Switch value={isFemale} onValueChange={setIsFemale} trackColor={{ false: '#DDE3CE', true: '#FFC91F' }} />
           </View>
 
           <View style={styles.categoryRow}>
             <View style={styles.categoryLabelRow}>
-              <Ionicons name="male-female" size={20} color="#FFB81C" />
+              <Ionicons name="male-female" size={20} color="#FFC91F" />
               <Text style={styles.categoryLabel}>Mixto</Text>
             </View>
-            <Switch value={isMixed} onValueChange={setIsMixed} trackColor={{ false: '#E2E8F0', true: '#FFB81C' }} />
+            <Switch value={isMixed} onValueChange={setIsMixed} trackColor={{ false: '#DDE3CE', true: '#FFC91F' }} />
           </View>
 
           <View style={styles.categoryRow}>
             <View style={styles.categoryLabelRow}>
-              <Ionicons name="lock-closed" size={20} color="#FFB81C" />
+              <Ionicons name="lock-closed" size={20} color="#FFC91F" />
               <Text style={styles.categoryLabel}>Privado</Text>
             </View>
-            <Switch value={isPrivate} onValueChange={setIsPrivate} trackColor={{ false: '#E2E8F0', true: '#FFB81C' }} />
+            <Switch value={isPrivate} onValueChange={setIsPrivate} trackColor={{ false: '#DDE3CE', true: '#FFC91F' }} />
           </View>
 
           <View style={[styles.categoryRow, { borderBottomWidth: 0 }]}>
             <View style={styles.categoryLabelRow}>
-              <Ionicons name="trophy" size={20} color="#FFB81C" />
+              <Ionicons name="trophy" size={20} color="#FFC91F" />
               <Text style={styles.categoryLabel}>Avanzado</Text>
             </View>
-            <Switch value={isAdvanced} onValueChange={setIsAdvanced} trackColor={{ false: '#E2E8F0', true: '#FFB81C' }} />
+            <Switch value={isAdvanced} onValueChange={setIsAdvanced} trackColor={{ false: '#DDE3CE', true: '#FFC91F' }} />
           </View>
         </View>
         
@@ -699,15 +702,15 @@ export default function CreateMatchScreen() {
             onChangeText={setCancellationHours} 
             keyboardType="numeric" 
             placeholder="12" 
-            placeholderTextColor="#64748B" 
+            placeholderTextColor="#4A6353" 
           />
-          <Text style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>
+          <Text style={{ fontSize: 12, color: '#4A6353', marginTop: 4 }}>
             Los jugadores no podrán salir si faltan menos de estas horas.
           </Text>
         </View>
 
         {formError ? (
-          <View style={{ backgroundColor: '#FEE2E2', padding: 12, borderRadius: 12, marginBottom: 16, borderLeftWidth: 4, borderLeftColor: '#EF4444' }}>
+          <View style={{ backgroundColor: '#FADFD6', padding: 12, borderRadius: 12, marginBottom: 16, borderLeftWidth: 4, borderLeftColor: '#D63415' }}>
             <Text style={{ color: '#B91C1C', fontSize: 14, fontWeight: '600' }}>{formError}</Text>
           </View>
         ) : null}
@@ -725,7 +728,7 @@ export default function CreateMatchScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>¿Qué día?</Text>
               <TouchableOpacity onPress={() => setShowDateModal(false)}>
-                <Ionicons name="close" size={28} color="#94A3B8" />
+                <Ionicons name="close" size={28} color="#84957F" />
               </TouchableOpacity>
             </View>
             <FlatList
@@ -749,7 +752,7 @@ export default function CreateMatchScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>¿A qué hora?</Text>
               <TouchableOpacity onPress={() => setShowTimeModal(false)}>
-                <Ionicons name="close" size={28} color="#94A3B8" />
+                <Ionicons name="close" size={28} color="#84957F" />
               </TouchableOpacity>
             </View>
             <FlatList
@@ -772,45 +775,45 @@ export default function CreateMatchScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', backgroundColor: '#FFFFFF' },
-  backButton: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: 20, fontWeight: '800', color: '#0F172A' },
+  safeArea: { flex: 1, backgroundColor: '#FAFBF4' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#EFF2E4', backgroundColor: '#FFFFFF' },
+  backButton: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#EFF2E4', justifyContent: 'center', alignItems: 'center' },
+  headerTitle: { fontSize: 20, fontWeight: '800', color: '#0D2015' },
   container: { flex: 1, padding: 24 },
   formGroup: { marginBottom: 24 },
   row: { flexDirection: 'row', justifyContent: 'space-between' },
-  smallButton: { width: 40, height: 40, borderRadius: 8, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
-  dirPlayerCard: { padding: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  smallButton: { width: 40, height: 40, borderRadius: 8, backgroundColor: '#EFF2E4', justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
+  dirPlayerCard: { padding: 12, borderBottomWidth: 1, borderBottomColor: '#EFF2E4' },
   dirPlayerInfo: { flexDirection: 'column' },
-  dirPlayerName: { fontSize: 16, fontWeight: '600', color: '#0F172A' },
-  dirPlayerLvl: { fontSize: 14, color: '#64748B', marginTop: 4 },
-  label: { fontSize: 14, color: '#64748B', marginBottom: 10, fontWeight: '700' },
-  input: { backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1, borderColor: '#F1F5F9', color: '#0F172A', fontSize: 16, padding: 18, fontWeight: '500' },
-  pickerBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1, borderColor: '#F1F5F9', padding: 18, height: 60 },
-  submitButton: { backgroundColor: '#FFB81C', padding: 20, borderRadius: 20, alignItems: 'center', marginTop: 20, shadowColor: '#FFB81C', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 6 },
+  dirPlayerName: { fontSize: 16, fontWeight: '600', color: '#0D2015' },
+  dirPlayerLvl: { fontSize: 14, color: '#4A6353', marginTop: 4 },
+  label: { fontSize: 14, color: '#4A6353', marginBottom: 10, fontWeight: '700' },
+  input: { backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1, borderColor: '#EFF2E4', color: '#0D2015', fontSize: 16, padding: 18, fontWeight: '500' },
+  pickerBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1, borderColor: '#EFF2E4', padding: 18, height: 60 },
+  submitButton: { backgroundColor: '#FFC91F', padding: 20, borderRadius: 20, alignItems: 'center', marginTop: 20, shadowColor: '#FFC91F', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 6 },
   submitButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900', letterSpacing: 0.5 },
   // Modal Styles
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.7)', justifyContent: 'flex-end' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(13, 32, 21, 0.7)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#FFFFFF', height: '65%', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, paddingBottom: 40 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  modalTitle: { fontSize: 22, fontWeight: '900', color: '#0F172A' },
-  modalOption: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  modalOptionActive: { backgroundColor: '#F1F5F9', borderRadius: 16, paddingHorizontal: 16, marginHorizontal: -16 },
-  modalOptionText: { fontSize: 17, color: '#64748B', fontWeight: '600' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#EFF2E4' },
+  modalTitle: { fontSize: 22, fontWeight: '900', color: '#0D2015' },
+  modalOption: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: '#EFF2E4' },
+  modalOptionActive: { backgroundColor: '#EFF2E4', borderRadius: 16, paddingHorizontal: 16, marginHorizontal: -16 },
+  modalOptionText: { fontSize: 17, color: '#4A6353', fontWeight: '600' },
   // Modal Saved Locations specific
-  dirPlayerCardContainer: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  locationIconContainer: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  dirPlayerCardContainer: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#EFF2E4' },
+  locationIconContainer: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#EFF2E4', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
   deleteLocationBtn: { padding: 12 },
   // Venue Preview specific
-  venuePreviewContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', padding: 12, borderRadius: 16, marginTop: 12, borderWidth: 1, borderColor: '#F1F5F9' },
+  venuePreviewContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', padding: 12, borderRadius: 16, marginTop: 12, borderWidth: 1, borderColor: '#EFF2E4' },
   venuePreviewImage: { width: 50, height: 50, borderRadius: 12, marginRight: 12 },
   venuePreviewTextContainer: { flex: 1 },
-  venuePreviewLabel: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
-  venuePreviewSub: { fontSize: 11, color: '#64748B', marginTop: 2 },
+  venuePreviewLabel: { fontSize: 13, fontWeight: '700', color: '#0D2015' },
+  venuePreviewSub: { fontSize: 11, color: '#4A6353', marginTop: 2 },
   statusBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', padding: 10, borderRadius: 12, marginTop: 12, borderWidth: 1, borderStyle: 'dashed' },
   statusText: { fontSize: 13, fontWeight: '600', marginLeft: 8 },
-  categoriesContainer: { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 20, marginBottom: 20, borderWidth: 1, borderColor: '#F1F5F9' },
-  categoryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  categoriesContainer: { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 20, marginBottom: 20, borderWidth: 1, borderColor: '#EFF2E4' },
+  categoryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#EFF2E4' },
   categoryLabelRow: { flexDirection: 'row', alignItems: 'center' },
-  categoryLabel: { marginLeft: 12, fontSize: 16, fontWeight: '600', color: '#0F172A' },
+  categoryLabel: { marginLeft: 12, fontSize: 16, fontWeight: '600', color: '#0D2015' },
 });

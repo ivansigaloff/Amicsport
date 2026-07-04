@@ -7,16 +7,51 @@ import { addGuestParticipant } from '../../lib/services/participantService';
 import { sendEmailNotification } from '../../lib/services/notificationService';
 import { COLORS, FONTS, SHADOWS } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
+import GPSSyncModal from './GPSSyncModal';
 
 export default function MatchAdminPanel({ match, isAdmin, isStarted, participantsList, setParticipantsList, executeDelete, fromTable, showAlert, onMutate }: any) {
   const { t } = useTranslation();
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showGpsSyncModal, setShowGpsSyncModal] = useState(false);
   const [adminDirectory, setAdminDirectory] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [creating, setCreating] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [adding, setAdding] = useState(false);
+
+  const [realStartTime, setRealStartTime] = useState(match?.real_start_time || '');
+  const [realEndTime, setRealEndTime] = useState(match?.real_end_time || '');
+  const [updatingTimes, setUpdatingTimes] = useState(false);
+
+  React.useEffect(() => {
+    if (match) {
+      setRealStartTime(match.real_start_time || '');
+      setRealEndTime(match.real_end_time || '');
+    }
+  }, [match]);
+
+  const saveRealTimes = async () => {
+    setUpdatingTimes(true);
+    try {
+      const { error } = await supabase
+        .from(fromTable('matches'))
+        .update({
+          real_start_time: realStartTime.trim() || null,
+          real_end_time: realEndTime.trim() || null
+        })
+        .eq('id', match.id);
+
+      if (error) throw error;
+      showAlert('Guardado', 'Horas reales del partido actualizadas con éxito.');
+      onMutate?.();
+    } catch (err) {
+      console.error(err);
+      showAlert('Error', 'No se pudieron actualizar las horas del partido.');
+    } finally {
+      setUpdatingTimes(false);
+    }
+  };
 
   if (!isAdmin || !match) return null;
 
@@ -122,9 +157,9 @@ export default function MatchAdminPanel({ match, isAdmin, isStarted, participant
     <>
       <View style={[styles.section, styles.adminSection]}>
         <Text style={[styles.sectionTitle, { color: COLORS.TEXT_MAIN }]}>Panel de Administrador</Text>
-        <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 12 }}>
           <TouchableOpacity 
-            style={[styles.adminBtn, { backgroundColor: COLORS.PRIMARY }, isStarted && { backgroundColor: COLORS.BORDER, opacity: 0.5 }]} 
+            style={[styles.adminBtn, { backgroundColor: COLORS.PRIMARY, minWidth: '45%' }, isStarted && { backgroundColor: COLORS.BORDER, opacity: 0.5 }]} 
             onPress={openDirectory}
             disabled={isStarted}
           >
@@ -132,12 +167,94 @@ export default function MatchAdminPanel({ match, isAdmin, isStarted, participant
             <Text style={styles.adminBtnText}>{t('match_details.inscribe_agenda')}</Text>
           </TouchableOpacity>
           <TouchableOpacity 
-            style={[styles.adminBtn, { backgroundColor: COLORS.DANGER }]} 
+            style={[styles.adminBtn, { backgroundColor: '#17713A', minWidth: '45%' }]} 
+            onPress={() => setShowGpsSyncModal(true)}
+          >
+            <Ionicons name="bluetooth" size={18} color="#FFF" />
+            <Text style={styles.adminBtnText}>Sincronizar GPS</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.adminBtn, { backgroundColor: COLORS.DANGER, minWidth: '45%' }]} 
             onPress={() => setShowDeleteConfirm(true)}
           >
             <Ionicons name="trash" size={18} color="#FFF" />
             <Text style={styles.adminBtnText}>{t('match_details.delete_match_title')}</Text>
           </TouchableOpacity>
+        </View>
+
+        {/* Real GPS Match Times Config */}
+        <View style={{ marginTop: 20, paddingTop: 16, borderTopWidth: 1, borderTopColor: 'rgba(13,32,21,0.08)' }}>
+          <Text style={{ fontSize: 14, fontFamily: FONTS.BOLD, color: COLORS.TEXT_MAIN, marginBottom: 4 }}>
+            Ajuste de Horario GPS (Recorte de Datos)
+          </Text>
+          <Text style={{ fontSize: 12, fontFamily: FONTS.REGULAR, color: COLORS.TEXT_MUTED, marginBottom: 12 }}>
+            Indica las horas reales en las que se jugó el partido para recortar los trayectos GPS en el visor de datos.
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <View style={{ flex: 1, minWidth: 100 }}>
+              <Text style={{ fontSize: 11, fontFamily: FONTS.SEMI_BOLD, color: COLORS.TEXT_MUTED, marginBottom: 4 }}>Hora Inicio (HH:MM)</Text>
+              <TextInput
+                style={{
+                  backgroundColor: COLORS.CARD_BG,
+                  borderWidth: 1,
+                  borderColor: COLORS.BORDER,
+                  borderRadius: 0,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  fontSize: 14,
+                  fontFamily: FONTS.REGULAR,
+                  color: COLORS.TEXT_MAIN
+                }}
+                value={realStartTime}
+                onChangeText={setRealStartTime}
+                placeholder="Ej. 21:35"
+                placeholderTextColor={COLORS.TEXT_LIGHT}
+              />
+            </View>
+            <View style={{ flex: 1, minWidth: 100 }}>
+              <Text style={{ fontSize: 11, fontFamily: FONTS.SEMI_BOLD, color: COLORS.TEXT_MUTED, marginBottom: 4 }}>Hora Fin (HH:MM)</Text>
+              <TextInput
+                style={{
+                  backgroundColor: COLORS.CARD_BG,
+                  borderWidth: 1,
+                  borderColor: COLORS.BORDER,
+                  borderRadius: 0,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  fontSize: 14,
+                  fontFamily: FONTS.REGULAR,
+                  color: COLORS.TEXT_MAIN
+                }}
+                value={realEndTime}
+                onChangeText={setRealEndTime}
+                placeholder="Ej. 22:50"
+                placeholderTextColor={COLORS.TEXT_LIGHT}
+              />
+            </View>
+            <TouchableOpacity
+              onPress={saveRealTimes}
+              disabled={updatingTimes}
+              style={{
+                backgroundColor: COLORS.PRIMARY,
+                paddingHorizontal: 16,
+                paddingVertical: 10,
+                borderRadius: 0,
+                alignSelf: 'flex-end',
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6
+              }}
+            >
+              {updatingTimes ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Ionicons name="save-outline" size={16} color="#FFFFFF" />
+                  <Text style={{ color: '#FFFFFF', fontFamily: FONTS.BOLD, fontSize: 14 }}>Guardar</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -240,6 +357,16 @@ export default function MatchAdminPanel({ match, isAdmin, isStarted, participant
           </View>
         </View>
       </Modal>
+
+      <GPSSyncModal
+        visible={showGpsSyncModal}
+        onClose={() => setShowGpsSyncModal(false)}
+        matchId={match.id}
+        participantsList={participantsList}
+        fromTable={fromTable}
+        showAlert={showAlert}
+        onSyncSuccess={onMutate}
+      />
     </>
   );
 }
@@ -247,8 +374,8 @@ export default function MatchAdminPanel({ match, isAdmin, isStarted, participant
 const styles = StyleSheet.create({
   section: { paddingHorizontal: 20, paddingTop: 24 },
   sectionTitle: { fontSize: 18, fontFamily: FONTS.BOLD, color: COLORS.TEXT_MAIN },
-  adminSection: { backgroundColor: COLORS.WARNING_LIGHT, padding: 20, marginHorizontal: 20, borderRadius: 16, marginTop: 24 },
-  adminBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 12, borderRadius: 12, gap: 8 },
+  adminSection: { backgroundColor: COLORS.WARNING_LIGHT, padding: 20, marginHorizontal: 20, borderRadius: 0, marginTop: 24 },
+  adminBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 12, borderRadius: 0, gap: 8 },
   adminBtnText: { color: '#FFF', fontFamily: FONTS.BOLD, fontSize: 14 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: COLORS.BACKGROUND, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, height: '80%' },
@@ -256,18 +383,18 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 20, fontFamily: FONTS.BOLD, color: COLORS.TEXT_MAIN },
   modalBodyText: { fontSize: 16, color: COLORS.TEXT_MUTED, marginBottom: 24, lineHeight: 24 },
   dirPlayerCard: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.BORDER_LIGHT },
-  avatarSmall: { width: 32, height: 32, borderRadius: 16, backgroundColor: COLORS.PRIMARY_LIGHT, justifyContent: 'center', alignItems: 'center' },
+  avatarSmall: { width: 32, height: 32, borderRadius: 0, backgroundColor: COLORS.PRIMARY_LIGHT, justifyContent: 'center', alignItems: 'center' },
   avatarTextSmall: { fontSize: 14, fontFamily: FONTS.BOLD, color: COLORS.PRIMARY },
   dirPlayerName: { flex: 1, marginLeft: 12, fontSize: 16, fontFamily: FONTS.SEMI_BOLD, color: COLORS.TEXT_MAIN },
-  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: COLORS.CARD_BG, borderRadius: 12, borderWidth: 1, borderColor: COLORS.BORDER, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12 },
+  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: COLORS.CARD_BG, borderRadius: 0, borderWidth: 1, borderColor: COLORS.BORDER, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12 },
   searchInput: { flex: 1, fontSize: 16, fontFamily: FONTS.REGULAR, color: COLORS.TEXT_MAIN, padding: 0 },
   emptyHint: { textAlign: 'center', color: COLORS.TEXT_MUTED, fontFamily: FONTS.REGULAR, fontSize: 14, marginTop: 24 },
   dirPlayerCardSel: { backgroundColor: COLORS.WARNING_LIGHT },
-  fab: { position: 'absolute', left: 24, right: 24, bottom: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: COLORS.PRIMARY, paddingVertical: 16, borderRadius: 16, ...(SHADOWS.MEDIUM as any) },
+  fab: { position: 'absolute', left: 24, right: 24, bottom: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: COLORS.PRIMARY, paddingVertical: 16, borderRadius: 0, ...(SHADOWS.MEDIUM as any) },
   fabText: { color: '#FFF', fontFamily: FONTS.BOLD, fontSize: 16 },
   freeHint: { color: COLORS.TEXT_MUTED, fontFamily: FONTS.SEMI_BOLD, fontSize: 12, marginBottom: 8, marginLeft: 4 },
-  modalBtnSecondary: { padding: 16, borderRadius: 12, backgroundColor: COLORS.BORDER, alignItems: 'center' },
+  modalBtnSecondary: { padding: 16, borderRadius: 0, backgroundColor: COLORS.BORDER, alignItems: 'center' },
   modalBtnSecondaryText: { color: COLORS.TEXT_MAIN, fontFamily: FONTS.BOLD, fontSize: 16 },
-  modalBtnPrimary: { padding: 16, borderRadius: 12, backgroundColor: COLORS.PRIMARY, alignItems: 'center' },
+  modalBtnPrimary: { padding: 16, borderRadius: 0, backgroundColor: COLORS.PRIMARY, alignItems: 'center' },
   modalBtnPrimaryText: { color: '#FFF', fontFamily: FONTS.BOLD, fontSize: 16 }
 });

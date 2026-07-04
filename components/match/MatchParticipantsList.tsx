@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { COLORS, SHADOWS, FONTS } from '../../constants/theme';
@@ -34,9 +34,9 @@ const stripeRef = (on: boolean): any =>
 // Visual identity per color: tinted row background + left accent strip + text
 // colors (the "negro" team uses a dark bg so text/icons flip to light).
 const SECTION_STYLES: Record<SectionKey, { bg: string; accent: string; text: string; sub: string; divider: string }> = {
-  unassigned: { bg: '#F1F5F9', accent: '#CBD5E1', text: COLORS.TEXT_MAIN, sub: COLORS.TEXT_MUTED, divider: 'rgba(15,23,42,0.06)' },
-  white:      { bg: '#FFFFFF', accent: '#94A3B8', text: COLORS.TEXT_MAIN, sub: COLORS.TEXT_MUTED, divider: 'rgba(15,23,42,0.06)' },
-  black:      { bg: '#1E293B', accent: '#0F172A', text: '#FFFFFF', sub: '#94A3B8', divider: 'rgba(255,255,255,0.08)' },
+  unassigned: { bg: '#EFF2E4', accent: '#DDE3CE', text: COLORS.TEXT_MAIN, sub: COLORS.TEXT_MUTED, divider: 'rgba(13,32,21,0.06)' },
+  white:      { bg: '#FFFFFF', accent: '#84957F', text: COLORS.TEXT_MAIN, sub: COLORS.TEXT_MUTED, divider: 'rgba(13,32,21,0.06)' },
+  black:      { bg: '#1C3D28', accent: '#0D2015', text: '#FFFFFF', sub: '#84957F', divider: 'rgba(255,255,255,0.08)' },
 };
 
 const colorOf = (p: any): SectionKey => (p.shirt_color === 'white' ? 'white' : p.shirt_color === 'black' ? 'black' : 'unassigned');
@@ -54,9 +54,93 @@ function FilterChip({ icon, iconColor, count, tone = 'off', onPress, label }: an
   );
 }
 
+// Platform-agnostic selector dropdown/sheet for tracker assignment.
+function TrackerPicker({ value, onChange, availableOptions, p, t }: { value: number | null, onChange: (val: number | null) => void, availableOptions: number[], p: any, t: any }) {
+  const options = [
+    { label: 'Ninguno', value: null },
+    ...availableOptions.map(id => ({ label: `GPS ${id}`, value: id }))
+  ];
+
+  // If the current value is not in the options (since it's assigned to this player,
+  // it gets filtered out of availableOptions for others but must be visible here), we inject it.
+  if (value !== null && !availableOptions.includes(value)) {
+    options.splice(1, 0, { label: `GPS ${value}`, value });
+  }
+
+  if (Platform.OS === 'web') {
+    return (
+      <select
+        value={value !== null ? String(value) : ''}
+        onChange={(e) => {
+          const val = e.target.value;
+          onChange(val ? parseInt(val, 10) : null);
+        }}
+        style={{
+          padding: '4px 8px',
+          borderRadius: '8px',
+          borderColor: '#DDE3CE',
+          backgroundColor: '#FFFFFF',
+          color: '#0D2015',
+          fontFamily: 'Inter, sans-serif',
+          fontSize: '13px',
+          fontWeight: '600',
+          cursor: 'pointer',
+          outline: 'none',
+          boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+        }}
+      >
+        {options.map(opt => (
+          <option key={opt.value ?? 'none'} value={opt.value !== null ? String(opt.value) : ''}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    );
+  }
+
+  // On Native Mobile: render a styled pressable that triggers a native Alert select sheet
+  const showNativeSelector = () => {
+    const buttons = options.map(opt => ({
+      text: opt.label,
+      onPress: () => onChange(opt.value),
+      style: opt.value === null ? 'destructive' : 'default' as any
+    }));
+    buttons.push({ text: 'Cancelar', onPress: () => {}, style: 'cancel' });
+
+    Alert.alert(
+      'Asignar GPS',
+      `Selecciona un tracker para ${p.user_name}:`,
+      buttons,
+      { cancelable: true }
+    );
+  };
+
+  return (
+    <TouchableOpacity
+      onPress={showNativeSelector}
+      style={{
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 0,
+        borderWidth: 1,
+        borderColor: '#DDE3CE',
+        backgroundColor: '#FFFFFF',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4
+      }}
+    >
+      <Text style={{ fontSize: 13, fontFamily: FONTS.BOLD, color: '#0D2015' }}>
+        {value !== null ? `GPS ${value}` : 'Asignar'}
+      </Text>
+      <Ionicons name="chevron-down-outline" size={14} color="#4A6353" />
+    </TouchableOpacity>
+  );
+}
+
 // One compact player row, tinted by its color group. The management controls
-// (check-in / shirt color / paid) are rendered but DISABLED in this phase.
-function PlayerRow({ p, sty, striped, userId, t, onRemove, setCheckin, setShirtColor, setPaid }: any) {
+// (check-in / shirt color / paid) are active for admins.
+function PlayerRow({ p, sty, striped, userId, t, onRemove, setCheckin, setShirtColor, setPaid, setDeviceNumber, availableTrackerOptions, isAdmin }: any) {
   const checkedIn = !!p.checked_in;
   const paid = !!p.paid;
   const color = p.shirt_color;
@@ -75,9 +159,21 @@ function PlayerRow({ p, sty, striped, userId, t, onRemove, setCheckin, setShirtC
         {p.user_name}{isSelf ? ` (${t('match_details.self_joined')})` : ''}
       </Text>
 
+      {isAdmin && setDeviceNumber && (
+        <View style={{ marginRight: 8 }}>
+          <TrackerPicker
+            value={p.device_number ?? null}
+            onChange={(val) => setDeviceNumber(p, val)}
+            availableOptions={availableTrackerOptions}
+            p={p}
+            t={t}
+          />
+        </View>
+      )}
+
       <View style={styles.colorPick}>
         <TouchableOpacity onPress={() => setShirtColor(p, color === 'white' ? null : 'white')} style={[styles.colorChip, styles.colorChipWhite, color === 'white' && styles.colorChipActive]} {...tip(t('match_details.manage.section_white'))}>
-          <Text style={[styles.colorChipText, { color: '#0F172A' }]}>B</Text>
+          <Text style={[styles.colorChipText, { color: '#0D2015' }]}>B</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => setShirtColor(p, color === 'black' ? null : 'black')} style={[styles.colorChip, styles.colorChipBlack, color === 'black' && styles.colorChipActive]} {...tip(t('match_details.manage.section_black'))}>
           <Text style={[styles.colorChipText, { color: '#FFFFFF' }]}>N</Text>
@@ -138,9 +234,14 @@ function WaitlistSection({ waiting, isAdmin, userId, removeParticipant, t }: any
   );
 }
 
-export default function MatchParticipantsList({ match, participantsList, isFull, isAdmin, userId, removeParticipant, removeDummyPlayer, setCheckin, setShirtColor, setPaid, compact = true, setCompact }: any) {
+export default function MatchParticipantsList({ match, participantsList, isFull, isAdmin, userId, removeParticipant, removeDummyPlayer, setCheckin, setShirtColor, setPaid, setDeviceNumber, compact = true, setCompact }: any) {
   const { t } = useTranslation();
   const [filters, setFilters] = useState<Filters>({ checkin: 'all', paid: 'all', white: false, black: false, unassigned: false, waitlist: false });
+
+  // State for discovered/scanned trackers
+  const [scanning, setScanning] = useState(false);
+  const [scannedTrackers, setScannedTrackers] = useState<number[]>([]);
+  const [hasScannedRealTrackers, setHasScannedRealTrackers] = useState(false);
 
   if (!match) return null;
 
@@ -162,14 +263,13 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
 
   const useCompact = isAdmin && compact;
 
-  // Player counter badge: light green normally, amber > 80%, red "Lleno" when full
-  // (same palette as the match list).
+  // Player counter badge
   const maxP = match.max_players || 0;
   const ratio = maxP > 0 ? total / maxP : 0;
   const badgeFull = maxP > 0 && total >= maxP;
   const badgeWarn = !badgeFull && ratio > 0.8;
-  const badgeBg = badgeFull ? COLORS.DANGER_LIGHT : badgeWarn ? COLORS.WARNING_LIGHT : '#DCFCE7';
-  const badgeFg = badgeFull ? COLORS.DANGER : badgeWarn ? '#B45309' : COLORS.SUCCESS;
+  const badgeBg = badgeFull ? COLORS.DANGER_LIGHT : badgeWarn ? COLORS.WARNING_LIGHT : '#E1EDDA';
+  const badgeFg = badgeFull ? COLORS.DANGER : badgeWarn ? '#8A6700' : COLORS.SUCCESS;
 
   const header = (
     <View style={styles.sectionHeader}>
@@ -188,6 +288,84 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
     </View>
   );
 
+  // BLE Scan handler
+  const startScan = async () => {
+    if (scanning) return;
+    setScanning(true);
+    setScannedTrackers([]);
+    setHasScannedRealTrackers(false);
+    try {
+      if (Platform.OS === 'web' && (navigator as any).bluetooth) {
+        if ((navigator as any).bluetooth.requestLEScan) {
+          const scan = await (navigator as any).bluetooth.requestLEScan({
+            filters: [{ namePrefix: 'AmicSport_Tracker_' }, { namePrefix: 'AmicSport_' }]
+          });
+          
+          const listener = (event: any) => {
+            const name = event.device.name || "";
+            const matchResult = name.match(/AmicSport_Tracker_(\d+)/) || name.match(/AmicSport_(\d+)/);
+            if (matchResult) {
+              const id = parseInt(matchResult[1], 10);
+              setScannedTrackers((prev) => {
+                if (prev.includes(id)) return prev;
+                return [...prev, id].sort((a, b) => a - b);
+              });
+              setHasScannedRealTrackers(true);
+            }
+          };
+
+          (navigator as any).bluetooth.addEventListener('advertisementreceived', listener);
+
+          setTimeout(() => {
+            (navigator as any).bluetooth.removeEventListener('advertisementreceived', listener);
+            scan.stop();
+            setScanning(false);
+          }, 8000);
+        } else {
+          // Fallback if requestLEScan not enabled: trigger requestDevice to select one
+          const device = await (navigator as any).bluetooth.requestDevice({
+            filters: [{ namePrefix: 'AmicSport_Tracker_' }, { namePrefix: 'AmicSport_' }],
+            optionalServices: ['6e400001-b5a3-f393-e0a9-e50e24dcca9e']
+          });
+          const name = device.name || "";
+          const matchResult = name.match(/AmicSport_Tracker_(\d+)/) || name.match(/AmicSport_(\d+)/);
+          if (matchResult) {
+            const id = parseInt(matchResult[1], 10);
+            setScannedTrackers((prev) => {
+              if (prev.includes(id)) return prev;
+              return [...prev, id].sort((a, b) => a - b);
+            });
+            setHasScannedRealTrackers(true);
+          }
+          setScanning(false);
+        }
+      } else {
+        setScanning(false);
+        if (Platform.OS === 'web') {
+          alert("Tu navegador no soporta BLE Scanning. Se ha cargado la lista de trackers por defecto (1-20).");
+        } else {
+          Alert.alert("Escanear Trackers", "BLE Scanning requiere un cliente web compatible. Se ha cargado la lista de trackers por defecto (1-20).");
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      setScanning(false);
+    }
+  };
+
+  // Compute available options: tracker pool minus already assigned IDs (except the player's own assigned ID)
+  const assignedTrackers = (participantsList || [])
+    .map((p: any) => p.device_number)
+    .filter((num: any) => num != null) as number[];
+  const realTrackers = Array.from(new Set([...scannedTrackers, ...assignedTrackers])).sort((a, b) => a - b);
+  const hasRealTrackers = hasScannedRealTrackers || assignedTrackers.length > 0;
+
+  const trackerPool = hasRealTrackers ? realTrackers : Array.from({ length: 20 }, (_, i) => i + 1);
+  const assignedIds = list
+    .map((p: any) => p.device_number)
+    .filter((num: any) => num != null) as number[];
+  const availableTrackerOptions = trackerPool.filter(id => !assignedIds.includes(id));
+
   // Non-admin, or admin in expanded mode → original simple list.
   if (!useCompact) {
     return (
@@ -201,7 +379,10 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
               </View>
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={styles.participantName}>{p.user_name}</Text>
-                <Text style={styles.participantStatus}>{p.user_id === userId ? t('match_details.self_joined') : t('match_details.confirmed_badge')}</Text>
+                <Text style={styles.participantStatus}>
+                  {p.user_id === userId ? t('match_details.self_joined') : t('match_details.confirmed_badge')}
+                  {p.device_number != null ? ` · GPS ${p.device_number}` : ''}
+                </Text>
               </View>
               {isAdmin && p.user_id !== userId && (
                 <TouchableOpacity onPress={() => removeParticipant(p)} style={styles.removeBtn}>
@@ -233,8 +414,6 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
   }
 
   // ---- Compact admin field view ----
-  // check-in and paid are tri-state (all → yes → no → all); white / black /
-  // unassigned are mutually exclusive color filters. Active filters combine (AND).
   const nextTri = (v: Tri): Tri => (v === 'all' ? 'yes' : v === 'yes' ? 'no' : 'all');
   const cycleTri = (key: 'checkin' | 'paid') => setFilters((s) => ({ ...s, [key]: nextTri(s[key]) }));
   const toggle = (key: 'white' | 'black' | 'unassigned') => setFilters((s) => {
@@ -242,8 +421,6 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
     if (key === 'black') return { ...s, black: !s.black, white: false, unassigned: false };
     return { ...s, unassigned: !s.unassigned, white: false, black: false };
   });
-  // "Espera" filter focuses the waiting list only (hides active players + the
-  // color/check-in filters, which don't apply to waitlisted rows).
   const toggleWaitlist = () => setFilters((s) => ({ ...s, waitlist: !s.waitlist }));
 
   const passes = (p: any) => {
@@ -256,12 +433,9 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
     if (filters.unassigned && p.shirt_color) return false;
     return true;
   };
-  // External web players are unassigned and never checked-in/paid → show them
-  // (on top) unless a "yes" check-in/paid or a white/black filter excludes them.
   const showDummies = filters.checkin !== 'yes' && filters.paid !== 'yes' && !filters.white && !filters.black;
 
   const visible = list.filter(passes);
-  // Unassigned always on top, then white, then black — no section headers.
   const ordered = [
     ...visible.filter((p: any) => colorOf(p) === 'unassigned'),
     ...visible.filter((p: any) => colorOf(p) === 'white'),
@@ -269,7 +443,7 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
   ];
 
   const triTone = (s: Tri) => (s === 'yes' ? 'on' : s === 'no' ? 'neg' : 'off');
-  const triColor = (s: Tri) => (s === 'yes' ? COLORS.SUCCESS : s === 'no' ? COLORS.DANGER : '#94A3B8');
+  const triColor = (s: Tri) => (s === 'yes' ? COLORS.SUCCESS : s === 'no' ? COLORS.DANGER : '#84957F');
   const checkinLabel = filters.checkin === 'yes' ? t('match_details.manage.filter_in') : filters.checkin === 'no' ? t('match_details.manage.filter_out') : t('match_details.manage.filter_all');
   const paidLabel = filters.paid === 'yes' ? t('match_details.manage.paid') : filters.paid === 'no' ? t('match_details.manage.not_paid') : t('match_details.manage.filter_all');
 
@@ -282,10 +456,33 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
         {PAYMENTS_TEST_MODE && (
           <FilterChip icon={filters.paid === 'no' ? 'cash-outline' : 'cash'} iconColor={triColor(filters.paid)} count={paidCount} tone={triTone(filters.paid)} onPress={() => cycleTri('paid')} label={paidLabel} />
         )}
-        <FilterChip icon="shirt-outline" iconColor="#334155" count={whiteCount} tone={filters.white ? 'sel' : 'off'} onPress={() => toggle('white')} label={t('match_details.manage.section_white')} />
-        <FilterChip icon="shirt" iconColor="#0F172A" count={blackCount} tone={filters.black ? 'sel' : 'off'} onPress={() => toggle('black')} label={t('match_details.manage.section_black')} />
-        <FilterChip icon="time-outline" iconColor="#94A3B8" count={waitlistCount} tone={filters.waitlist ? 'sel' : 'off'} onPress={toggleWaitlist} label={t('match_details.manage.waitlist')} />
+        <FilterChip icon="shirt-outline" iconColor="#2A5238" count={whiteCount} tone={filters.white ? 'sel' : 'off'} onPress={() => toggle('white')} label={t('match_details.manage.section_white')} />
+        <FilterChip icon="shirt" iconColor="#0D2015" count={blackCount} tone={filters.black ? 'sel' : 'off'} onPress={() => toggle('black')} label={t('match_details.manage.section_black')} />
+        <FilterChip icon="time-outline" iconColor="#84957F" count={waitlistCount} tone={filters.waitlist ? 'sel' : 'off'} onPress={toggleWaitlist} label={t('match_details.manage.waitlist')} />
       </View>
+
+      {/* BLE Scanner activation bar */}
+      {isAdmin && (
+        <View style={styles.scanBar}>
+          <Text style={styles.scanText}>
+            {hasScannedRealTrackers
+              ? `${scannedTrackers.length} trackers escaneados`
+              : (assignedTrackers.length > 0
+                  ? `${assignedTrackers.length} trackers asignados`
+                  : "No se han escaneado trackers")}
+          </Text>
+          <TouchableOpacity
+            onPress={startScan}
+            disabled={scanning}
+            style={[styles.scanBtn, scanning && { backgroundColor: COLORS.BORDER }]}
+          >
+            {scanning ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Ionicons name="scan-outline" size={16} color="#FFFFFF" />}
+            <Text style={styles.scanBtnText}>
+              {scanning ? "Escaneando..." : "Escanear Trackers"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {filters.waitlist ? (
         <WaitlistSection waiting={waiting} isAdmin={isAdmin} userId={userId} removeParticipant={removeParticipant} t={t} />
@@ -320,6 +517,9 @@ export default function MatchParticipantsList({ match, participantsList, isFull,
             setCheckin={setCheckin}
             setShirtColor={setShirtColor}
             setPaid={setPaid}
+            setDeviceNumber={setDeviceNumber}
+            availableTrackerOptions={availableTrackerOptions}
+            isAdmin={isAdmin}
           />
         ))}
       </View>
@@ -335,40 +535,46 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   sectionTitle: { fontSize: 18, fontFamily: FONTS.BOLD, color: COLORS.TEXT_MAIN },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  modeToggle: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 10, backgroundColor: COLORS.BORDER_LIGHT },
+  modeToggle: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 0, backgroundColor: COLORS.BORDER_LIGHT },
   modeToggleText: { fontSize: 11, fontFamily: FONTS.SEMI_BOLD, color: COLORS.TEXT_MUTED },
-  countBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
+  countBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 0 },
   countBadgeText: { color: COLORS.TEXT_WHITE, fontSize: 14, fontFamily: FONTS.BOLD },
 
   // Original simple list
   participantsContainer: { gap: 12 },
-  participantItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.CARD_BG, padding: 12, borderRadius: 16 },
-  avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.PRIMARY_LIGHT, justifyContent: 'center', alignItems: 'center' },
+  participantItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.CARD_BG, padding: 12, borderRadius: 0 },
+  avatar: { width: 40, height: 40, borderRadius: 0, backgroundColor: COLORS.PRIMARY_LIGHT, justifyContent: 'center', alignItems: 'center' },
   avatarText: { fontSize: 18, fontFamily: FONTS.BOLD, color: COLORS.PRIMARY },
   participantName: { fontSize: 16, fontFamily: FONTS.SEMI_BOLD, color: COLORS.TEXT_MAIN },
   participantStatus: { fontSize: 12, fontFamily: FONTS.REGULAR, color: COLORS.SUCCESS },
-  removeBtn: { padding: 8, backgroundColor: COLORS.DANGER_LIGHT, borderRadius: 8 },
+  removeBtn: { padding: 8, backgroundColor: COLORS.DANGER_LIGHT, borderRadius: 0 },
 
   // Compact admin view — header filter chips (icon + count)
   fchipRow: { flexDirection: 'row', gap: 6, marginBottom: 12 },
-  fchip: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 9, borderRadius: 12, backgroundColor: COLORS.CARD_BG, borderWidth: 1.5, borderColor: COLORS.BORDER },
+  fchip: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 9, borderRadius: 0, backgroundColor: COLORS.CARD_BG, borderWidth: 1.5, borderColor: COLORS.BORDER },
   fchipActive: { backgroundColor: COLORS.PRIMARY_LIGHT, borderColor: COLORS.PRIMARY },
-  fchipOn: { backgroundColor: '#DCFCE7', borderColor: COLORS.SUCCESS },
+  fchipOn: { backgroundColor: '#E1EDDA', borderColor: COLORS.SUCCESS },
   fchipNeg: { backgroundColor: COLORS.DANGER_LIGHT, borderColor: COLORS.DANGER },
   fchipCount: { fontSize: 15, fontFamily: FONTS.BOLD, color: COLORS.TEXT_MAIN },
 
+  // Scanner Bar style
+  scanBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, backgroundColor: COLORS.CARD_BG, padding: 10, borderRadius: 0, borderWidth: 1, borderColor: COLORS.BORDER },
+  scanText: { fontSize: 13, fontFamily: FONTS.SEMI_BOLD, color: COLORS.TEXT_MUTED },
+  scanBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#17713A', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 0, gap: 6 },
+  scanBtnText: { fontSize: 13, fontFamily: FONTS.BOLD, color: '#FFFFFF' },
+
   // Compact admin view — continuous color-tinted rows (no section headers)
-  sectionsWrap: { borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: COLORS.BORDER },
+  sectionsWrap: { borderRadius: 0, overflow: 'hidden', borderWidth: 1, borderColor: COLORS.BORDER },
   playerRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 7, borderLeftWidth: 4, borderBottomWidth: StyleSheet.hairlineWidth },
-  miniAvatar: { width: 28, height: 28, borderRadius: 14, backgroundColor: COLORS.PRIMARY_LIGHT, justifyContent: 'center', alignItems: 'center' },
+  miniAvatar: { width: 28, height: 28, borderRadius: 0, backgroundColor: COLORS.PRIMARY_LIGHT, justifyContent: 'center', alignItems: 'center' },
   miniAvatarText: { fontSize: 13, fontFamily: FONTS.BOLD, color: COLORS.PRIMARY },
   playerName: { flex: 1, fontSize: 14, fontFamily: FONTS.SEMI_BOLD },
   iconBtn: { padding: 6, minWidth: 34, alignItems: 'center', justifyContent: 'center' },
   disabledCtrl: { opacity: 0.4 },
   colorPick: { flexDirection: 'row', gap: 4 },
-  colorChip: { width: 26, height: 26, borderRadius: 8, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
-  colorChipWhite: { backgroundColor: '#FFFFFF', borderColor: '#CBD5E1' },
-  colorChipBlack: { backgroundColor: '#0F172A', borderColor: '#0F172A' },
+  colorChip: { width: 26, height: 26, borderRadius: 0, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
+  colorChipWhite: { backgroundColor: '#FFFFFF', borderColor: '#DDE3CE' },
+  colorChipBlack: { backgroundColor: '#0D2015', borderColor: '#0D2015' },
   colorChipActive: { borderColor: COLORS.PRIMARY, borderWidth: 2 },
   colorChipText: { fontSize: 12, fontFamily: FONTS.BOLD },
 
@@ -376,9 +582,9 @@ const styles = StyleSheet.create({
   waitlistWrap: { marginTop: 16 },
   waitlistHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
   waitlistTitle: { fontSize: 14, fontFamily: FONTS.BOLD, color: COLORS.TEXT_MUTED, textTransform: 'uppercase', letterSpacing: 0.3 },
-  waitlistCountBadge: { backgroundColor: COLORS.BORDER_LIGHT, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 1 },
+  waitlistCountBadge: { backgroundColor: COLORS.BORDER_LIGHT, borderRadius: 0, paddingHorizontal: 8, paddingVertical: 1 },
   waitlistCountText: { fontSize: 12, fontFamily: FONTS.BOLD, color: COLORS.TEXT_MUTED },
-  waitlistRow: { backgroundColor: '#FFFBEB', borderLeftColor: '#FDE68A', borderBottomColor: 'rgba(15,23,42,0.06)' },
-  waitlistPos: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#FDE68A', justifyContent: 'center', alignItems: 'center' },
-  waitlistPosText: { fontSize: 12, fontFamily: FONTS.BOLD, color: '#92400E' },
+  waitlistRow: { backgroundColor: '#FFFBEB', borderLeftColor: '#FFD54A', borderBottomColor: 'rgba(13,32,21,0.06)' },
+  waitlistPos: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#FFD54A', justifyContent: 'center', alignItems: 'center' },
+  waitlistPosText: { fontSize: 12, fontFamily: FONTS.BOLD, color: '#8A6700' },
 });

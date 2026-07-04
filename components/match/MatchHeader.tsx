@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
   headerIconButtonRound: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   headerInfo: { position: 'absolute', bottom: 30, left: 20, right: 20 },
   typeBadgeContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
-  typeBadge: { backgroundColor: COLORS.PRIMARY, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 },
+  typeBadge: { backgroundColor: COLORS.PRIMARY, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 0 },
   typeBadgeText: { color: COLORS.TEXT_WHITE, fontSize: 12, fontFamily: FONTS.BOLD },
   mainTitle: { color: COLORS.TEXT_WHITE, fontSize: 32, fontFamily: FONTS.EXTRA_BOLD, marginBottom: 8, textShadowColor: 'rgba(0,0,0,0.7)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6 },
   headerDateRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },

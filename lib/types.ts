@@ -68,6 +68,7 @@ export interface Participant {
   checked_in?: boolean;
   shirt_color?: 'white' | 'black' | null;
   paid?: boolean;
+  device_number?: number | null;
   // Waiting-list flag. Admin-added players above max_players land here (FIFO by
   // created_at); promoted automatically when an active spot frees up. See
   // migration 20260603000001_match_waitlist.sql.
@@ -96,3 +97,24 @@ export interface CancellationDeadline {
   isPast: boolean;
   limitHours: number;
 }
+
+export interface GPSPoint {
+  lat: number;
+  lng: number;
+  speed: number;
+  sats: number;
+  date: string;
+  time: string;
+}
+
+export interface GPSTrack {
+  id: string;
+  match_id: string;
+  participant_id?: string | null;
+  user_id?: string | null;
+  player_name: string;
+  points: GPSPoint[];
+  created_at?: string;
+  updated_at?: string;
+}
+

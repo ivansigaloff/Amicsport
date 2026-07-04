@@ -16,6 +16,7 @@ import MatchLocationCard from './match/MatchLocationCard';
 import MatchParticipantsList from './match/MatchParticipantsList';
 import MatchAdminPanel from './match/MatchAdminPanel';
 import MatchActionBar from './match/MatchActionBar';
+import GPSMatchViewer from './v2/GPSMatchViewer';
 
 export default function MatchDetails({ matchId, asComponent = false, onDeleteSuccess, onMutate }: { matchId?: string, asComponent?: boolean, onDeleteSuccess?: () => void, onMutate?: () => void }) {
   const { t } = useTranslation();
@@ -56,8 +57,8 @@ export default function MatchDetails({ matchId, asComponent = false, onDeleteSuc
   if (loading && !refreshing) {
     return (
       <View style={styles.errorContainer}>
-        {!asComponent && <Stack.Screen options={{ title: t('common.loading'), headerBackTitle: t('common.back'), headerTintColor: '#0F172A', headerStyle: { backgroundColor: '#FFFFFF' } }} />}
-        <ActivityIndicator color="#FFB81C" />
+        {!asComponent && <Stack.Screen options={{ title: t('common.loading'), headerBackTitle: t('common.back'), headerTintColor: '#0D2015', headerStyle: { backgroundColor: '#FFFFFF' } }} />}
+        <ActivityIndicator color="#FFC91F" />
       </View>
     );
   }
@@ -65,7 +66,7 @@ export default function MatchDetails({ matchId, asComponent = false, onDeleteSuc
   if (!match) {
     return (
       <View style={styles.errorContainer}>
-        {!asComponent && <Stack.Screen options={{ title: t('common.error'), headerBackTitle: t('common.back'), headerTintColor: '#0F172A', headerStyle: { backgroundColor: '#FFFFFF' } }} />}
+        {!asComponent && <Stack.Screen options={{ title: t('common.error'), headerBackTitle: t('common.back'), headerTintColor: '#0D2015', headerStyle: { backgroundColor: '#FFFFFF' } }} />}
         <Text style={styles.errorText}>{t('match_details.not_found')}</Text>
         {!asComponent && (
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
@@ -88,7 +89,27 @@ export default function MatchDetails({ matchId, asComponent = false, onDeleteSuc
       <MatchHeader match={match} formattedDate={formattedDate} asComponent={asComponent} router={router} isAdmin={isAdmin} prefix={prefix} id={id} />
       <View style={styles.content}>
         {!(isAdmin && compact) && <MatchLocationCard match={match} />}
-        <MatchParticipantsList match={match} participantsList={participantsList} isFull={isFull} isAdmin={isAdmin} userId={userId} removeParticipant={removeParticipant} removeDummyPlayer={removeDummyPlayer} setCheckin={setCheckin} setShirtColor={setShirtColor} setPaid={setPaid} compact={compact} setCompact={setCompact} />
+        <MatchParticipantsList match={match} participantsList={participantsList} isFull={isFull} isAdmin={isAdmin} userId={userId} removeParticipant={removeParticipant} removeDummyPlayer={removeDummyPlayer} setCheckin={setCheckin} setShirtColor={setShirtColor} setPaid={setPaid} setDeviceNumber={actionsHook.setDeviceNumber} compact={compact} setCompact={setCompact} />
+        
+        {/* GPS Performance Viewer Link */}
+        <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
+          <TouchableOpacity 
+            style={{
+              backgroundColor: '#0D2015',
+              padding: 16,
+              borderRadius: 0,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 12
+            }}
+            onPress={() => router.push(`/gps/${id}` as any)}
+          >
+            <Ionicons name="map-outline" size={24} color="#FFFFFF" />
+            <Text style={{ fontFamily: FONTS.BOLD, color: '#FFFFFF', fontSize: 16 }}>Ver Rendimiento GPS (Pantalla Completa)</Text>
+          </TouchableOpacity>
+        </View>
+
         <MatchAdminPanel match={match} isAdmin={isAdmin} isStarted={isStarted} participantsList={participantsList} setParticipantsList={matchDataHook.setParticipantsList} executeDelete={() => executeDelete(asComponent, onDeleteSuccess)} fromTable={fromTable} showAlert={showAlert} onMutate={onMutate} />
       </View>
     </ScrollView>
@@ -131,7 +152,7 @@ const styles = StyleSheet.create({
   content: { paddingBottom: 20 },
   errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   errorText: { fontSize: 16, color: COLORS.TEXT_MUTED, fontFamily: FONTS.BOLD },
-  backButton: { padding: 12, borderRadius: 12, backgroundColor: COLORS.PRIMARY, marginTop: 12 },
+  backButton: { padding: 12, borderRadius: 0, backgroundColor: COLORS.PRIMARY, marginTop: 12 },
   backButtonText: { color: COLORS.TEXT_WHITE, fontFamily: FONTS.BOLD },
   componentHeaderTopBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, backgroundColor: COLORS.CARD_BG, borderBottomWidth: 1, borderBottomColor: COLORS.BORDER_LIGHT },
   componentHeaderTitle: { fontSize: 18, fontFamily: FONTS.EXTRA_BOLD, color: COLORS.TEXT_MAIN },

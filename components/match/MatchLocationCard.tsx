@@ -27,7 +27,7 @@ export default function MatchLocationCard({ match }: any) {
 
 const styles = StyleSheet.create({
   section: { paddingHorizontal: 20, paddingTop: 24 },
-  venueCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.CARD_BG, padding: 16, borderRadius: 16 },
+  venueCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.CARD_BG, padding: 16, borderRadius: 0 },
   venueName: { fontSize: 16, fontFamily: FONTS.BOLD, color: COLORS.TEXT_MAIN, marginBottom: 4 },
   venueAddress: { fontSize: 14, fontFamily: FONTS.REGULAR, color: COLORS.TEXT_MUTED }
 });

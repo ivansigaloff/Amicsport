@@ -118,7 +118,8 @@ export default function V2CreateMatch() {
   useEffect(() => { if (venue && !locationUrl) setLocationUrl(`https://www.google.com/maps/search/${encodeURIComponent(venue)}`); }, [venue]);
   useEffect(() => { if (formatEdited) return; const n = parseInt(maxPlayers); if (!isNaN(n) && n > 1) setDistance(`${Math.floor(n / 2)} vs ${Math.ceil(n / 2)}`); }, [maxPlayers, formatEdited]);
 
-  const { isLoaded: isMapsLoaded } = useJsApiLoader({ id: 'google-map-script', googleMapsApiKey: GOOGLE_MAPS_API_KEY, libraries: ['places'] as any });
+  // versión y libraries deben coincidir con MapView.web y GPSMatchViewer.web — el loader global explota si dos llamadas difieren
+  const { isLoaded: isMapsLoaded } = useJsApiLoader({ id: 'google-map-script', googleMapsApiKey: GOOGLE_MAPS_API_KEY, version: '3.64', libraries: ['places', 'visualization'] as any });
 
   const fetchVenuePhoto = async (venueName: string, url?: string): Promise<string | null> => {
     try {
@@ -350,24 +351,24 @@ export default function V2CreateMatch() {
 }
 
 const styles = StyleSheet.create({
-  fieldLabel: { color: C.textMuted, fontFamily: FONTS.semibold, fontSize: 13, marginBottom: 7, marginLeft: 2 },
-  squareBtn: { width: 54, height: 54, borderRadius: R.md, backgroundColor: C.surface, borderWidth: 1.5, borderColor: C.border, alignItems: 'center', justifyContent: 'center' },
+  fieldLabel: { color: C.textMuted, fontFamily: FONTS.monoMedium, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 7, marginLeft: 2 },
+  squareBtn: { width: 54, height: 54, borderRadius: R.md, backgroundColor: C.surface, borderWidth: 1.5, borderColor: C.ink, alignItems: 'center', justifyContent: 'center' },
   statusBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: C.surface, padding: 10, borderRadius: R.sm, marginTop: 10, borderWidth: 1, borderStyle: 'dashed' },
   statusText: { fontSize: 12.5, fontFamily: FONTS.semibold, flex: 1 },
-  preview: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.surface, padding: 10, borderRadius: R.md, marginTop: 10, borderWidth: 1, borderColor: C.border },
+  preview: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.surface, padding: 10, borderRadius: R.md, marginTop: 10, borderWidth: 1.5, borderColor: C.ink },
   previewImg: { width: 48, height: 48 },
   previewLabel: { flex: 1, fontSize: 13, fontFamily: FONTS.semibold, color: C.text },
-  picker: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: C.surface, borderRadius: R.md, borderWidth: 1.5, borderColor: C.border, paddingHorizontal: S.lg, height: 54 },
+  picker: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: C.surface, borderRadius: R.md, borderWidth: 2, borderColor: C.ink, paddingHorizontal: S.lg, height: 54 },
   pickerText: { flex: 1, fontFamily: FONTS.semibold, fontSize: 14.5 },
-  optionsCard: { backgroundColor: C.surface, borderRadius: R.lg, padding: S.lg, borderWidth: 1, borderColor: C.border, ...SHADOW.sm },
+  optionsCard: { backgroundColor: C.surface, borderRadius: R.lg, padding: S.lg, borderWidth: 2, borderColor: C.ink, ...SHADOW.sm },
   optDivider: { height: 1, backgroundColor: C.border, marginVertical: 6 },
   switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 9 },
   switchIcon: { width: 36, height: 36, borderRadius: R.sm, backgroundColor: C.brandWash, alignItems: 'center', justifyContent: 'center' },
   switchLabel: { fontFamily: FONTS.semibold, fontSize: 15, color: C.text },
   errorBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: C.dangerWash, padding: 12, borderRadius: R.md, borderLeftWidth: 4, borderLeftColor: C.danger },
-  errorText: { color: '#B91C1C', fontSize: 13.5, fontFamily: FONTS.semibold, flex: 1 },
+  errorText: { color: C.danger, fontSize: 13.5, fontFamily: FONTS.semibold, flex: 1 },
   overlay: { flex: 1, backgroundColor: C.overlay, justifyContent: 'flex-end' },
-  sheet: { backgroundColor: C.surface, borderTopLeftRadius: R.xl, borderTopRightRadius: R.xl, padding: S.xl, paddingBottom: S.huge, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' } : {}) },
+  sheet: { backgroundColor: C.surface, borderTopLeftRadius: R.xl, borderTopRightRadius: R.xl, borderTopWidth: 2, borderLeftWidth: 2, borderRightWidth: 2, borderColor: C.ink, padding: S.xl, paddingBottom: S.huge, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' } : {}) },
   sheetHandle: { width: 40, height: 5, borderRadius: 3, backgroundColor: C.borderStrong, alignSelf: 'center', marginBottom: S.lg },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: S.md },
   sheetTitle: { fontFamily: FONTS.extraBold, fontSize: 19, color: C.text },

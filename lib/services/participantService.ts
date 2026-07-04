@@ -56,7 +56,7 @@ export const addGuestParticipant = async (matchId: string, guestName: string, _f
 // the existing `participants_update_admin` RLS policy.
 export const updateParticipant = async (
   participantId: string,
-  patch: Partial<Pick<Participant, 'checked_in' | 'shirt_color' | 'paid'>>,
+  patch: Partial<Pick<Participant, 'checked_in' | 'shirt_color' | 'paid' | 'device_number'>>,
   fromTable: (t: string) => string
 ): Promise<void> => {
   const { error } = await supabase.from(fromTable('match_participants')).update(patch).eq('id', participantId);
