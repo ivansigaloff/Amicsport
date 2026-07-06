@@ -163,11 +163,13 @@ function MatchCardV2({ item, index, expanded, expandedWidth, onExpand, onJoin, j
   }
 
   // ------- carta destapada: la ficha completa -------
+  // etiquetas cortas para pocas plazas («Quedan N») — «Últimas plazas» era
+  // tan ancho que estrujaba la hora a dos líneas en fichas compactas
   const estado = isOver ? { label: t('matches.finished', 'Finalizado'), tone: 'neutral' as const, icon: 'flag' }
     : isStarted ? { label: t('matches.in_progress', 'En curso'), tone: 'warning' as const, icon: 'time' }
     : isFull ? { label: t('matches.closed', 'Cerrado'), tone: 'danger' as const }
     : free === 1 ? { label: t('matches.last_spot', 'Última plaza'), tone: 'warning' as const }
-    : (free / item.max_players) * 100 <= 25 ? { label: t('matches.last_spots', 'Últimas plazas'), tone: 'warning' as const }
+    : (free / item.max_players) * 100 <= 25 ? { label: `${t('matches.remaining', 'Quedan')} ${free}`, tone: 'warning' as const }
     : { label: t('matches.open', 'Abierto'), tone: 'success' as const };
 
   // en el abanico móvil la ficha puede quedar estrecha: hora y paddings
@@ -184,14 +186,16 @@ function MatchCardV2({ item, index, expanded, expandedWidth, onExpand, onJoin, j
       >
         <View style={{ padding: compactFicha ? S.md : S.lg, paddingBottom: S.md, minHeight: 272 }}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: S.sm }}>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.fichaHora, compactFicha && { fontSize: 26, lineHeight: 28 }]}>{item.time}</Text>
-              <Text style={[styles.fichaFecha, compactFicha && { fontSize: 10.5, letterSpacing: 1 }]}>
+            {/* la hora nunca encoge; la fecha se recorta con elipsis y la
+                columna se limita al 58% para que el badge no se parta */}
+            <View style={{ flexShrink: 0, maxWidth: '58%' }}>
+              <Text style={[styles.fichaHora, compactFicha && { fontSize: 26, lineHeight: 28 }]} numberOfLines={1}>{item.time}</Text>
+              <Text style={[styles.fichaFecha, compactFicha && { fontSize: 10.5, letterSpacing: 1 }]} numberOfLines={1}>
                 {fecha}{item.distance && item.distance !== 'Apto' ? ` · ${item.distance}` : ''}
               </Text>
             </View>
-            <View style={{ alignItems: 'flex-end', gap: 8 }}>
-              <Badge label={estado.label} tone={estado.tone} icon={estado.icon as any} />
+            <View style={{ alignItems: 'flex-end', gap: 8, flexShrink: 1 }}>
+              <Badge label={estado.label} tone={estado.tone} icon={estado.icon as any} size={compactFicha ? 'sm' : 'md'} />
               <PressableScale onPress={() => onPress(item.id)} style={styles.verFicha}>
                 <Text style={styles.verFichaText}>{compactFicha ? t('matches.see', 'Ver') : t('matches.see_card', 'Ver ficha')}</Text>
                 <Ionicons name="arrow-forward" size={12} color={C.text} />
