@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEnv } from '../../hooks/use-env';
-import { COLORS, FONTS, SIZES, SHADOWS } from '../../constants/theme';
+import { COLORS, FONTS, SIZES, SHADOWS, SCREEN_BG } from '../../constants/theme';
 
 export default function MenuScreen() {
   const { t, i18n } = useTranslation();
@@ -100,13 +100,13 @@ export default function MenuScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.BACKGROUND,
+    backgroundColor: SCREEN_BG,
   },
   header: {
     paddingHorizontal: SIZES.PADDING,
     paddingTop: 24,
     paddingBottom: 16,
-    backgroundColor: COLORS.BACKGROUND,
+    backgroundColor: SCREEN_BG,
   },
   title: {
     fontSize: 28,

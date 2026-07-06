@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../../lib/supabase';
 import { computeIsAdmin } from '../../../lib/auth';
-import { PressableScale, C, FONTS, GRADIENTS, R, S, SHADOW } from '../ui';
+import { PressableScale, C, FONTS, GRADIENTS, R, S, SHADOW, screenBg } from '../ui';
 
 /**
  * Frame for every V2 admin screen: admin-only gate (UI guard — RLS still
@@ -85,8 +85,8 @@ export default function AdminScreen({
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: C.bg },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, backgroundColor: C.bg },
+  safe: { flex: 1, backgroundColor: screenBg },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, backgroundColor: screenBg },
   noAccess: { color: C.textMuted, fontFamily: FONTS.semibold, fontSize: 16 },
   backLink: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: R.md, backgroundColor: C.surface, borderWidth: 2, borderColor: C.ink, ...SHADOW.sm },
   backLinkText: { color: C.text, fontFamily: FONTS.bold },

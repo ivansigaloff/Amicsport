@@ -36,6 +36,10 @@ export const COLORS = {
   BORDER_LIGHT: '#EFF2E4',
 };
 
+// Fondo de pantalla: transparente en web para dejar ver la capa fija del
+// campo (franjas + tiza, z-index -1); papel tiza opaco en nativo.
+export const SCREEN_BG = Platform.OS === 'web' ? 'transparent' : COLORS.BACKGROUND;
+
 // Light/dark palette consumed by the Expo template helpers (useThemeColor,
 // ThemedText/ThemedView, Collapsible). Separate from the flat brand COLORS above.
 const tintColorLight = '#0a7ea4';

@@ -2,7 +2,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { supabase } from '../../lib/supabase';
-import { C } from '../../components/v2/ui';
+import { C, screenBg } from '../../components/v2/ui';
 
 /**
  * V2 (redesign) navigation root. Self-contained auth gate so /v2 works as a
@@ -47,5 +47,5 @@ export default function V2Layout() {
 
   // El cursor de tiza y el fondo de campo se montan en el layout raíz
   // (app/_layout.tsx) — la estética es global desde que v1 comparte piel.
-  return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg } }} />;
+  return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: screenBg } }} />;
 }

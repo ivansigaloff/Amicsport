@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { GradientHero, SectionTitle, PressableScale, AnimatedEntrance, C, FONTS, MOTION, R, S, SHADOW } from '../../../components/v2/ui';
+import { GradientHero, SectionTitle, PressableScale, AnimatedEntrance, C, FONTS, MOTION, R, S, SHADOW, screenBg } from '../../../components/v2/ui';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -27,7 +27,7 @@ export default function V2Menu() {
   const scrollY = useRef(new Animated.Value(0)).current;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={['left', 'right']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: screenBg }} edges={['left', 'right']}>
       <Animated.ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 130 }}

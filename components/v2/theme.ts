@@ -133,6 +133,11 @@ export const MOTION = {
   useNative: Platform.OS !== 'web',
 } as const;
 
+// Fondo de pantalla: transparente en web para que se vea la capa fija del
+// campo (PitchStripes, z-index -1: franjas + líneas de tiza). En nativo no
+// existe esa capa, así que se pinta el papel tiza opaco.
+export const screenBg = Platform.OS === 'web' ? 'transparent' : C.bg;
+
 export const webOnly = <T extends object>(style: T): T | {} =>
   Platform.OS === 'web' ? style : {};
 

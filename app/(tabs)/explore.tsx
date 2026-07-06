@@ -7,7 +7,7 @@ import { supabase } from '../../lib/supabase';
 import { computeIsAdmin } from '../../lib/auth';
 import { useEnv } from '../../hooks/use-env';
 import { useEffect, useState } from 'react';
-import { COLORS, FONTS, SIZES, SHADOWS } from '../../constants/theme';
+import { COLORS, FONTS, SIZES, SHADOWS, SCREEN_BG } from '../../constants/theme';
 
 export default function ProfileScreen() {
   const { t } = useTranslation();
@@ -179,7 +179,7 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: COLORS.BACKGROUND },
+  safeArea: { flex: 1, backgroundColor: SCREEN_BG },
   container: { flex: 1, padding: SIZES.PADDING },
   avatarContainer: { alignItems: 'center', marginVertical: 32 },
   avatar: { 

@@ -15,7 +15,7 @@ import { shareMultipleMatches, copyMultipleMatchUrls } from '../../../lib/share'
 import { parseMatchDate, toISODate, getMatchTiming, barcelonaNow } from '../../../lib/date';
 import {
   Card, Badge, Button, Skeleton, GradientHero, AnimatedEntrance, PressableScale,
-  C, FONTS, GRADIENTS, MOTION, R, S, SHADOW, webOnly,
+  C, FONTS, GRADIENTS, MOTION, R, S, SHADOW, screenBg, webOnly,
 } from '../../../components/v2/ui';
 
 const MapView = lazy(() => import('../../../components/MapView'));
@@ -481,7 +481,7 @@ export default function V2Matches() {
   const isDesktop = Platform.OS === 'web' && width > 820;
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.bg }}>
+    <View style={{ flex: 1, backgroundColor: screenBg }}>
       <Animated.ScrollView
         ref={scrollRef as any}
         showsVerticalScrollIndicator={false}

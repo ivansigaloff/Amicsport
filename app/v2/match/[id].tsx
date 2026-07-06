@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { shareMatch } from '../../../lib/share';
 import { useMatch } from '../../../hooks/match/useMatch';
 import { useMatchActions } from '../../../hooks/match/useMatchActions';
-import { Button, Badge, PressableScale, AnimatedEntrance, C, FONTS, GRADIENTS, R, S, SHADOW, webOnly } from '../../../components/v2/ui';
+import { Button, Badge, PressableScale, AnimatedEntrance, C, FONTS, GRADIENTS, R, S, SHADOW, screenBg, webOnly } from '../../../components/v2/ui';
 import GPSMatchViewer from '../../../components/v2/GPSMatchViewer';
 // Componentes de gestión de v1 (ya restilados vía constants/theme): lista de
 // participantes con vista compacta/normal, filtros, pagado, check-in,
@@ -67,7 +67,7 @@ export default function V2MatchDetail() {
   const isPaid = match.requires_payment && match.price > 0;
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.bg }}>
+    <View style={{ flex: 1, backgroundColor: screenBg }}>
       <ScrollView
         showsVerticalScrollIndicator
         contentContainerStyle={{ paddingBottom: 150 }}
@@ -250,7 +250,7 @@ function Fact({ icon, label, highlight }: { icon: IconName; label: string; highl
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, backgroundColor: C.bg, padding: S.xl },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, backgroundColor: screenBg, padding: S.xl },
   notFound: { color: C.textMuted, fontFamily: FONTS.bold, fontSize: 16 },
 
   hero: { height: 280, justifyContent: 'flex-end' },

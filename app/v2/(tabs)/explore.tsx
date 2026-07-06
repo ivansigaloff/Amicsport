@@ -7,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { computeIsAdmin } from '../../../lib/auth';
-import { PressableScale, AnimatedEntrance, Card, C, FONTS, GRADIENTS, R, S, SHADOW } from '../../../components/v2/ui';
+import { PressableScale, AnimatedEntrance, Card, C, FONTS, GRADIENTS, R, S, SHADOW, screenBg } from '../../../components/v2/ui';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -57,7 +57,7 @@ export default function V2Profile() {
   const initial = name && name !== t('profile.loading') ? name.charAt(0).toUpperCase() : '?';
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={['left', 'right']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: screenBg }} edges={['left', 'right']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 130 }}>
         <LinearGradient colors={GRADIENTS.inkBrand as any} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
           <AnimatedEntrance distance={16} style={{ alignItems: 'center' }}>

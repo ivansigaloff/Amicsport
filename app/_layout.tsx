@@ -112,7 +112,16 @@ export default function RootLayout() {
 
   return (
     <EnvironmentProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <ThemeProvider
+        value={(() => {
+          const base = colorScheme === 'dark' ? DarkTheme : DefaultTheme;
+          // En web el fondo del navegador queda transparente para que se vea
+          // la capa fija del campo (franjas + tiza) de PitchStripes.
+          return Constants.platform?.web || typeof document !== 'undefined'
+            ? { ...base, colors: { ...base.colors, background: 'transparent' } }
+            : base;
+        })()}
+      >
         <Head>
           <link rel="canonical" href={`https://multigraf.info/Kickerzbcn/${segments.join('/')}`} />
         </Head>
