@@ -195,8 +195,8 @@ export const useMatchActions = (matchDataHook: MatchDataHook, fromTable: (t: str
       sendEmailNotification(match!, 'leave', p.user_name, participantsList.length - 1, id);
       await reconcilePromotion(!p.waitlist); // removing an active player can free a slot
       onMutate?.();
-    } catch(err) {
-      showAlert('Error', 'No se pudo quitar al jugador.');
+    } catch(err: any) {
+      showAlert('Error', err?.message || 'No se pudo quitar al jugador.');
     }
     setActing(false);
   };

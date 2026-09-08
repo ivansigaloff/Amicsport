@@ -143,3 +143,31 @@ Si tras desplegar la function la inscripción falla y necesitas volver atrás r�
 - [ ] Frontend con los cambios desplegado
 - [ ] Verificación: signUp + ataque `updateUser({ data: { role: 'admin' } })` confirmado inerte
 - [ ] (Opcional) STEP 2 ejecutado y fallback a `user_metadata` retirado de `lib/auth.ts`
+
+
+---
+
+## Fixes de la revisión 2026-09-08
+
+Migración: `supabase/migrations/20260908000000_read_auth_leave_deadline.sql`
+
+1. `matches` y `match_participants` ya no se leen con la clave anon (solo `authenticated`).
+2. Trigger `match_participants_leave_deadline`: la baja gratuita respeta el plazo de cancelación también por API (`cancellation_deadline_passed`). Admin y service role lo saltan.
+3. `join_match` deriva el nombre del JWT para no-admins; los invitados deben llamarse `<nombre> (invitado…)` (`invalid_guest_name`).
+
+Edge Functions a redesplegar:
+
+```bash
+supabase functions deploy validate-invite    # rate limit por userId (antes X-Forwarded-For, falsificable)
+supabase functions deploy create-payment     # return_base_url con lista blanca; env forzado a prod
+supabase functions deploy whatsapp-webhook   # NOVOY respeta el plazo también en partidos gratis
+```
+
+Secreto opcional: `ALLOWED_RETURN_ORIGINS` (orígenes extra permitidos para el retorno de Monei).
+
+Acciones manuales fuera del código (no se pueden hacer desde el repo):
+
+- Rotar la clave de Google Maps que estuvo en `scripts/create_weekly_matches.js` y restringirla por referrer HTTP + API.
+- Cambiar la contraseña (o borrar) las cuentas `*@testusers.com`: su contraseña estuvo en el repo público.
+- Confirmar que los códigos de invitación actuales no son los antiguos `ADMINKKZ2026` / `KZ2026`.
+- Los scripts e2e leen ahora `E2E_TEST_PASSWORD` de `.env`.

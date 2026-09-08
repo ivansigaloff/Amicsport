@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
 const { chromium } = require('playwright');
 (async () => {
   const browser = await chromium.launch({ headless: true });
@@ -9,8 +9,11 @@ const { chromium } = require('playwright');
   await page.goto('http://localhost:8081/login', { waitUntil: 'domcontentloaded', timeout: 30000 });
   await page.waitForTimeout(3000);
   await page.getByText('Entendido', { exact: false }).click({ timeout: 2000 }).catch(() => {});
-  await page.getByPlaceholder('Email').fill('edu@testusers.com');
-  await page.getByPlaceholder(/Contrase/i).fill('TestKKZ1!');
+  // Test credentials come from .env (never commit them): E2E_TEST_EMAIL / E2E_TEST_PASSWORD
+  const email = process.env.E2E_TEST_EMAIL, password = process.env.E2E_TEST_PASSWORD;
+  if (!email || !password) { console.error('Set E2E_TEST_EMAIL and E2E_TEST_PASSWORD in .env'); process.exit(1); }
+  await page.getByPlaceholder('Email').fill(email);
+  await page.getByPlaceholder(/Contrase/i).fill(password);
   // screenshot before click to see button text
   await page.screenshot({ path: '_probe_before_click.png' });
   const btns = await page.getByRole('button').allInnerTexts();

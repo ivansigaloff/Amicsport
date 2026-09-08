@@ -1,7 +1,12 @@
+require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
 const { createClient } = require('@supabase/supabase-js');
 
-const url = 'https://wdidrnqjcdhmultayvgq.supabase.co';
-const key = 'sb_publishable_nApFd8tM47kxkbWstiOgyw_yaJZjUui';
+const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const key = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+if (!url || !key) {
+    console.error('Missing EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY in .env');
+    process.exit(1);
+}
 
 async function debug() {
     const supabase = createClient(url, key);

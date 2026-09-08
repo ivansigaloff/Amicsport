@@ -18,7 +18,10 @@ require('dotenv').config();
 
 const U = process.env.EXPO_PUBLIC_SUPABASE_URL, K = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 const BASE = process.env.E2E_BASE_URL || 'https://multigraf.info/Kickerzbcn';
-const PASSWORD = 'TestKKZ1!';
+// Shared password of the @testusers.com accounts. From .env ONLY (E2E_TEST_PASSWORD):
+// the repo is public, a literal here is a working credential for production.
+const PASSWORD = process.env.E2E_TEST_PASSWORD || '';
+if (!PASSWORD) { console.error('Set E2E_TEST_PASSWORD in .env'); process.exit(1); }
 
 // MONEI sandbox test values (see docs.monei.com/testing).
 // 4444444444444414 = "direct approval WITHOUT challenge" (no 3DS step) → most

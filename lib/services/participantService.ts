@@ -21,6 +21,8 @@ const mapJoinError = (message: string): string => {
   if (message.includes('match_not_found')) return 'El partido ya no existe.';
   if (message.includes('payment_required')) return 'Este partido requiere pago para apuntarse.';
   if (message.includes('not_validated')) return 'Tu cuenta necesita un código de invitación válido.';
+  if (message.includes('invalid_guest_name')) return 'El nombre del invitado no es válido.';
+  if (message.includes('cancellation_deadline_passed')) return 'Ya ha pasado el plazo de cancelación para este partido.';
   return message;
 };
 
@@ -37,9 +39,11 @@ export const joinMatch = async (matchId: string, _userId: string, userName: stri
   return data as Participant;
 };
 
+// The DB trigger match_participants_leave_deadline rejects self-removal once the
+// cancellation deadline has passed (the UI check alone was bypassable).
 export const leaveMatch = async (matchId: string, userId: string, fromTable: (t: string) => string) => {
   const { error } = await supabase.from(fromTable('match_participants')).delete().eq('match_id', matchId).eq('user_id', userId);
-  if (error) throw error;
+  if (error) throw new Error(mapJoinError(error.message));
 };
 
 export const addGuestParticipant = async (matchId: string, guestName: string, _fromTable: (t: string) => string) => {
@@ -65,10 +69,10 @@ export const updateParticipant = async (
 
 export const removeParticipantById = async (participantId: string, fromTable: (t: string) => string) => {
   const { error } = await supabase.from(fromTable('match_participants')).delete().eq('id', participantId);
-  if (error) throw error;
+  if (error) throw new Error(mapJoinError(error.message));
 };
 
 export const removeParticipantByName = async (matchId: string, userName: string, fromTable: (t: string) => string) => {
   const { error } = await supabase.from(fromTable('match_participants')).delete().eq('match_id', matchId).eq('user_name', userName);
-  if (error) throw error;
+  if (error) throw new Error(mapJoinError(error.message));
 };

@@ -8,7 +8,7 @@ const urls = {
   "agapito": "https://images.unsplash.com/photo-1587329310686-91414b8e3cb7?q=80&w=800&auto=format&fit=crop"
 };
 
-const dir = path.join(__dirname, 'assets', 'images', 'venues');
+const dir = path.join(__dirname, '..', '..', 'assets', 'images', 'venues');
 if (!fs.existsSync(dir)) {
   fs.mkdirSync(dir, { recursive: true });
 }

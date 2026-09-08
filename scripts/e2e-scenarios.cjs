@@ -14,9 +14,13 @@
  * Read-mostly: every scenario cleans up after itself (cancels all spots/guests).
  */
 const { chromium } = require('playwright');
+require('dotenv').config();
 
 const BASE = process.env.E2E_BASE_URL || 'https://multigraf.info/Kickerzbcn';
-const PASSWORD = 'TestKKZ1!';
+// Shared password of the @testusers.com accounts. From .env ONLY (E2E_TEST_PASSWORD):
+// the repo is public, a literal here is a working credential for production.
+const PASSWORD = process.env.E2E_TEST_PASSWORD || '';
+if (!PASSWORD) { console.error('Set E2E_TEST_PASSWORD in .env'); process.exit(1); }
 const PAID_ONLY = process.argv.includes('--paid-only');
 const RUN_PAID = process.argv.includes('--paid') || PAID_ONLY;
 const MATCH_FREE = '8175b53b-18e9-472f-9cf4-d5f6b5e6a81a'; // F7 La Satalia, 14 spots, free
@@ -34,10 +38,15 @@ const check = (scenario, step, ok, detail) => {
 };
 
 // ── Chaos/soak helpers (REST for state + cleanup, randomness) ───────────────
-require('dotenv').config();
 const SB_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const SB_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-const sbH = { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY };
+// matches / match_participants are readable only by authenticated users (RLS,
+// 2026-09-08), so REST reads use a real test-user token instead of the anon key.
+let readToken = null;
+async function sbH() {
+  if (!readToken) { const a = await authUser(ALL_USERS[0] + '@testusers.com'); readToken = a && a.access_token; }
+  return { apikey: SB_KEY, Authorization: 'Bearer ' + (readToken || SB_KEY) };
+}
 const ALL_USERS = ['edu', 'paisa', 'felix', 'nico', 'ogdier', 'delvis', 'oussama', 'adam', 'alex', 'cristian', 'bony', 'bob', 'luisjr', 'moha', 'luis', 'elkin', 'andres', 'cali', 'johnatan', 'david', 'paul', 'percy'];
 const arg = (k, d) => { const a = process.argv.find(x => x.startsWith(k + '=')); return a ? a.slice(k.length + 1) : d; };
 const randInt = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
@@ -55,13 +64,13 @@ async function authUser(email) {
   } catch { return null; }
 }
 async function participantCount(matchId) {
-  const r = await fetch(SB_URL + '/rest/v1/match_participants?match_id=eq.' + matchId + '&select=id', { headers: sbH });
+  const r = await fetch(SB_URL + '/rest/v1/match_participants?match_id=eq.' + matchId + '&select=id', { headers: await sbH() });
   const j = await r.json().catch(() => []);
   return Array.isArray(j) ? j.length : 0;
 }
 async function fetchMatchPool() {
   const today = new Date().toISOString().split('T')[0];
-  const r = await fetch(SB_URL + '/rest/v1/matches?match_date=gte.' + today + '&select=id,requires_payment,max_players,joined_players,price&order=match_date.asc&limit=20', { headers: sbH });
+  const r = await fetch(SB_URL + '/rest/v1/matches?match_date=gte.' + today + '&select=id,requires_payment,max_players,joined_players,price&order=match_date.asc&limit=20', { headers: await sbH() });
   const j = await r.json().catch(() => []);
   return Array.isArray(j) ? j.map(m => ({ id: m.id, paid: !!m.requires_payment, max: m.max_players - (m.joined_players || 0), price: m.price })) : [];
 }
@@ -414,7 +423,7 @@ async function scChaos(browser) {
   if (!pool.length) { check(S, 'match pool', false, 'no upcoming matches'); return; }
   const initial = {}, initialIds = {};
   for (const m of pool) {
-    const r = await fetch(SB_URL + '/rest/v1/match_participants?match_id=eq.' + m.id + '&select=id', { headers: sbH });
+    const r = await fetch(SB_URL + '/rest/v1/match_participants?match_id=eq.' + m.id + '&select=id', { headers: await sbH() });
     const j = await r.json().catch(() => []);
     initialIds[m.id] = new Set(Array.isArray(j) ? j.map(x => x.id) : []); // protect pre-existing rows
     initial[m.id] = initialIds[m.id].size;

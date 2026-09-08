@@ -231,17 +231,21 @@ async function handleCommand(admin: any, from: string, profileName: string, cmd:
     return 'No pude apuntarte, inténtalo más tarde.';
   }
 
-  // LEAVE — paid participations go through the async refund queue (request_return)
-  // with the same cancellation-deadline gate as the web (refund-payment).
+  // LEAVE — the cancellation deadline applies to BOTH paid and free spots (same
+  // rule the web enforces: refund-payment for paid, the DB trigger
+  // match_participants_leave_deadline for free). The service role bypasses that
+  // trigger, so the gate has to be applied here explicitly.
+  const { data: mfull } = await admin.from('matches')
+    .select('match_date, time, cancellation_hours').eq('id', match.id).maybeSingle();
+  if (mfull?.match_date && mfull.time &&
+      isPastCancellationDeadline(mfull.match_date, mfull.time, mfull.cancellation_hours)) {
+    return `Ya ha pasado el plazo de cancelación de ${label}.`;
+  }
+
+  // Paid participations go through the async refund queue (request_return).
   const { data: paid } = await admin.from('payments')
     .select('id').eq('match_id', match.id).eq('user_id', userId).eq('env', 'prod').eq('status', 'SUCCEEDED').maybeSingle();
   if (paid) {
-    const { data: mfull } = await admin.from('matches')
-      .select('match_date, time, cancellation_hours').eq('id', match.id).maybeSingle();
-    if (mfull?.match_date && mfull.time &&
-        isPastCancellationDeadline(mfull.match_date, mfull.time, mfull.cancellation_hours)) {
-      return `Ya ha pasado el plazo de cancelación de ${label}.`;
-    }
     const { data: result, error } = await admin.rpc('request_return', {
       p_payment_id: paid.id, p_user_id: userId, p_is_admin: false,
     });

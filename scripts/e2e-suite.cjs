@@ -23,7 +23,10 @@ const path = require('path');
 // ── Config ────────────────────────────────────────────────────────────────────
 
 const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:8081';
-const PASSWORD = 'TestKKZ1!';
+// Shared password of the @testusers.com accounts. From .env ONLY (E2E_TEST_PASSWORD):
+// the repo is public, a literal here is a working credential for production.
+const PASSWORD = process.env.E2E_TEST_PASSWORD || '';
+if (!PASSWORD) { console.error('Set E2E_TEST_PASSWORD in .env'); process.exit(1); }
 
 const ALL_USERS = [
   'edu','paisa','felix','nico','ogdier','delvis','oussama','adam','alex',
@@ -54,14 +57,20 @@ const FILL_GUESTS = ARGS.includes('--fill-guests'); // one organizer fills a mat
 // Read-only REST helpers to assert capacity integrity directly against the DB.
 const SB_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const SB_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-const sbHeaders = { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY };
+// matches / match_participants are readable only by authenticated users (RLS,
+// 2026-09-08), so REST reads use a real test-user token instead of the anon key.
+let readToken = null;
+async function sbHeaders() {
+  if (!readToken) readToken = await authToken(ALL_USERS[0].name + '@testusers.com');
+  return { apikey: SB_KEY, Authorization: 'Bearer ' + (readToken || SB_KEY) };
+}
 async function countParticipants(matchId) {
-  const r = await fetch(SB_URL + '/rest/v1/match_participants?match_id=eq.' + matchId + '&select=id', { headers: sbHeaders });
+  const r = await fetch(SB_URL + '/rest/v1/match_participants?match_id=eq.' + matchId + '&select=id', { headers: await sbHeaders() });
   const j = await r.json().catch(() => []);
   return Array.isArray(j) ? j.length : -1;
 }
 async function matchAbsoluteMax(matchId) {
-  const r = await fetch(SB_URL + '/rest/v1/matches?id=eq.' + matchId + '&select=max_players,joined_players', { headers: sbHeaders });
+  const r = await fetch(SB_URL + '/rest/v1/matches?id=eq.' + matchId + '&select=max_players,joined_players', { headers: await sbHeaders() });
   const j = await r.json().catch(() => []);
   const m = Array.isArray(j) ? j[0] : null;
   return m ? (m.max_players - (m.joined_players || 0)) : null;
@@ -335,7 +344,7 @@ async function runPaidFlow(browser, user) {
     // Verify the deployed fix: the paid participant row must have created_by set
     // (was NULL before the fix → only an admin could remove it).
     if (joined) {
-      const pr = await fetch(SB_URL + '/rest/v1/match_participants?match_id=eq.' + MATCH_PAID_ID + '&select=user_name,user_id,created_by', { headers: sbHeaders }).catch(() => null);
+      const pr = await fetch(SB_URL + '/rest/v1/match_participants?match_id=eq.' + MATCH_PAID_ID + '&select=user_name,user_id,created_by', { headers: await sbHeaders() }).catch(() => null);
       const rows = pr ? await pr.json().catch(() => []) : [];
       const mine = Array.isArray(rows) ? rows.find(p => p.user_id) : null;
       addResult(user, 'PAID', 'created_by_set', !!(mine && mine.created_by), 'created_by=' + (mine ? String(mine.created_by).slice(0, 8) : 'no row'), null, Date.now() - t0);

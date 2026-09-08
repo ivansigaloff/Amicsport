@@ -25,6 +25,33 @@ import { auditLog } from '../_shared/audit.ts';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const APP_BASE_URL = Deno.env.get('APP_BASE_URL') || 'https://multigraf.info/Kickerzbcn';
+// Extra origins allowed as Monei return targets (comma-separated), e.g. a
+// staging host. localhost / 127.0.0.1 are always allowed for local dev.
+const ALLOWED_RETURN_ORIGINS = (Deno.env.get('ALLOWED_RETURN_ORIGINS') ?? '')
+  .split(',').map((o) => o.trim()).filter(Boolean);
+
+// Open-redirect guard: the client may suggest where Monei should send the user
+// back to, but only origins we own are honoured. Anything else falls back to
+// APP_BASE_URL, so a crafted link can't bounce a victim (and their order_id) to
+// an attacker-controlled page after paying.
+function resolveReturnBase(candidate: unknown): string {
+  if (typeof candidate !== 'string' || !candidate) return APP_BASE_URL;
+  let url: URL;
+  try { url = new URL(candidate); } catch { return APP_BASE_URL; }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return APP_BASE_URL;
+  if (url.username || url.password || url.search || url.hash) return APP_BASE_URL;
+
+  const isLocal = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+  let allowed = isLocal;
+  if (!allowed) {
+    try { allowed = url.origin === new URL(APP_BASE_URL).origin; } catch { /* keep false */ }
+  }
+  if (!allowed) allowed = ALLOWED_RETURN_ORIGINS.includes(url.origin);
+  if (!allowed) return APP_BASE_URL;
+
+  // Normalise: origin + path without trailing slash (the caller appends /payment/return).
+  return `${url.origin}${url.pathname.replace(/\/+$/, '')}`;
+}
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -59,13 +86,17 @@ serve(async (req) => {
   // Body
   let body: { match_id?: string; env?: string; return_base_url?: string; guest_name?: string };
   try { body = await req.json(); } catch { return json({ error: 'bad_json' }, 400); }
-  const { match_id, env = 'prod', return_base_url, guest_name } = body;
+  const { match_id, return_base_url, guest_name } = body;
+  // The dev/prod split is dormant and reserve_paid_slot always reserves against
+  // the prod `matches` row, so a client-chosen env would let the price be read
+  // from one table and the slot taken from another. Always prod.
+  const env = 'prod';
   const isGuest = typeof guest_name === 'string' && guest_name.trim().length > 0;
-  const baseUrl = return_base_url || APP_BASE_URL;
+  const baseUrl = resolveReturnBase(return_base_url);
   if (!match_id) return json({ error: 'match_id required' }, 400);
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
-  const matchTable = env === 'dev' ? 'matches_dev' : 'matches';
+  const matchTable = 'matches';
 
   // Load match
   const { data: match, error: matchErr } = await admin
